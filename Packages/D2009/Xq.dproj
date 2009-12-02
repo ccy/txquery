@@ -23,7 +23,8 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<DCC_DependencyCheckOutputName>..\..\..\..\..\..\Public\Documents\RAD Studio\6.0\Bpl\Xq.bpl</DCC_DependencyCheckOutputName>
+			<DllSuffix>_D2009</DllSuffix>
+			<DCC_DependencyCheckOutputName>..\..\..\..\..\Public\Documents\RAD Studio\6.0\Bpl\Xq_D2009.bpl</DCC_DependencyCheckOutputName>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DesignOnlyPackage>false</DesignOnlyPackage>
 			<DCC_RangeChecking>true</DCC_RangeChecking>
@@ -47,7 +48,7 @@
 			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
-			<DCC_DependencyCheckOutputName>bin\Xq.bpl</DCC_DependencyCheckOutputName>
+			<DCC_DependencyCheckOutputName>bin\Xq_D2009.bpl</DCC_DependencyCheckOutputName>
 			<Version>7.0</Version>
 			<DCC_WriteableConstants>True</DCC_WriteableConstants>
 			<DCC_IntegerOverflowCheck>True</DCC_IntegerOverflowCheck>
