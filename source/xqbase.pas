@@ -1,19 +1,34 @@
-Unit xqbase;
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
 
-{*******************************************************}
-{                                                       }
-{       Base classes used in TxQuery dataset            }
-{                                                       }
-{       Copyright (c) 2003 Alfonso moreno               }
-{                                                       }
-{     Written by:                                       }
-{       Alfonso Moreno                                  }
-{       Hermosillo, Sonora, Mexico.                     }
-{       Internet:  amoreno@sigmap.com                   }
-{                  luisarvayo@yahoo.com                 }
-{       http://www.sigmap.com/txquery.htm               }
-{                                                       }
-{*******************************************************}
+Unit xqbase;
 
 {$I XQ_FLAG.INC}
 Interface
@@ -28,7 +43,7 @@ Uses
 
 Const
   SQuote = ['''', '"'];
-  NBoolean: Array[Boolean] Of String[5] = ( 'FALSE', 'TRUE' );
+  NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' );
 
 Type
   {-------------------------------------------------------------------------------}
@@ -594,15 +609,16 @@ Type
     FRecNo: Integer;
     FRecordBufferSize: Integer;
     FUsingBookmark: Boolean;
-    FBookmarkedDataset: TDataset; { Used for calling to TDataset.FreeBookmark }
+    FBookmarkedDataset: TDataset;
     FSelected: TList;
     FBofCrack: Boolean;
     FEofCrack: Boolean;
     FFilterRecno: Integer;
 
-    Function ActiveBuffer: PChar; Virtual; Abstract;
+    function ActiveBuffer: PAnsiChar; virtual; abstract;
     Function DoCompare( N: Integer; Const KeyValue: Variant ): Integer;
     Function Find( Const KeyValue: Variant; Var Index: Integer ): Boolean;
+    procedure SetBookmarkedDataset(const Value: TDataset);
   Protected
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Virtual; Abstract;
     Procedure SetFieldData( Field: TSrtField; Buffer: Pointer ); Virtual; Abstract;
@@ -611,6 +627,10 @@ Type
     Procedure SetSourceRecno( Value: Integer ); Virtual; Abstract;
     Function GetSourceRecno: Integer; Virtual; Abstract;
     Function GetRecordCount: Integer; Virtual; Abstract;
+    {$if RtlVersion >= 20}
+    function GetSourceBookmark: TBookmark; virtual; abstract; { patched by ccy }
+    procedure SetSourceBookmark(const Value: TBookmark); virtual; abstract; { patched by ccy }
+    {$ifend}
   Public
     Constructor Create( UsingBookmark: Boolean );
     Destructor Destroy; Override;
@@ -631,21 +651,30 @@ Type
     Property Recno: Integer Read GetRecno Write SetRecno;
     Property FilterRecno: Integer Read FFilterRecno Write FFilterRecno;
     Property SourceRecno: Integer Read GetSourceRecno Write SetSourceRecno;
+    {$if RtlVersion >= 20}
+    property SourceBookmark: TBookmark read GetSourceBookmark write
+        SetSourceBookmark; { patched by ccy }
+    {$ifend}
     Property Fields: TSrtFields Read FFields;
-    Property BookmarkedDataset: TDataset Read FBookmarkedDataset Write FBookmarkedDataset;
+    property BookmarkedDataset: TDataset read FBookmarkedDataset write
+        SetBookmarkedDataset; { patched by ccy }
     Property UsingBookmark: Boolean read FUsingBookmark write FUsingBookmark;
   End;
 
   TMemSortList = Class( TxqSortList )
   Private
     FBufferList: TList;
-    Function ActiveBuffer: PChar; Override;
+    function ActiveBuffer: PAnsiChar; override;
   Protected
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Override;
     Procedure SetFieldData( Field: TSrtField; Buffer: Pointer ); Override;
     Function GetRecordCount: Integer; Override;
     Procedure SetSourceRecno( Value: Integer ); Override;
     Function GetSourceRecno: Integer; Override;
+    {$if RtlVersion >= 20}
+    function GetSourceBookmark: TBookmark; override;
+    procedure SetSourceBookmark(const Value: TBookmark); override;
+    {$ifend}
   Public
     Constructor Create( UsingBookmark: Boolean );
     Destructor Destroy; Override;
@@ -659,14 +688,18 @@ Type
     FBufferList: TList;
     FMemMapFile: TMemMapFile;
     FTmpFile: String;
-    FBuffer: PChar;
-    Function ActiveBuffer: PChar; Override;
+    FBuffer: PAnsiChar;
+    function ActiveBuffer: PAnsiChar; override;
   Protected
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Override;
     Procedure SetFieldData( Field: TSrtField; Buffer: Pointer ); Override;
     Function GetRecordCount: Integer; Override;
     Procedure SetSourceRecno( Value: Integer ); Override;
     Function GetSourceRecno: Integer; Override;
+    {$if RtlVersion >= 20}
+    function GetSourceBookmark: TBookmark; override;
+    procedure SetSourceBookmark(const Value: TBookmark); override;
+    {$ifend}
   Public
     Constructor Create( UsingBookmark: Boolean; MapFileSize: Longint );
     Destructor Destroy; Override;
@@ -1635,7 +1668,7 @@ Var
   L: Longint;
 Begin
   If GetData( @L ) Then
-    Str( L, Result )
+    Result := IntToStr(L)  { patched by ccy }
   Else
     Result := '';
 End;
@@ -1854,7 +1887,7 @@ Begin
     BufferOffset := FRecordBufferSize;
     DataType := pDataType;
     Case DataType Of
-      ttString: DataSize := pDataSize + 1;
+      ttString: DataSize := (pDataSize + 1) * SizeOf(Char);  { patched by ccy}
       ttFloat: DataSize := SizeOf( Double );
       ttInteger: DataSize := SizeOf( Integer );
       ttBoolean: DataSize := SizeOf( WordBool );
@@ -1866,9 +1899,9 @@ End;
 
 Function TxqSortList.IsEqual( Recno1, Recno2: Integer ): Boolean;
 Var
-  Buffer: PChar;
-  Buffer1: PChar;
-  Buffer2: PChar;
+  Buffer: PAnsiChar;
+  Buffer1: PAnsiChar;
+  Buffer2: PAnsiChar;
 Begin
   SetRecno( Recno1 );
   Buffer := ActiveBuffer;
@@ -2109,6 +2142,15 @@ Function TxqSortList.Bof: Boolean;
 Begin
   result := FBofCrack;
 End;
+
+type
+  TDataSetAccess = class(TDataSet);
+
+procedure TxqSortList.SetBookmarkedDataset(const Value: TDataset);
+begin
+  FBookmarkedDataset := Value;
+  fRecordBufferSize := TDataSetAccess(FBookmarkedDataset).BookmarkSize;
+end;
 
 Procedure TxqSortList.Sort;
 Var
@@ -2375,6 +2417,11 @@ Begin
     For I := 0 To FBufferList.Count - 1 Do
     Begin
       Buffer := FBufferList[I];
+      // Start Modified by CCY: Fixed memory leak. Free the Bookmark allocated
+//      if fUsingBookMark then
+//        Move( ( Buffer + 0 )^, L, SizeOf(L));
+      // End Modified by CCY
+
       FreeMem( Buffer, FRecordBufferSize );
     End;
     FBufferList.Clear();
@@ -2384,7 +2431,7 @@ Begin
   FRecNo := -1;
 End;
 
-Function TMemSortList.ActiveBuffer: PChar;
+function TMemSortList.ActiveBuffer: PAnsiChar;
 Begin
   Result := Nil;
   If ( FRecNo < 1 ) Or ( FRecNo > FBufferList.Count ) Then Exit;
@@ -2393,7 +2440,7 @@ End;
 
 Function TMemSortList.GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean;
 Var
-  RecBuf: PChar;
+  RecBuf: PAnsiChar;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
@@ -2404,7 +2451,7 @@ End;
 
 Procedure TMemSortList.SetFieldData( Field: TSrtField; Buffer: Pointer );
 Var
-  RecBuf: PChar;
+  RecBuf: PAnsiChar;
 Begin
   RecBuf := ActiveBuffer;
   If ( RecBuf = Nil ) Or ( Buffer = Nil ) Then Exit;
@@ -2431,6 +2478,20 @@ Begin
   FBufferList.Exchange( Recno1 - 1, Recno2 - 1 );
 End;
 
+{$if RtlVersion >= 20}
+function TMemSortList.GetSourceBookmark: TBookmark;
+Var
+  Buffer: PAnsiChar;
+Begin
+  Result := nil;
+  If ( fRecNo < 1 ) Or ( fRecNo > GetRecordCount ) Then
+    Exit;
+  Buffer := PAnsiChar( fBufferList[fRecNo - 1] );
+  SetLength(Result, 20);
+  Move( ( Buffer + 0 )^, Result[0], 20 );
+End;
+{$ifend}
+
 Function TMemSortList.GetSourceRecno: Integer;
 Var
   Buffer: PChar;
@@ -2440,6 +2501,17 @@ Begin
   Buffer := PChar( FBufferList[FRecNo - 1] );
   Move( ( Buffer + 0 )^, Result, SizeOf( Integer ) );
 End;
+
+{$if RtlVersion >= 20}
+procedure TMemSortList.SetSourceBookmark(const Value: TBookmark);
+Var
+  Buffer: PAnsiChar;
+Begin
+  If ( fRecNo < 1 ) Or ( fRecNo > GetRecordCount ) Then Exit;
+  Buffer := PAnsiChar( fBufferList[fRecNo - 1] );
+  Move( Value[0], ( Buffer + 0 )^, 20 );
+End;
+{$ifend}
 
 Procedure TMemSortList.SetSourceRecno( Value: Integer );
 Var
@@ -2482,7 +2554,7 @@ Begin
   FRecNo := -1;
 End;
 
-Function TFileSortList.ActiveBuffer: PChar;
+function TFileSortList.ActiveBuffer: PAnsiChar;
 Begin
   Result := Nil;
   If ( FRecNo < 1 ) Or ( FRecNo > FBufferList.Count ) Then
@@ -2496,7 +2568,7 @@ End;
 
 Function TFileSortList.GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean;
 Var
-  RecBuf: PChar;
+  RecBuf: PAnsiChar;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
@@ -2508,7 +2580,7 @@ End;
 
 Procedure TFileSortList.SetFieldData( Field: TSrtField; Buffer: Pointer );
 Var
-  RecBuf: PChar;
+  RecBuf: PAnsiChar;
 Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then
@@ -2542,6 +2614,13 @@ Begin
   FBufferList.Exchange( Recno1 - 1, Recno2 - 1 );
 End;
 
+{$if RtlVersion >= 20}
+function TFileSortList.GetSourceBookmark: TBookmark;
+begin
+  Result := nil;
+end;
+{$ifend}
+
 Procedure TFileSortList.SetSourceRecno( Value: Integer );
 Begin
   If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then
@@ -2552,7 +2631,7 @@ End;
 
 Function TFileSortList.GetSourceRecno: Integer;
 Var
-  RecBuf: PChar;
+  RecBuf: PAnsiChar;
 Begin
   Result := -1;
   RecBuf := ActiveBuffer;
@@ -2560,6 +2639,13 @@ Begin
     Exit;
   Move( ( RecBuf + 0 )^, Result, SizeOf( Integer ) );
 End;
+
+{$if RtlVersion >= 20}
+procedure TFileSortList.SetSourceBookmark(const Value: TBookmark);
+begin
+
+end;
+{$ifend}
 
 {-------------------------------------------------------------------------------}
 { Implementation of TAggregateItem                                              }

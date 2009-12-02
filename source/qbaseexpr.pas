@@ -1,3 +1,33 @@
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
+
 Unit Qbaseexpr;
 
 {$I XQ_flag.Inc}
@@ -285,7 +315,7 @@ Type
     Function SQLPos( Var Start: Integer; Const Substr, Str: String ): Integer;
   Protected
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; IsNotLike: Boolean );
     Destructor Destroy; Override;
@@ -300,7 +330,7 @@ Type
     FIsNotIn: Boolean;
   Protected
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; IsNotIn: Boolean );
   End;
@@ -310,7 +340,7 @@ Type
     FIsNotBetween: Boolean;
   Protected
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; IsNotBetween: Boolean );
   End;
@@ -326,7 +356,7 @@ Type
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( WhenParamList: TParameterList;
       ThenParamList: TParameterList; ElseExpr: TExpression );
@@ -340,7 +370,7 @@ Type
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList );
   End;
@@ -390,7 +420,7 @@ Type
     FIsMin: Boolean;
   Protected
     Function GetAsFloat: Double; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; IsMin: Boolean );
   End;
@@ -400,7 +430,7 @@ Const
   NExprType: Array[TExprType] Of String =
   ( 'String', 'Float', 'Integer', 'Boolean' );
 
-  NBoolean: Array[Boolean] Of String[5] = ( 'FALSE', 'TRUE' );
+  NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' );
 
 Implementation
 
@@ -512,7 +542,7 @@ Function TExpression.GetMaxLen: Integer;
 Begin
   Result:= 0;
   If ExprType = ttString then
-    Result:= Length( GetMaxString );
+    Result:= Length( GetMaxString ) * SizeOf(Char);  { patched by ccy }
 End;
 
 Function TExpression.GetMaxString: String;
@@ -1446,7 +1476,7 @@ Begin
       Begin
         If ( Length( Work ) > 0 ) Then
         Begin
-          If n = 0 Then
+          If (n = 0) and (p = Length(s)) Then   { patched by ccy }
           Begin
             // text must start with Work
             With LikeList.Add Do
@@ -1462,7 +1492,7 @@ Begin
           Else
           Begin
             // el texto debe tener en medio work
-            With LikeList.Add Do
+            (*With LikeList.Add Do
             Begin
               LikeText := Work;
               LikePos := lpMiddle;
@@ -1470,11 +1500,22 @@ Begin
                 LikeCode := lcSingle
               Else
                 LikeCode := lcMultiple
-            End;
+            End;*)
+            with LikeList.Add Do begin
+              LikePos := lpMiddle;
+              if s[p] = '_' then begin
+                LikeCode := lcSingle;
+                LikeText := s;
+              end else begin
+                LikeText := Work;
+                LikeCode := lcMultiple;
+              end;
+            end;
           End;
         End;
         work := '';
         inc( n );
+        if s[p] = '_' then Break; { patched by ccy }
       End
       Else
       Begin
@@ -1492,6 +1533,10 @@ Begin
       Begin
         LikePos := lpRight;
         LikeText := Work;
+        If s[1] = '_' Then           { patched by ccy }
+          LikeCode := lcSingle       { patched by ccy }
+        else                         { patched by ccy }
+          LikeCode := lcMultiple     { patched by ccy }
       End;
     End;
   End;
@@ -1603,8 +1648,8 @@ Begin
           If Start <= p Then
           Begin
             Start := p;
-            If Like.LikeCode = lcSingle Then
-              s1 := '_' + s1;
+//            If Like.LikeCode = lcSingle Then   { patched by ccy }
+//              s1 := '_' + s1;                  { patched by ccy }
             Accept := ( SQLPos( Start, s1, s0 ) = p );
             If Accept And ( Like.LikeCode = lcSingle ) And
               ( Length( s1 ) <> Length( s0 ) ) Then
@@ -1622,7 +1667,7 @@ Begin
     Result := Not Result;
 End;
 
-Function TSQLLikeExpr.GetExprtype: TExprtype;
+function TSQLLikeExpr.GetExprType: TExprtype;
 Begin
   Result := ttBoolean;
 End;
@@ -1672,7 +1717,7 @@ Begin
     Result := Not Result;
 End;
 
-Function TBetweenExpr.GetExprtype: TExprtype;
+function TBetweenExpr.GetExprType: TExprtype;
 Begin
   Result := ttBoolean;
 End;
@@ -1748,7 +1793,7 @@ Begin
     Result := Not Result;
 End;
 
-Function TSQLInPredicateExpr.GetExprtype: TExprtype;
+function TSQLInPredicateExpr.GetExprType: TExprtype;
 Begin
   Result := ttBoolean;
 End;
@@ -1844,7 +1889,7 @@ var
   I: Integer;
 Begin
   Result:= '';
-  if not (GetExprtype = ttString) then Exit;
+  if not (GetExprType = ttString) then Exit;
   For I := 0 To ParameterCount - 1 Do
     if Length( FThenParamList.AsString[I] ) > Length( Result ) then
       Result:= FThenParamList.AsString[I];
@@ -1868,7 +1913,7 @@ Begin
     Result := FElseExpr.AsString;
 End;
 
-Function TCaseWhenElseExpr.GetExprtype: TExprtype;
+function TCaseWhenElseExpr.GetExprType: TExprtype;
 Begin
   { the expression type is the type of the first expression }
   Result := FThenParamList.ExprType[0];
@@ -1915,7 +1960,7 @@ Const
   MAXARGS = 20; {maximum number of arguments allowed (increase if needed)}
 Var
   cnt, n: integer;
-  ss: Array[0..MAXARGS] Of ShortString;
+  ss: Array[0..MAXARGS] Of String;
   ea: Array[0..MAXARGS] Of Extended;
   Vars: Array[0..MAXARGS] Of TVarRec;
 Begin
@@ -1956,7 +2001,7 @@ Const
   MAXARGS = 20; {maximum number of arguments allowed (increase if needed)}
 Var
   cnt, n: integer;
-  ss: Array[0..MAXARGS] Of ShortString;
+  ss: Array[0..MAXARGS] Of String;
   ea: Array[0..MAXARGS] Of Extended;
   Vars: Array[0..MAXARGS] Of TVarRec;
   SFS: xqmiscel.TSaveFormatSettings;
@@ -2214,7 +2259,7 @@ Begin
     Result := Param[ParameterCount - 1].AsString;
 End;
 
-Function TDecodeExpr.GetExprtype: TExprtype;
+function TDecodeExpr.GetExprType: TExprtype;
 Begin
   Result := Param[2].ExprType;
 End;
@@ -2244,7 +2289,7 @@ Begin
   End;
 End;
 
-Function TMinMaxOfExpr.GetExprtype: TExprtype;
+function TMinMaxOfExpr.GetExprType: TExprtype;
 Begin
   Result := ttFloat;
 End;

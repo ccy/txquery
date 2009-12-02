@@ -1,14 +1,44 @@
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
+
 unit CnvStrUtils;
 
 {$I XQ_FLAG.INC}
 interface
 
 uses
-  Classes;
+  SysUtils, Classes;
 
 type
   TStringArray = array of string;
-  TCharSet = set of Char;
+  TCharSet = set of AnsiChar; { patched by ccy }
   
   TAdvStringList = class (TStringList)
   private
@@ -48,10 +78,14 @@ function StringListToTStringArray(l : TStrings): TStringArray;
 function StrToIntEx(const s : string): Integer;
 procedure StrCount(const s : string; var Alpha, Numeric : Integer);
 
+{$if CompilerVersion <= 18.5}
+function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean;
+{$ifend}
+
 implementation
 
 uses
-  Sysutils, Windows;
+  Windows;
   
 const
   _TextToBool : array ['0'..'1'] of Boolean = (False, True);
@@ -88,7 +122,7 @@ var
 begin
   Result := EmptyStr;
   for i := 1 to Length (s) do
-    if not (s [i] in chars)
+    if not CharInSet(s [i], chars)
       then Result := Result + s [i];
 end;
 
@@ -256,7 +290,7 @@ end;
 function StringToHex(const s : string): string;
 var
   j : Integer;
-  Hex : string [2];
+  Hex : string;
 begin
   SetLength (Result, Length (s) * 2);
   for j := 1 to Length (s) do
@@ -270,7 +304,7 @@ function HexToString(const s : string): string;
 var
   i : Integer;
   c : Char;
-  Hex : string [2];
+  Hex : string;
 begin
   SetLength (Hex, 2);
   SetLength (Result, Length (s) div 2);
@@ -327,10 +361,18 @@ begin
   Alpha := 0;
   Numeric := 0;
   for i := 0 to Length (s) do
-    if s [i] in ['0'..'9']
+    if CharInSet(s [i], ['0'..'9'])
       then Inc (Numeric)
       else Inc (Alpha);
 end;
+
+{$if CompilerVersion <= 18.5}
+function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean;
+begin
+  Result := C in CharSet;
+end;
+{$ifend}
+
 
 { TAdvStringList }
 
@@ -358,7 +400,7 @@ begin
         begin
           S := Get(I);
           P := PChar(S);
-          while not (P^ in [#0, FQuoteChar, FTokenSeparator]) do
+          while not CharInSet(P^, [#0, FQuoteChar, FTokenSeparator]) do
             P := CharNext(P);
           if P^ <> #0
             then S := AnsiQuotedStr(S, FQuoteChar);

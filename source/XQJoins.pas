@@ -1,3 +1,33 @@
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
+
 unit xqJoins;
 
 {$I XQ_FLAG.INC}
@@ -244,7 +274,11 @@ procedure TJOINOnList.DoJOINOn;
           JOI.FSortList.First;
           While Not JOI.FSortList.Eof do
           Begin
+            {$if RTLVersion <= 18.5}
             RightDataset.GotoBookmark( TBookmark( JOI.FSortList.SourceRecno ) );
+            {$else}
+            RightDataset.GotoBookmark( JOI.FSortList.SourceBookmark ); { patched by ccy }
+            {$ifend}
 
             If JOI.Resolver.Expression.AsBoolean Then
             Begin
@@ -300,7 +334,11 @@ procedure TJOINOnList.DoJOINOn;
           JOI.FSortList.First;
           While Not JOI.FSortList.Eof do
           Begin
+            {$if RTLVersion <= 18.5}
             RightDataset.GotoBookmark( TBookmark( JOI.FSortList.SourceRecno ) );
+            {$else}
+            RightDataset.GotoBookmark( JOI.FSortList.SourceBookmark ); { patched by ccy }
+            {$ifend}
             If JOI.Resolver.Expression.AsBoolean Then
             Begin
               If HasMoreJOINs Then
@@ -525,7 +563,11 @@ begin
           While Not DSet.Eof do
           Begin
             SortList.Insert;
+            {$if RTLVersion <= 18.5}
             SortList.SourceRecno := Longint( DSet.GetBookmark );
+            {$else}
+            SortList.SourceBookmark := DSet.GetBookmark;  { patched by ccy }
+            {$ifend}
             Case FieldExprType Of
               ttString : SortList.Fields[0].AsString  := FRightField.AsString;
               ttFloat  : SortList.Fields[0].AsFloat   := FRightField.AsFloat;

@@ -1,20 +1,34 @@
-Unit xquery;
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
 
-{*******************************************************}
-{                                                       }
-{       TxQuery dataset implementation                  }
-{                                                       }
-{       Copyright (c) 1999-2003 Alfonso moreno          }
-{                                                       }
-{       Written by:                                     }
-{       Alfonso moreno                                  }
-{       Hermosillo, Sonora, Mexico.                     }
-{       Internet: amoreno@sigmap.com                    }
-{                 luisarvayo@yahoo.com                  }
-{       URL: http://www.ezsoft.com                      }
-{       URL: http://www.sigmap.com/txquery.htm          }
-{                                                       }
-{*******************************************************}
+Unit xquery;
 
 {$I XQ_FLAG.INC}
 Interface
@@ -28,6 +42,9 @@ Uses
 {$IFDEF LEVEL6}
   , Variants
 {$ENDIF}
+{$if RTLVersion >= 20}
+  , Generics.Collections
+{$ifend}
   ;
 
 Type
@@ -220,6 +237,8 @@ Type
     FRecordBufferSize: Integer;
     FSourceDataSet: TDataSet;
     FIsSequenced: Boolean;
+    FBookmarkSize: integer;                         { patched by ccy }
+    procedure CheckRecordBufferSize(DataSet: TDataSet); { patched by ccy }
   Protected
     Function GetFieldData(Field: TxqField; Buffer: Pointer): Boolean; Virtual;
     Procedure SetFieldData(Field: TxqField; Buffer: Pointer); Virtual; Abstract;
@@ -231,6 +250,7 @@ Type
     Function GetRecordCount: Integer; Virtual;
     Procedure SortWithList(SortList: TxqSortList); Virtual; Abstract;
     Procedure ClearBufferList; Virtual; Abstract;
+    procedure SetSourceDataSet(DataSet: TDataSet); { patched by ccy }
   Public
     { methods }
     Constructor Create;
@@ -250,7 +270,7 @@ Type
 
     { properties }
     Property IsSequenced: Boolean Read FIsSequenced Write FIsSequenced;
-    Property SourceDataSet: TDataSet Read FSourceDataSet Write FSourceDataSet;
+    Property SourceDataSet: TDataSet Read FSourceDataSet Write SetSourceDataSet; { patched by ccy }
     Property Recno: Integer Read GetRecno Write SetRecno;
     Property RecordCount: Integer Read GetRecordCount;
     Property Fields: TxqFields Read FFields;
@@ -260,10 +280,12 @@ Type
   {                  Define TMemResultSet                                         }
   {-------------------------------------------------------------------------------}
 
+  TxBuffer = {$if RtlVersion <= 18.5}PAnsiChar{$else}TBytes{$ifend}; { patched by ccy }
+
   TMemResultSet = Class(TResultSet)
   Private
-    FBufferList: TList;
-    Function ActiveBuffer: PChar;
+    FBufferList: TList{$if RtlVersion>=20}<TxBuffer>{$ifend}; { patched by ccy }
+    function ActiveBuffer: TxBuffer; { patched by ccy }
   Protected
     Function GetFieldData(Field: TxqField; Buffer: Pointer): Boolean; Override;
     Procedure SetFieldData(Field: TxqField; Buffer: Pointer); Override;
@@ -615,6 +637,8 @@ Type
   {                  Define TCustomxQuery dataset                                 }
   {-------------------------------------------------------------------------------}
 
+  {$if RTLVersion <= 18.5}TRecordBuffer = PChar; {$ifend}
+
   TCustomxQuery = Class(TDataSet)
   Private
     { Data }
@@ -632,7 +656,7 @@ Type
     FIsOpen: Boolean;
     FReadOnly: Boolean;
     FSQL: Tstrings;
-    FFilterBuffer: PChar;
+    FFilterBuffer: TRecordBuffer;
     FFilterExpr: TExprParser;
     FPrepared: Boolean;
     FParams: TParams;
@@ -684,8 +708,8 @@ Type
 
     Procedure SetParamsAsFields(Value: TParamsAsFields);
     Function GetFieldSize(FieldType: TFieldType; Size: longint): longint;
-    Function GetActiveRecordBuffer: PChar;
-    Function FilterRecord(Buffer: PChar): Boolean;
+    function GetActiveRecordBuffer: TRecordBuffer;
+    function FilterRecord(Buffer: TRecordBuffer): Boolean;
     Procedure SetQuery(Value: Tstrings);
     Procedure SetSQLScript(Value: Tstrings);
     Function GetAbout: String;
@@ -713,12 +737,13 @@ Type
     Procedure SetFieldData(Field: TField; Buffer: Pointer); Override; // editing
     Procedure InternalRefresh; Override;
     Function GetDataSource: TDataSource; Override;
-    Function AllocRecordBuffer: PChar; Override;
-    Procedure FreeRecordBuffer(Var Buffer: PChar); Override;
-    Procedure GetBookmarkData(Buffer: PChar; Data: Pointer); Override;
-    Function GetBookmarkFlag(Buffer: PChar): TBookmarkFlag; Override;
+    function AllocRecordBuffer: TRecordBuffer; override;
+    procedure FreeRecordBuffer(var Buffer: TRecordBuffer); override;
+    procedure GetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
+    function GetBookmarkFlag(Buffer: TRecordBuffer): TBookmarkFlag; override;
 
-    Function GetRecord(Buffer: PChar; GetMode: TGetMode; doCheck: Boolean): TGetResult; Override;
+    function GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode; doCheck: Boolean):
+        TGetResult; override;
     Function GetRecordSize: Word; Override;
 
     Function BCDToCurr(BCD: Pointer; Var Curr: Currency): Boolean;
@@ -735,15 +760,16 @@ Type
     Function InternalBookmarkValid(Bookmark: Pointer): boolean;
 
     Procedure InternalInitFieldDefs; Override;
-    Procedure InternalInitRecord(Buffer: PChar); Override;
+    procedure InternalInitRecord(Buffer: TRecordBuffer); override;
     Procedure InternalLast; Override;
     Procedure InternalOpen; Override;
-    Procedure InternalSetToRecord(Buffer: PChar); Override;
+    procedure InternalSetToRecord(Buffer: TRecordBuffer); override;
     Function IsCursorOpen: Boolean; Override;
-    Procedure SetBookmarkFlag(Buffer: PChar; Value: TBookmarkFlag); Override;
-    Procedure SetBookmarkData(Buffer: PChar; Data: Pointer); Override;
+    procedure SetBookmarkFlag(Buffer: TRecordBuffer; Value: TBookmarkFlag);
+        override;
+    procedure SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
     Function GetCanModify: Boolean; Override;
-    Procedure ClearCalcFields(Buffer: PChar); Override;
+    procedure ClearCalcFields(Buffer: TRecordBuffer); override;
     Function GetRecordCount: Integer; Override;
     Procedure SetRecNo(Value: Integer); Override;
     Function GetRecNo: Integer; Override;
@@ -770,7 +796,7 @@ Type
     Procedure ZapTable(TableList: TTableList); Virtual;
     Procedure ReindexTable(TableList: TTableList); Virtual;
 
-    Procedure _ReadRecord(Buffer: PChar; IntRecNum: Integer);
+    procedure _ReadRecord(Buffer: TRecordBuffer; IntRecNum: Integer);
 
     { properties }
     Property AllSequenced: Boolean Read FAllSequenced Write FAllSequenced;
@@ -1147,7 +1173,7 @@ Var
   S: String;
 Begin
   S := GetAsstring;
-  Result := (Length(S) > 0) And (S[1] In ['T', 't', 'Y', 'y']);
+  Result := (Length(S) > 0) And CharInSet(S[1], ['T', 't', 'Y', 'y']);
 End;
 
 Procedure TxqStringField.SetAsstring(Const Value: String);
@@ -1295,7 +1321,7 @@ Var
   L: Longint;
 Begin
   If GetData(@L) Then
-    Str(L, Result)
+    Result := IntToStr(L)  { patched by ccy }
   Else
     Result := '';
 End;
@@ -1479,7 +1505,7 @@ Begin
   FFields := TxqFields.Create(Self);
   FRecNo := -1;
   { first sizeof(TBookmark) bytes is the SourceBookmark for every table}
-  FRecordBufferSize := SizeOf(Integer);
+  {$if RTLVersion <= 18.5}fRecordBufferSize := SizeOf(Integer);{$ifend}  { patched by ccy }
 End;
 
 Destructor TResultSet.Destroy;
@@ -1529,6 +1555,8 @@ Procedure TResultSet.AddField(Const pFieldName, pAlias: String;
   pCastLen: Integer;
   pUseDisplayLabel: Boolean);
 Begin
+  if Assigned(pField) then                     { patched by ccy }
+    CheckRecordBufferSize(pField.DataSet);     { patched by ccy }
   With FFields.Add(pDataType) Do
   Begin
     FieldName := pFieldName;
@@ -1578,6 +1606,16 @@ Begin
   End;
 End;
 
+type TDataSetAccess = class(TDataSet);
+
+procedure TResultSet.CheckRecordBufferSize(DataSet: TDataSet);
+begin
+  if Assigned(DataSet) and (fRecordBufferSize = 0) then begin
+    FBookmarkSize := TDataSetAccess(DataSet).BookmarkSize;
+    fRecordBufferSize := FBookmarkSize;
+  end;
+end;
+
 Function TResultSet.GetRecno: Integer;
 Begin
   Result := FRecNo;
@@ -1619,6 +1657,12 @@ Begin
   f.free;
 End;
 
+procedure TResultSet.SetSourceDataSet(DataSet: TDataSet);
+begin
+  fSourceDataSet := DataSet;
+  CheckRecordBufferSize(DataSet);
+end;
+
 {-------------------------------------------------------------------------------}
 {                  Implements TMemResultSet                                     }
 {-------------------------------------------------------------------------------}
@@ -1626,7 +1670,7 @@ End;
 Constructor TMemResultSet.Create;
 Begin
   Inherited Create;
-  FBufferList := TList.Create;
+  fBufferList := TList{$if RtlVersion>=20}<TxBuffer>{$ifend}.Create; { patched by ccy }
 End;
 
 Destructor TMemResultSet.Destroy;
@@ -1644,10 +1688,10 @@ End;
 
 Procedure TMemResultSet.SortWithList(SortList: TxqSortList);
 Var
-  vTempList: TList;
+  vTempList: TList{$if RtlVersion>=20}<TxBuffer>{$ifend}; { patched by ccy }
   I: Integer;
 Begin
-  vTempList := TList.Create;
+  vTempList := TList{$if RtlVersion>=20}<TBookmark>{$ifend}.Create; { patched by ccy }
   For I := 1 To SortList.Count Do
   Begin
     SortList.Recno := I;
@@ -1658,11 +1702,14 @@ Begin
 End;
 
 Procedure TMemResultSet.ClearBufferList;
+{$if RTLVersion <= 18.5}
 Var
   I: Integer;
   Buffer: PChar;
   Bookmark: TBookmark;
+{$ifend}
 Begin
+  {$if RTLVersion <= 18.5}
   For I := 0 To FBufferList.Count - 1 Do
   Begin
     Buffer := FBufferList[I];
@@ -1676,10 +1723,11 @@ Begin
     End;
     FreeMem(Buffer, FRecordBufferSize);
   End;
+  {$ifend}
   FBufferList.Clear;
 End;
 
-Function TMemResultSet.ActiveBuffer: PChar;
+function TMemResultSet.ActiveBuffer: TxBuffer; { patched by ccy }
 Begin
   Result := Nil;
   If (FRecNo < 1) Or (FRecNo > FBufferList.Count) Then
@@ -1689,50 +1737,70 @@ End;
 
 Function TMemResultSet.GetFieldData(Field: TxqField; Buffer: Pointer): Boolean;
 Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by ccy }
 Begin
   Result := False;
   If GetIsNull(Field) Then Exit;
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
+  {$if RTLVersion <= 18.5}
   Move((RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Buffer^, Field.DataSize);
+  {$else}
+  Move(RecBuf[Field.BufferOffset + SizeOf(WordBool)], Buffer^, Field.DataSize); { patched by ccy }
+  {$ifend}
   Result := True;
 End;
 
 Function TMemResultSet.GetIsNull(Field: TxqField): Boolean;
 Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by ccy }
   HasValue: WordBool;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
+  {$if RTLVersion <= 18.5}
   Move((RecBuf + Field.BufferOffset)^, HasValue, SizeOf(WordBool));
+  {$else}
+  Move(RecBuf[Field.BufferOffset], HasValue, SizeOf(WordBool)); { patched by ccy }
+  {$ifend}
   Result := Not HasValue;
 End;
 
 { LAS: 5/JUN/2003}
 Procedure TMemResultSet.SetIsNull(Field: TxqField);
 Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by ccy }
   HasValue: WordBool;
 Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
   HasValue:= False;
+  {$if RTLVersion <= 18.5}
   Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+  {$else}
+  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool)); { patched by ccy }
+  {$ifend}
 End;
 
 Procedure TMemResultSet.SetFieldData(Field: TxqField; Buffer: Pointer);
 Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by ccy }
   HasValue: WordBool;
 Begin
   RecBuf := ActiveBuffer;
   If (RecBuf = Nil) Or (Buffer = Nil) Then Exit;
+  {$if RTLVersion <= 18.5}
   Move(Buffer^, (RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Field.DataSize);
+  {$else}
+  Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)], Field.DataSize); { patched by ccy }
+  {$ifend}
   HasValue := True;
+  {$if RTLVersion <= 18.5}
   Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+  {$else}
+  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool)); { patched by ccy }
+  {$ifend}
 End;
 
 Function TMemResultSet.GetRecordCount;
@@ -1742,59 +1810,81 @@ End;
 
 Procedure TMemResultSet.SetSourceBookmark(Bookmark: TBookmark);
 Var
-  Buffer: PChar;
+  Buffer: TBookmark; { patched by ccy }
 Begin
   If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
   { first delete any previous bookmark set }
   FreeSourceBookmark;
-  Buffer := PChar(FBufferList[FRecNo - 1]);
-  Move(Bookmark, (Buffer + 0)^, SizeOf(TBookmark));
+  Buffer := FBufferList[FRecNo - 1];
+  {$if RTLVersion <= 18.5}
+  Move(Bookmark, Buffer^, SizeOf(TBookmark));
+  {$else}
+  Move(Bookmark[0], Buffer[0], Length(Bookmark)); { patched by ccy }
+  {$ifend}
 End;
 
 Function TMemResultSet.GetSourceBookmark: TBookmark;
+{$if RtlVersion <= 18.5}
 Var
-  Buffer: PChar;
+  Buffer: TBookmark; { patched by ccy }
+{$ifend}
 Begin
+  {$if RtlVersion <= 18.5}
   Result := Nil;
   If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
-  Buffer := PChar(FBufferList[FRecNo - 1]);
-  Move((Buffer + 0)^, Result, SizeOf(TBookmark));
+  Buffer := FBufferList[FRecNo - 1];
+  Move(Buffer^, Result, SizeOf(TBookmark));
+  {$else}
+  Result := Nil;
+  If (fRecNo < 1) Or (fRecNo > GetRecordCount) Then Exit;
+  SetLength(Result, FBookmarkSize);
+  Move(fBufferList[fRecNo - 1][0], Result[0], FBookmarkSize);
+  {$ifend}
 End;
 
 Procedure TMemResultSet.FreeSourceBookmark;
 Var
-  Buffer: PChar;
-  Bookmark: TBookmark;
+  Buffer: TBookmark; { patched by ccy }
+  {$if RtlVersion <= 18.5}Bookmark: TBookmark;{$ifend}
 Begin
   If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
-  Buffer := PChar(FBufferList[FRecNo - 1]);
-  Move((Buffer + 0)^, Bookmark, SizeOf(TBookmark));
+  Buffer := FBufferList[FRecNo - 1];
+  {$if RtlVersion <= 18.5}
+  Move(Buffer^, Bookmark, SizeOf(TBookmark));
   If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) Then
   Begin
     FSourceDataSet.FreeBookmark(Bookmark);
   End;
   Bookmark := Nil;
-  Move(Bookmark, (Buffer + 0)^, SizeOf(TBookmark));
+  Move(Bookmark, Buffer^, SizeOf(TBookmark));
+  {$else}
+  FillChar(Buffer[0], FBookmarkSize, 0); { patched by ccy }
+  {$ifend}
 End;
 
 Procedure TMemResultSet.Insert;
 Var
-  Buffer: PChar;
+  Buffer: TxBuffer; { patched by ccy }
 Begin
+  {$if RtlVersion <= 18.5}
   GetMem(Buffer, FRecordBufferSize);
   FillChar(Buffer^, FRecordBufferSize, 0);
+  {$else}
+  SetLength(Buffer, fRecordBufferSize); { patched by ccy }
+  FillChar(Buffer[0], FRecordBufferSize, 0); { patched by ccy }
+  {$ifend}
   FBufferList.Add(Buffer);
   FRecNo := FBufferList.Count;
 End;
 
 Procedure TMemResultSet.Delete;
 Var
-  Buffer: PChar;
+  Buffer: TxBuffer; { patched by ccy }
 Begin
   If (FRecNo < 1) Or (RecNo > GetRecordCount) Then Exit;
   FreeSourceBookmark;
   Buffer := FBufferList[FRecNo - 1];
-  FreeMem(Buffer, FRecordBufferSize);
+  {$if RtlVersion <= 18.5}FreeMem(Buffer, FRecordBufferSize);{$ifend} { patched by ccy }
   FBufferList.Delete(FRecNo - 1);
   If FRecNo > GetRecordCount Then
     FRecNo := GetRecordCount;
@@ -2025,7 +2115,7 @@ Begin
   { create lex / yacc information }
   Temps := FxQuery.SQL.Text;
   FInputStream := TMemoryStream.Create;
-  FInputStream.WriteBuffer(Pointer(Temps)^, Length(Temps));
+  FInputStream.WriteBuffer(Pointer(Temps)^, Length(Temps) * SizeOf(Char)); { patched by ccy }
   FInputStream.Seek(0, 0);
   FOutputStream := TMemoryStream.Create;
   FErrorStream := TMemoryStream.Create;
@@ -2540,6 +2630,7 @@ Var
   vIsNull: Boolean;
   DValue: Double;
   ResultSetHasRecords: Boolean;
+  B: TBookmark; { pathced by ccy }
 Begin
   // GROUP BY clause
   If Not( {(ResultSet.RecordCount > 0) And}
@@ -2610,7 +2701,11 @@ Begin
         Begin
           vSortList.Recno := I;
           ResultSet.RecNo := vSortList.SourceRecno;
+          {$if RtlVersion <= 18.5}
           ResultSet.SetSourceBookmark(TBookmark(-2));
+          {$else}
+          ResultSet.SetSourceBookmark(TBookmark.Create($FF, $FE)); { pathced by ccy }
+          {$ifend}
         End;
       End;
 
@@ -2618,7 +2713,12 @@ Begin
       For I := ResultSet.RecordCount Downto 1 Do
       Begin
         ResultSet.RecNo := I;
+        {$if RtlVersion <= 18.5}
         If Longint(ResultSet.GetSourceBookmark) = -2 Then
+        {$else}
+        B := ResultSet.GetSourceBookmark; { pathced by ccy }
+        If (Length(B) > 2) and (B[0] = $FF) and (B[1] = $FE) Then { pathced by ccy }
+        {$ifend}
         Begin
           ResultSet.Delete;
           FColumnList.DeleteAggregate(I);
@@ -2834,7 +2934,11 @@ Begin
       If K > 0 Then
       Begin
         ResultSet.RecNo := K;
+        {$if RtlVersion <= 18.5}
         ResultSet.SetSourceBookmark(TBookmark(-2)); { sourcebookmark = -2 is used to delete later }
+        {$else}
+        ResultSet.SetSourceBookmark(TBookmark.Create($FF, $FE)); { sourcebookmark = -2 is used to delete later } { pathced by ccy }
+        {$ifend}
       End;
     End;
 
@@ -2842,7 +2946,12 @@ Begin
     For I := ResultSet.RecordCount Downto 1 Do
     Begin
       ResultSet.RecNo := I;
+      {$if RtlVersion <= 18.5}
       If Longint(ResultSet.GetSourceBookmark) = -2 Then
+      {$else}
+      B := ResultSet.GetSourceBookmark; { pathced by ccy }
+      If (Length(B) > 2) and (B[0] = $FF) and (B[1] = $FE) Then { pathced by ccy }
+      {$ifend}
       Begin
         ResultSet.Delete;
         FColumnList.DeleteAggregate(I);
@@ -3435,6 +3544,7 @@ Var
   IsDone,
   IsUnionStatement  : Boolean;
   ExprType          : TExprType;
+  B                 : TBookmark; { patched by ccy }
 
   Procedure RecursiveSolveSubqueries(n: integer; Const s: String);
   Var
@@ -3723,7 +3833,7 @@ Begin
       CheckExpr := TExprParser.Create(Self, TmpDataSet);
       Try
         CheckExpr.ParseExpression(S);
-        n := CheckExpr.Expression.MaxLen + 1;
+        n := CheckExpr.Expression.MaxLen + 1 * SizeOf(Char);  { patched by ccy }
       Finally
         CheckExpr.Free;
       End;
@@ -4037,7 +4147,10 @@ Begin
     End Else
     Begin
       { ORDER BY... execute }
-      DoOrderBy(Self.FOrderByList);
+      if Self.fOrderByList.Count = 0 then  { patched by ccy }
+        DoOrderBy(Self.fGroupByList)       { patched by ccy }
+      else
+        DoOrderBy(Self.fOrderByList);
 
       { copy the Result set to a temporary memory Result set }
       FTransfResultSet := TMemResultSet.Create;
@@ -4127,14 +4240,23 @@ Begin
           Begin
             SortList.Recno := I;
             ResultSet.RecNo := SortList.SourceRecno;
+            {$if RtlVersion <= 18.5}
             ResultSet.SetSourceBookmark(TBookmark(-2));
+            {$else}
+            ResultSet.SetSourceBookmark(TBookmark.Create($FF, $FE)); { patched by ccy }
+            {$ifend}
           End;
 
         { now, delete the records }
         For I := ResultSet.RecordCount Downto 1 Do
         Begin
           ResultSet.RecNo := I;
+          {$if RtlVersion <= 18.5}
           If Longint(ResultSet.GetSourceBookmark) = -2 Then
+          {$else}
+          B := ResultSet.GetSourceBookmark;
+          If (Length(B) > 2) and (B[0] = $FF) and (B[1] = $FE) Then { patched by ccy }
+          {$ifend}
           Begin
             ResultSet.Delete;
             FColumnList.DeleteAggregate(I);
@@ -4433,7 +4555,7 @@ var
 begin
   List := TParams.Create(Nil);
   try
-    Result:= StrPas(PChar(List.ParseSQL(SQL, True)));
+    Result:= List.ParseSQL(SQL, True); // Result:= StrPas(PChar(List.ParseSQL(SQL, True))); {patched by ccy}
     for I:= 0 to List.Count - 1 do
     begin
       Param:= xQuery.ParamByName(List[I].Name);
@@ -4454,7 +4576,7 @@ begin
               else
                 ParamValue:= #39 + ParamValue + #39;
             end;
-          ftFloat, ftCurrency, ftBCD, ftAutoInc, ftSmallInt, ftInteger, ftWord :
+          ftFloat, ftCurrency, ftBCD, ftAutoInc, ftSmallInt, ftInteger, ftWord, ftFmtBcd : { patched by ccy }
             ParamValue:= Param.Asstring;
           ftDate, ftTime, ftDateTime:
             ParamValue:= FloatToStr(Param.AsFloat);
@@ -6155,7 +6277,7 @@ Begin
   Result := TxqBlobStream.Create(Field As TBlobField, Mode);
 End;
 
-Procedure TCustomxQuery._ReadRecord(Buffer: PChar; IntRecNum: Integer);
+procedure TCustomxQuery._ReadRecord(Buffer: TRecordBuffer; IntRecNum: Integer);
 Var
   I: Integer;
   vField: TxqField;
@@ -6182,7 +6304,7 @@ Begin
           If Length(vs) > 0 Then
           Begin
             FldDef := FieldDefs[I];
-            Move(vs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(vs)));
+            Move(vs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(vs) * SizeOf(Char)));  { patched by ccy }
           End;
         End;
       ttFloat:
@@ -6433,7 +6555,7 @@ Begin
     With Field Do
     Begin
       Case DataType Of
-        ttstring: DataSize := ColWidth + 1;
+        ttstring: DataSize := (ColWidth + 1) * SizeOf(Char); { patched by ccy }
         ttFloat: DataSize := SizeOf(Double);
         ttInteger:
           begin
@@ -6578,7 +6700,7 @@ Begin
       Case Field.DataType Of
         ttString:
           Begin
-            DataType := ftString;
+            DataType := {$if RTLVersion <= 18.5}ftString{$else}ftWideString{$ifend}; { patched by ccy }
             Size := Field.DataSize;
           End;
         ttFloat:
@@ -6606,8 +6728,8 @@ Begin
         If DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar, ftWidestring{$ENDIF}
           {$IFDEF LEVEL5}, ftGUID{$ENDIF}] Then
         Begin
-          DataType := ftString; { this fixes bug with ftWidestring }
-          Size := Field.SourceField.Size;
+          DataType := {$if RTLVersion <= 18.5}ftString{$else}ftWideString{$ifend}; { patched by ccy }; { this fixes bug with ftWidestring }
+          Size := Field.SourceField.Size * SizeOf(Char);  { patched by ccy }
           If Size = 0 Then
             Size := 1;
         End;
@@ -6731,7 +6853,7 @@ Begin
     Raise ExQueryError.CreateFmt(SBookmarkNotFound, [(PInteger(Bookmark)^)]);
 End;
 
-Procedure TCustomxQuery.InternalSetToRecord(Buffer: PChar);
+procedure TCustomxQuery.InternalSetToRecord(Buffer: TRecordBuffer);
 (*var
   ReqBookmark: Integer;*)
 Begin
@@ -6741,12 +6863,13 @@ Begin
   InternalGotoBookmark(@ReqBookmark);*)
 End;
 
-Function TCustomxQuery.GetBookmarkFlag(Buffer: PChar): TBookmarkFlag;
+function TCustomxQuery.GetBookmarkFlag(Buffer: TRecordBuffer): TBookmarkFlag;
 Begin
   Result := PRecInfo(Buffer + FRecordInfoOffset).BookmarkFlag;
 End;
 
-Procedure TCustomxQuery.SetBookmarkFlag(Buffer: PChar; Value: TBookmarkFlag);
+procedure TCustomxQuery.SetBookmarkFlag(Buffer: TRecordBuffer; Value:
+    TBookmarkFlag);
 Begin
   PRecInfo(Buffer + FRecordInfoOffset).BookmarkFlag := Value;
 End;
@@ -6781,12 +6904,12 @@ Begin
     Result := 1;
 End;
 
-Procedure TCustomxQuery.GetBookmarkData(Buffer: PChar; Data: Pointer);
+procedure TCustomxQuery.GetBookmarkData(Buffer: TRecordBuffer; Data: Pointer);
 Begin
   PInteger(Data)^ := PRecInfo(Buffer + FRecordInfoOffset).RecordNo;
 End;
 
-Procedure TCustomxQuery.SetBookmarkData(Buffer: PChar; Data: Pointer);
+procedure TCustomxQuery.SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer);
 Begin
   PRecInfo(Buffer + FRecordInfoOffset).RecordNo := PInteger(Data)^;
 End;
@@ -6810,7 +6933,7 @@ Function TCustomxQuery.GetRecordCount: Longint;
 Var
   SaveState: TDataSetState;
   SavePosition: integer;
-  TempBuffer: PChar;
+  TempBuffer: TRecordBuffer;
 Begin
   CheckActive;
   If Not Filtered Then
@@ -6847,7 +6970,7 @@ Function TCustomxQuery.GetRecNo: Longint;
 Var
   SaveState: TDataSetState;
   SavePosition: integer;
-  TempBuffer: PChar;
+  TempBuffer: TRecordBuffer;
 Begin
   CheckActive;
   UpdateCursorPos;
@@ -6882,7 +7005,7 @@ Procedure TCustomxQuery.SetRecNo(Value: Integer);
 Var
   SaveState: TDataSetState;
   SavePosition: integer;
-  TempBuffer: PChar;
+  TempBuffer: TRecordBuffer;
 Begin
   CheckBrowseMode;
   If Not Filtered Then
@@ -6926,22 +7049,23 @@ Begin
   Result := FRecordSize + SizeOf(TRecInfo) + CalcFieldsSize;
 End;
 
-Procedure TCustomxQuery.InternalInitRecord(Buffer: PChar);
+procedure TCustomxQuery.InternalInitRecord(Buffer: TRecordBuffer);
 Begin
   FillChar(Buffer^, FRecordBufferSize, #0);
 End;
 
-Function TCustomxQuery.AllocRecordBuffer: PChar;
+function TCustomxQuery.AllocRecordBuffer: TRecordBuffer;
 Begin
-  Result := StrAlloc(FRecordBufferSize);
+  Result := AllocMem(FRecordBufferSize);
 End;
 
-Procedure TCustomxQuery.FreeRecordBuffer(Var Buffer: PChar);
+procedure TCustomxQuery.FreeRecordBuffer(var Buffer: TRecordBuffer);
 Begin
-  StrDispose(Buffer);
+  FreeMem(Buffer);
 End;
 
-Function TCustomxQuery.GetRecord(Buffer: PChar; GetMode: TGetMode; doCheck: Boolean): TGetResult;
+function TCustomxQuery.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode;
+    doCheck: Boolean): TGetResult;
 Var
   Acceptable: Boolean;
 Begin
@@ -7007,7 +7131,7 @@ Begin
   Until (Result <> grOk) Or Acceptable;
 End;
 
-Function TCustomxQuery.FilterRecord(Buffer: PChar): Boolean;
+function TCustomxQuery.FilterRecord(Buffer: TRecordBuffer): Boolean;
 Var
   SaveState: TDatasetState;
 Begin
@@ -7023,7 +7147,7 @@ Begin
   RestoreState(SaveState);
 End;
 
-Procedure TCustomxQuery.ClearCalcFields(Buffer: PChar);
+procedure TCustomxQuery.ClearCalcFields(Buffer: TRecordBuffer);
 Begin
   If CalcFieldsSize > 0 Then
     FillChar(Buffer[StartCalculated], CalcFieldsSize, 0);
@@ -7033,7 +7157,7 @@ Function TCustomxQuery.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 Var
   vFieldOffset: Integer;
   vxqField: TxqField;
-  RecBuffer: PChar;
+  RecBuffer: TRecordBuffer;
   c: Currency;
   d: Double;
   i: integer;
@@ -7061,7 +7185,7 @@ Begin
   If Field.FieldKind In [fkCalculated, fkLookup] Then
   Begin
     inc(RecBuffer, StartCalculated + Field.Offset);
-    If Not ((RecBuffer[0] = #0) Or (Buffer = Nil)) Then
+    If Not ((Byte(RecBuffer[0]) = 0) Or (Buffer = Nil)) Then
       CopyMemory(Buffer, @RecBuffer[1], Field.DataSize);
   End
   Else
@@ -7190,7 +7314,7 @@ Begin
     Until Not Found;
 End;
 
-Function TCustomxQuery.GetActiveRecordBuffer: PChar;
+function TCustomxQuery.GetActiveRecordBuffer: TRecordBuffer;
 Begin
   Case State Of
     dsBrowse:
@@ -7988,7 +8112,7 @@ End;
 Procedure TCustomxQuery.SetFieldData(Field: TField; Buffer: Pointer); // editing
 Var
   Offset: Integer;
-  RecBuffer: Pchar;
+  RecBuffer: TRecordBuffer;
   TempDouble: Double;
   Data: TDateTimeRec;
   ts: TTimeStamp;

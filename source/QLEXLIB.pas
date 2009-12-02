@@ -1,7 +1,34 @@
-Unit QLEXLIB;
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
 
-(* Lex Library Unit for TP Lex Version 3.0, 6-17-91 AG *)
-(* adapted to Delphi 3,4,5,6 6/8/2003 *)
+Unit QLEXLIB;
 
 {$I XQ_FLAG.INC}
 Interface
@@ -10,7 +37,7 @@ Uses Classes;
 
 Const
   nl = #10; (* newline character *)
-  max_chars = maxint;
+  max_chars = maxint div SizeOf(Char); { patched by ccy }
   intial_bufsize = 16384;
 
 Type
@@ -177,7 +204,7 @@ Procedure write( aStream: TStream; aLine: String );
 Implementation
 
 uses
-  math;
+  math, SysUtils, CnvStrUtils;
 
 (* utility procedures *)
 
@@ -189,7 +216,7 @@ End;
 Procedure readln( aStream: TStream; Var aLine: String );
 Var
   //aBuffer: String;
-  CRBuf : string [2];
+  CRBuf : string;
   trouve: boolean;
   unCar: Char;
   Buf : PChar;
@@ -216,24 +243,24 @@ Begin
   try
     trouve := false;
     Repeat
-      aStream.read( unCar, 1 );
+      aStream.read( unCar, 1 * SizeOf(Char) ); { patched by ccy }
       If aStream.Position >= aStream.Size Then
       Begin
         trouve := true;
-        if not (unCar in [#10,#13]) then
+        if not CharInSet(unCar, [#10,#13]) then
         begin
           //aLine := aBuffer+unCar
           Inc (i);
           CheckBuffer;
-          Move (uncar, Buf [i - 1], 1);
+          Move (uncar, Buf [i - 1], 1 * SizeOf(Char)); { patched by ccy }
           SetLength (aLine, i);
-          Move (Buf^, aLine [1], i);
+          Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
         end else
         begin
           if i > 0 then
           begin
             SetLength (aLine, i);
-            Move (Buf^, aLine [1], i);
+            Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
           end else
             aLine:='';
         end;
@@ -246,21 +273,21 @@ Begin
               if i>0 then
               begin
                 SetLength (aLine, i);
-                Move (Buf^, aLine [1], i);
+                Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
                 trouve := true;
               end else
                 aLine:= '';
             End;
           #13:
             Begin
-              aStream.read( unCar, 1 );
+              aStream.read( unCar, 1 * SizeOf(Char)); { patched by ccy }
               If unCar = #10 Then
               Begin
                 //aLine := aBuffer;
                 if i > 0 then
                 begin
                   SetLength (aLine, i);
-                  Move (Buf^, aLine [1], i);
+                  Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
                   trouve := true;
                 end else
                   aLine:='';
@@ -270,7 +297,7 @@ Begin
                 Inc (i, 2);
                 CheckBuffer;
                 CRBuf := #13 + unCar;
-                Move (CRBuf [1], Buf [i - 2], 2);
+                Move (CRBuf [1], Buf [i - 2], 2 * SizeOf(Char)); { patched by ccy }
                 //aBuffer := aBuffer + #13 + unCar;
               End;
             End;
@@ -279,7 +306,7 @@ Begin
         begin
           Inc (i);
           CheckBuffer;
-          Move (unCar, Buf [i - 1], 1);
+          Move (unCar, Buf [i - 1], 1 * SizeOf(Char)); { patched by ccy }
           //aBuffer := aBuffer+unCar;
         end;
 
@@ -633,7 +660,7 @@ begin
   if yyTextLen > 0 then
   begin
     SetLength (s, yyTextLen);
-    Move (yytextbuf^, s[1], yyTextLen);
+    Move (yytextbuf^, s[1], yyTextLen * SizeOf(Char)); { patched by ccy }
   end else
     s:= '';
 end;

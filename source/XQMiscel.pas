@@ -1,18 +1,33 @@
-{*******************************************************}
-{                                                       }
-{       Miscellaneous routines used in TxQuery dataset  }
-{                                                       }
-{       Copyright (c) 1999-2003 Alfonso moreno          }
-{                                                       }
-{     Written by:                                       }
-{       Alfonso moreno                                  }
-{       Hermosillo, Sonora, Mexico.                     }
-{       Internet:  gismap@hmo.megared.net.mx            }
-{                  luisarvayo@yahoo.com                 }
-{                  inconmap@prodigy.net.mx              }
-{       http://www.sigmap.com/txquery.htm               }
-{                                                       }
-{*******************************************************}
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
+
 Unit XQMiscel;
 
 {$I XQ_FLAG.INC}
@@ -116,7 +131,7 @@ Type
 Implementation
 
 Uses
-  xqbase, xquery, xqconsts, qexprlex;
+  xqbase, xquery, xqconsts, qexprlex, CnvStrUtils;
 
 Function VarMin( const Value1, Value2: Variant): Variant;
 Begin
@@ -229,7 +244,7 @@ End;
 Function RemoveStrDelim( Const S: String ): String;
 Begin
   If ( Length( S ) >= 2 ) And
-    ( S[1] In xqbase.SQuote ) And ( S[Length( S )] In xqbase.SQuote ) Then
+    CharInSet( S[1], xqbase.SQuote ) And CharInSet( S[Length( S )], xqbase.SQuote ) Then
     Result := Copy( S, 2, Length( S ) - 2 )
   Else
     Result := S;
@@ -555,11 +570,11 @@ Begin
   end;
   For I := 1 To Length( Ident ) Do
   Begin
-    if (I = 1) and (Ident[I] in ['0'..'9']) then
+    if (I = 1) and CharInSet(Ident[I], ['0'..'9']) then
     begin
       Result := '[' + Ident + ']';
       Exit;
-    end else If Not ( Ident[I] In ['A'..'Z', 'a'..'z', '0'..'9', '_'] ) Then
+    end else If Not CharInSet( Ident[I], ['A'..'Z', 'a'..'z', '0'..'9', '_'] ) Then
     Begin
       Result := '[' + Ident + ']';
       Exit;

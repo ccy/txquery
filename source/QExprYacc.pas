@@ -1,11 +1,33 @@
+{**************************************************************************}
+{   TxQuery DataSet                                                        }
+{                                                                          }
+{   Copyright (C) <1999-2003> of                                           }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
+{   email: luisarvayo@yahoo.com                                            }
+{     url: http://www.ezsoft.com                                           }
+{          http://www.sigmap.com/txquery.htm                               }
+{                                                                          }
+{   Open Source patch review (2009) with permission from Alfonso Moreno by }
+{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
+{   email: cychau@gmail.com                                                }
+{   url: http://code.google.com/p/txquery/                                 }
+{        http://groups.google.com/group/txquery                            }
+{                                                                          }
+{   This program is free software: you can redistribute it and/or modify   }
+{   it under the terms of the GNU General Public License as published by   }
+{   the Free Software Foundation, either version 3 of the License, or      }
+{   (at your option) any later version.                                    }
+{                                                                          }
+{   This program is distributed in the hope that it will be useful,        }
+{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
+{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
+{   GNU General Public License for more details.                           }
+{                                                                          }
+{   You should have received a copy of the GNU General Public License      }
+{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{                                                                          }
+{**************************************************************************}
 
-// Template for ExprParser
-
-
-{**********************************************}
-{   Expression Parser                          }
-{   Copyright (C) 2003 by Alfonso Moreno       }
-{**********************************************}
 unit QExprYacc;
 
 {$I xq_flag.INC}
@@ -303,20 +325,20 @@ Type
   TStrToDateExpr = Class( Tfunction )
   Protected
     Function GetAsFloat: Double; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   End;
 
   TNowExpr = Class( Tfunction )
   Protected
     Function GetAsFloat: Double; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   End;
 
   TSQLTrimExpr = Class( Tfunction )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   End;
 
   TRoundDecExpr = Class( Tfunction )
@@ -324,7 +346,7 @@ Type
     FIsRound: Boolean;
   Protected
     Function GetAsFloat: Double; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; IsRound: Boolean );
   End;
@@ -342,7 +364,7 @@ Type
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; xQuery: TCustomXQuery;
       Const Identifier: String; Resulttype: TExprtype; MaxLen: Integer );
@@ -351,13 +373,13 @@ Type
   TISNULLExpr = Class( Tfunction )
   Protected
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   End;
 
   TNULLValueExpr = Class( Tfunction )
   Protected
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   End;
 
   TFilterFieldExpr = Class( Tfunction )
@@ -368,7 +390,7 @@ Type
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
     Function GetAsBoolean: Boolean; Override;
-    Function GetExprtype: TExprtype; Override;
+    function GetExprType: TExprtype; override;
   Public
     Constructor Create( ParameterList: TParameterList; F: TField );
   End;
@@ -526,7 +548,7 @@ begin
   Result := Now;
 end;
 
-function TNowExpr.GetExprtype: TExprtype;
+function TNowExpr.GetExprType: TExprtype;
 begin
   Result:= ttFloat;
 end;
@@ -546,7 +568,7 @@ Begin
   End;
 End;
 
-Function TStrToDateExpr.GetExprtype: TExprtype;
+function TStrToDateExpr.GetExprType: TExprtype;
 Begin
   Result := ttFloat;
 End;
@@ -616,7 +638,7 @@ Begin
   End;
 End;
 
-Function TSQLTrimExpr.GetExprtype: TExprtype;
+function TSQLTrimExpr.GetExprType: TExprtype;
 Begin
   Result := ttString;
 End;
@@ -642,7 +664,7 @@ Begin
     Result := Int( Result ) / IntPower( 10, Param[1].AsInteger );
 End;
 
-Function TRoundDecExpr.GetExprtype: TExprtype;
+function TRoundDecExpr.GetExprType: TExprtype;
 Begin
   Result := ttFloat;
 End;
@@ -656,7 +678,7 @@ Begin
     Result := Not Result;
 End;
 
-Function TISNULLExpr.GetExprtype: TExprtype;
+function TISNULLExpr.GetExprType: TExprtype;
 Begin
   Result := ttBoolean;
 End;
@@ -668,7 +690,7 @@ Begin
   Result := True;
 End;
 
-Function TNULLValueExpr.GetExprtype: TExprtype;
+function TNULLValueExpr.GetExprType: TExprtype;
 Begin
   Result := ttBoolean;
 End;
@@ -687,7 +709,7 @@ Begin
   FMaxLen := MaxLen;
 End;
 
-Function TUDFExpr.GetExprtype: TExprtype;
+function TUDFExpr.GetExprType: TExprtype;
 Begin
   Result := FResulttype;
 End;
@@ -755,7 +777,7 @@ Begin
   fField := F;
 End;
 
-Function TFilterFieldExpr.GetExprtype: TExprtype;
+function TFilterFieldExpr.GetExprType: TExprtype;
 Begin
   If fField.Datatype In ftNonTexttypes Then
     Result := ttInteger
@@ -1128,7 +1150,7 @@ Begin
     If Length( ExprStr ) > 0 Then
     Begin
       stream := TMemoryStream.create;
-      stream.write( ExprStr[1], Length( ExprStr ) );
+      stream.write( ExprStr[1], Length( ExprStr ) * SizeOf(Char) ); { patched by ccy }
       stream.seek( 0, 0 );
       outputStream := TMemoryStream.create;
       errorStream := TMemoryStream.create;
@@ -1184,7 +1206,7 @@ Begin
     If Length( ExprStr ) > 0 Then
     Begin
       stream := TMemoryStream.create;
-      stream.write( ExprStr[1], Length( ExprStr ) );
+      stream.write( ExprStr[1], Length( ExprStr ) * SizeOf(Char) ); { patched by ccy }
       stream.seek( 0, 0 );
       outputStream := TMemoryStream.create;
       errorStream := TMemoryStream.create;
