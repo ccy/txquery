@@ -1,30 +1,31 @@
 {**************************************************************************}
 {   TxQuery DataSet                                                        }
 {                                                                          }
-{   Copyright (C) <1999-2003> of                                           }
+{   The contents of this file are subject to the Mozilla Public License    }
+{   Version 1.1 (the "License"); you may not use this file except in       }
+{   compliance with the License. You may obtain a copy of the License at   }
+{   http://www.mozilla.org/MPL/                                            }
+{                                                                          }
+{   Software distributed under the License is distributed on an "AS IS"    }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
+{   License for the specific language governing rights and limitations     }
+{   under the License.                                                     }
+{                                                                          }
+{   The Original Code is CnvStrUtils.pas                                   }
+{                                                                          }
+{   The Initial Developer of the Original Code is Alfonso Moreno.          }
+{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
+{   All Rights Reserved.                                                   }
+{                                                                          }
 {   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
 {   email: luisarvayo@yahoo.com                                            }
 {     url: http://www.ezsoft.com                                           }
 {          http://www.sigmap.com/txquery.htm                               }
 {                                                                          }
-{   Open Source patch review (2009) with permission from Alfonso Moreno by }
-{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
-{   email: cychau@gmail.com                                                }
-{   url: http://code.google.com/p/txquery/                                 }
-{        http://groups.google.com/group/txquery                            }
-{                                                                          }
-{   This program is free software: you can redistribute it and/or modify   }
-{   it under the terms of the GNU General Public License as published by   }
-{   the Free Software Foundation, either version 3 of the License, or      }
-{   (at your option) any later version.                                    }
-{                                                                          }
-{   This program is distributed in the hope that it will be useful,        }
-{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
-{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
-{   GNU General Public License for more details.                           }
-{                                                                          }
-{   You should have received a copy of the GNU General Public License      }
-{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
+{                   Sherlyn CHEW (Malaysia)                                }
+{              url: http://code.google.com/p/txquery/                      }
+{                   http://groups.google.com/group/txquery                 }
 {                                                                          }
 {**************************************************************************}
 
