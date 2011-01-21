@@ -21,7 +21,7 @@
 {   This program is distributed in the hope that it will be useful,        }
 {   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
 {   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
-{   GNU General Public License for more details.                           }    
+{   GNU General Public License for more details.                           }
 {                                                                          }
 {   You should have received a copy of the GNU General Public License      }
 {   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
@@ -168,6 +168,11 @@ type{$M+}
   published
     procedure Test_ExtractSQL;
     procedure Test_ExtractSQL_Condition;
+  end;
+
+  TTest_ParamByName = class(TTest_TxQuery)
+  published
+    procedure Test_ParamByName;
   end;
 
 var TxQueryTestSuite: TTestSuite;
@@ -1589,6 +1594,20 @@ begin
   CheckEquals('IV-0003', FQuery.FindField('DocNo').AsString, 'Field "DocNo" incorrect');
   FQuery.Close;
 end;   
+
+procedure TTest_ParamByName.Test_ParamByName;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  FQuery.SQL.Text := 'UPDATE Main SET Agent=:Agent WHERE DocNo=:DocNo';
+  FQuery.ParamByName('Agent').AsString := 'XYZ';
+  FQuery.ParamByName('DocNo').AsString := 'IV-0001';
+  FQuery.ExecSQL;
+
+  CheckTrue(FMainDataSet.Locate('DocNo', 'IV-0001', []));
+  CheckEquals('XYZ', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
+end;
 
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
