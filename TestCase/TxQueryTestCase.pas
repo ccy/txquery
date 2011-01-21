@@ -1632,6 +1632,7 @@ initialization
     AddSuite(TTest_Max.Suite);
     AddSuite(TTest_Min.Suite);
     AddSuite(TTest_Extract.Suite);
+    AddSuite(TTest_ParamByName.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);
