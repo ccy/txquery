@@ -97,6 +97,15 @@
 {$DEFINE DELPHI}
 {$ENDIF}
 
+{$IFDEF VER220}      // Delphi 15
+{$DEFINE LEVEL4}
+{$DEFINE LEVEL5}
+{$DEFINE LEVEL6}
+{$DEFINE LEVEL7}
+{$DEFINE DELPHI7}
+{$DEFINE DELPHI}
+{$ENDIF}
+
 //***********************************************************************
 
 {$IFDEF BCB}
