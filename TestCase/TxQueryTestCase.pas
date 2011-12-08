@@ -181,6 +181,8 @@ implementation
 
 uses SysUtils, DateUtils, Variants, Provider;
 
+const SglEps = 1.1920928955e-07;
+
 function GetDataPacket(DataSet: TDataSet): OleVariant;
 var P: TDataSetProvider;
 begin
@@ -1381,7 +1383,7 @@ begin
     FQuery.ExecSQL;
 
     CheckEquals(1, D.RecordCount);
-    CheckEquals(113.64, D.FindField('Test3').Value);
+    CheckEquals(113.64, D.FindField('Test3').Value, SglEps);
   finally
     D.Free;
   end;

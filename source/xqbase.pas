@@ -1862,7 +1862,7 @@ begin
     For I := 1 To GetRecordCount Do
     Begin
       SetRecno( I );
-      FBookmarkedDataset.FreeBookmark( TBookmark( SourceRecno ) );
+      {$if RtlVersion <= 18.5}FBookmarkedDataset.FreeBookmark( TBookmark( SourceRecno ) );{$ifend} // patched by ccy
     End;
   End;
   FBookmarkedDataset:= nil;

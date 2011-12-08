@@ -42,6 +42,8 @@ Uses
   ;
 
 Type
+  TNativeInt = {$if CompilerVersion<=18.5}Integer{$else}NativeInt{$ifend};
+  TNativeUInt = {$if CompilerVersion<=18.5}Cardinal{$else}NativeUInt{$ifend};
 
   PPointer = ^Pointer;
 
@@ -324,13 +326,53 @@ Begin
   End
 End;
 
+function Get_bp_memory: TNativeUInt; { patched by ccy }
+asm
+  {$ifdef Win32}mov eax,[ebp]{$endif}
+  {$ifdef Win64}mov rax,[rbp+$50]{$endif}
+end;
+
+function Call_Apply_Function(Index: Integer; Item: pointer; callerBP:
+    TNativeUInt; ApplyFunction: Pointer): TNativeInt; { patched by ccy }
+asm
+  {$ifdef Win32}
+  mov  eax,index
+  mov  edx,item
+  push callerBP
+  call ApplyFunction
+  pop  ecx
+  mov @Result,eax
+  {$endif}
+  {$ifdef Win64}
+  push rcx
+  push rdx
+  push r8
+  push r9
+
+  push r8
+  mov  r8,item
+  mov  edx,index
+  pop rcx
+  call ApplyFunction
+//  pop  rcx
+  mov @Result,rax
+
+  pop r9
+  pop r8
+  pop rdx
+  pop rcx
+  {$endif}
+end;
+
 Function TSparsePointerArray.ForAll( ApplyFunction: Pointer {TSPAApply} ):
   Integer;
 Var
   itemP: PAnsiChar; { Pointer to item in section } { patched by ccy }
   item: Pointer;
-  i, callerBP: Cardinal;
-  j, index: Integer;
+  i: Cardinal;
+  callerBP: TNativeUInt; { patched by ccy }
+  j: Integer;
+  index: Integer; { patched by ccy }
 Begin
   { Scan section directory and scan each section that exists,
     calling the apply function for each non-nil item.
@@ -341,10 +383,12 @@ Begin
     if P is a method, the instance variables and methods of P's class }
   Result := 0;
   i := 0;
+  (* patched by ccy: replace with Get_ebp_memory
   Asm
     mov   eax,[ebp]                     { Set up stack frame for local }
     mov   callerBP,eax
-  End;
+  End; *)
+  callerBP := Get_bp_memory;
   While ( i < slotsInDir ) And ( Result = 0 ) Do
   Begin
     itemP := secDir^[i];
@@ -357,6 +401,7 @@ Begin
         item := PPointer( itemP )^;
         If item <> Nil Then
           { ret := ApplyFunction(index, item.Ptr); }
+          (* patched by ccy: replace with Call_Apply_Function
           Asm
             mov   eax,index
             mov   edx,item
@@ -364,7 +409,8 @@ Begin
             call  ApplyFunction
             pop   ecx
             mov   @Result,eax
-          End;
+          End;*)
+          Result := Call_Apply_Function(index, item, callerBP, ApplyFunction);
         Inc( itemP, SizeOf( Pointer ) );
         Inc( j );
         Inc( index )
@@ -459,7 +505,8 @@ End;
 
 Function TSparseList.ForAll( ApplyFunction: Pointer {TSPAApply} ): Integer; Assembler;
 Asm
-        MOV     EAX,[EAX].TSparseList.FList
+{$ifdef Win32}MOV     EAX,[EAX].TSparseList.FList{$endif}  { patched by ccy }
+{$ifdef Win64}MOV     rcx,[rcx].TSparseList.FList{$endif}  { patched by ccy }
         JMP     TSparsePointerArray.ForAll
 End;
 
