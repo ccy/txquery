@@ -1131,13 +1131,24 @@ Begin
   SetIsNull;
 End;
 
-Function TxqStringField.GetValue(Var Value: String): Boolean;
+Function TxqStringField.GetValue(Var Value: String): Boolean; { patched by ccy }
 Var
   Buffer: Array[0..dsMaxstringSize] Of Char;
+  AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
+  A: AnsiString;                                     
 Begin
-  Result := GetData(@Buffer);
-  If Result Then
-    Value := Buffer;
+  if (SourceField = nil) or (SourceField.DataType = ftString) then begin
+    Result := GetData(@AnsiBuffer);
+    If Result Then begin
+      A := AnsiBuffer;
+      Value := String(A);
+    end;
+  end else if SourceField.DataType = ftWideString then begin
+    Result := GetData(@Buffer);
+    If Result Then
+      Value := Buffer;
+  end else
+    Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
 End;
 
 Function TxqStringField.GetAsstring: String;
@@ -1176,15 +1187,26 @@ Begin
   Result := (Length(S) > 0) And CharInSet(S[1], ['T', 't', 'Y', 'y']);
 End;
 
-Procedure TxqStringField.SetAsstring(Const Value: String);
+Procedure TxqStringField.SetAsstring(Const Value: String); { patched by ccy }
 Var
   Buffer: Array[0..dsMaxstringSize] Of Char;
+  AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
   L: Integer;
+  A: AnsiString;
 Begin
-  FillChar(Buffer, FDataSize, 0);
-  L := Length(Value);
-  StrLCopy(Buffer, PChar(Value), L);
-  SetData(@Buffer);
+  if (SourceField = nil) or (SourceField.DataType = ftString) then begin
+    A := AnsiString(Value);
+    FillChar(AnsiBuffer, FDataSize, 0);
+    L := Length(A);
+    StrLCopy(AnsiBuffer, PAnsiChar(A), L);
+    SetData(@AnsiBuffer);
+  end else if SourceField.DataType = ftWideString then begin
+    FillChar(Buffer, FDataSize, 0);
+    L := Length(Value);
+    Move(Value[1], Buffer, L * SizeOf(WideChar));
+    SetData(@Buffer);
+  end else
+    Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
 End;
 
 Procedure TxqStringField.SetAsFloat(Value: double);
@@ -3545,6 +3567,7 @@ Var
   IsUnionStatement  : Boolean;
   ExprType          : TExprType;
   B                 : TBookmark; { patched by ccy }
+  iSize             : Integer; { patched by ccy }
 
   Procedure RecursiveSolveSubqueries(n: integer; Const s: String);
   Var
@@ -3833,7 +3856,10 @@ Begin
       CheckExpr := TExprParser.Create(Self, TmpDataSet);
       Try
         CheckExpr.ParseExpression(S);
-        n := CheckExpr.Expression.MaxLen + 1 * SizeOf(Char);  { patched by ccy }
+        iSize := SizeOf(AnsiChar);                                { patched by ccy }
+        if CheckExpr.CheckData.Field.DataType = ftWideString then { patched by ccy }
+          iSize := SizeOf(WideChar);                              { patched by ccy }
+        n := CheckExpr.Expression.MaxLen + 1 * iSize;             { patched by ccy }
       Finally
         CheckExpr.Free;
       End;
@@ -6282,6 +6308,8 @@ Var
   I: Integer;
   vField: TxqField;
   vs: String;
+  Avs: AnsiString; { patched by ccy }
+  Wvs: WideString; { patched by ccy }
   vf: double;
   vn: Integer;
   vb: WordBool;
@@ -6298,14 +6326,20 @@ Begin
   Begin
     vField := FResultSet.Fields[I];
     Case vField.DataType Of
-      ttstring:
+      ttstring: { patched by ccy }
         Begin
           vs := vField.Asstring;
-          If Length(vs) > 0 Then
-          Begin
+          If Length(vs) > 0 Then begin
             FldDef := FieldDefs[I];
-            Move(vs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(vs) * SizeOf(Char)));  { patched by ccy }
-          End;
+            if FieldDefs[I].DataType = ftString then begin
+              Avs := AnsiString(vs);
+              Move(Avs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(Avs)));
+            end else if FieldDefs[I].DataType = ftWideString then begin
+              Wvs := vs;
+              Move(Wvs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(Wvs)) * SizeOf(WideChar));
+            end else
+              Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
+          end;
         End;
       ttFloat:
         Begin
@@ -6481,6 +6515,7 @@ Var
   I, Offset: Integer;
   TmpThousandSeparator: Char; { LAS : 05-30-2000 }
   TmpDecimalSeparator: Char; { LAS : 05-30-2000 }
+  iSize: integer; { patched by ccy }
 Begin
 
   ClearTempDatasets;
@@ -6555,7 +6590,12 @@ Begin
     With Field Do
     Begin
       Case DataType Of
-        ttstring: DataSize := (ColWidth + 1) * SizeOf(Char); { patched by ccy }
+        ttstring: begin { patched by ccy }
+                    iSize := SizeOf(AnsiChar);
+                    if SourceField.DataType = ftWideString then
+                      iSize := SizeOf(WideChar);
+                    DataSize := (ColWidth + 1) * iSize;
+                  end;
         ttFloat: DataSize := SizeOf(Double);
         ttInteger:
           begin
@@ -6700,7 +6740,7 @@ Begin
       Case Field.DataType Of
         ttString:
           Begin
-            DataType := {$if RTLVersion <= 18.5}ftString{$else}ftWideString{$ifend}; { patched by ccy }
+            DataType := Field.SourceField.DataType; { patched by ccy }
             Size := Field.DataSize;
           End;
         ttFloat:
@@ -6728,8 +6768,8 @@ Begin
         If DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar, ftWidestring{$ENDIF}
           {$IFDEF LEVEL5}, ftGUID{$ENDIF}] Then
         Begin
-          DataType := {$if RTLVersion <= 18.5}ftString{$else}ftWideString{$ifend}; { patched by ccy }; { this fixes bug with ftWidestring }
-          Size := Field.SourceField.Size * SizeOf(Char);  { patched by ccy }
+          DataType := Field.SourceField.DataType; { patched by ccy }; { this fixes bug with ftWidestring }
+          Size := Field.SourceField.Size;  { patched by ccy }
           If Size = 0 Then
             Size := 1;
         End;

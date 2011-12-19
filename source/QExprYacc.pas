@@ -303,6 +303,7 @@ Type
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprtype; Override;
     Function GetIsNull: boolean; Override;
+    function StringCharSize: integer; override; { patched by ccy }
   Public
     Constructor Create( ParameterList: TParameterList;
       F: TField; xQuery: TCustomxQuery; Parser: TExprParser );
@@ -449,6 +450,13 @@ Begin
     End;
   End;
 End;
+
+function TFieldExpr.StringCharSize: integer; { patched by ccy }
+begin
+  Result := SizeOf(AnsiChar);
+  if Field.DataType = ftWideString then
+    Result := SizeOf(WideChar);
+end;
 
 Function TFieldExpr.GetAsString: String;
 Begin

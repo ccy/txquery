@@ -52,6 +52,7 @@ Type
     Function GetAsBoolean: Boolean; Virtual;
     Function GetExprType: TExprType; Virtual; Abstract;
     Function GetIsNull: boolean; Virtual;
+    function StringCharSize: integer; virtual; abstract; { patched by ccy }
   Public
     Function CanReadAs( aExprType: TExprType ): Boolean;
     {means 'can be interpreted as'. Sort of}
@@ -539,11 +540,16 @@ Begin
   Result := False;
 End;
 
-Function TExpression.GetMaxLen: Integer;
+Function TExpression.GetMaxLen: Integer;   { patched by ccy }
+var iSize: integer;
 Begin
   Result:= 0;
-  If ExprType = ttString then
-    Result:= Length( GetMaxString ) * SizeOf(Char);  { patched by ccy }
+  If ExprType = ttString then begin
+    iSize := SizeOf(AnsiChar);
+    if Self.ClassNameIs('TFieldExpr') then
+      iSize := StringCharSize;
+    Result:= Length( GetMaxString ) * iSize;  
+  end;
 End;
 
 Function TExpression.GetMaxString: String;

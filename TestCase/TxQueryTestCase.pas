@@ -175,11 +175,18 @@ type{$M+}
     procedure Test_ParamByName;
   end;
 
+  TTest_Fields = class(TTest_TxQuery)
+  published
+    procedure Test_String_Fields;
+    procedure Test_MaxString;
+    procedure Test_OrderBy_WideString_Field;
+  end;
+
 var TxQueryTestSuite: TTestSuite;
 
 implementation
 
-uses SysUtils, DateUtils, Variants, Provider;
+uses SysUtils, StrUtils, DateUtils, Variants, Provider;
 
 const SglEps = 1.1920928955e-07;
 
@@ -217,6 +224,7 @@ begin
     FieldDefs.Add('Qty',       ftFmtBCD,  8);
     FieldDefs.Add('UnitPrice', ftFmtBCD,  8);
     FieldDefs.Add('Amount',    ftFmtBCD,  8);
+    FieldDefs.Add('WDocNo',    ftWideString, 7);
     CreateDataSet;
   end;
 
@@ -225,6 +233,7 @@ begin
     FMainDataSet['DocKey'] := i;
     FMainDataSet['Code'] := Format('300-%d', [i]);
     FMainDataSet['DocNo'] := Format('IV-%.4d', [i]);
+    FMainDataSet['WDocNo'] := Format('IV-%.4d', [i]);
     FMainDataSet['DocDate'] := IncDay(FDate, i);
     if i <= 3 then
       FMainDataSet['Agent'] := 'ABC'
@@ -1611,6 +1620,75 @@ begin
   CheckEquals('XYZ', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
 end;
 
+procedure TTest_Fields.Test_MaxString;
+begin
+  FMainDataSet.EmptyDataSet;
+  FMainDataSet.Append;
+  FMainDataSet.FindField('Code').AsString := DupeString('A', FMainDataSet.FindField('Code').Size);
+  FMainDataSet.FindField('Agent').AsString := DupeString('B', FMainDataSet.FindField('Agent').Size);
+  FMainDataSet.FindField('DocNo').AsString := DupeString('C', FMainDataSet.FindField('DocNo').Size);
+  FMainDataSet.FindField('WDocNo').AsString := DupeString('D', FMainDataSet.FindField('WDocNo').Size);
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := 'SELECT Code, Agent, DocNo, WDocNo From Main';
+  FQuery.Open;
+
+  CheckEquals(FMainDataSet.FindField('Code').AsString, FQuery.Fields[0].AsString);
+  CheckEquals(FMainDataSet.FindField('Agent').AsString, FQuery.Fields[1].AsString);
+  CheckEquals(FMainDataSet.FindField('DocNo').AsString, FQuery.Fields[2].AsString);
+  CheckEquals(FMainDataSet.FindField('WDocNo').AsString, FQuery.Fields[3].AsString);
+end;
+
+procedure TTest_Fields.Test_OrderBy_WideString_Field;
+var i: integer;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet,   'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT *');
+    Add(  'FROM Main');
+    Add( 'ORDER BY WDocNo');
+  end;
+  FQuery.Open;
+  CheckEquals(10, FQuery.RecordCount, 'FQuery Record Count incorrect');
+  for i := 1 to FQuery.RecordCount do begin
+    CheckEquals(Format('IV-%.4d', [i]), FQuery.FindField('WDocNo').AsString);
+    FQuery.Next;
+  end;
+end;
+
+procedure TTest_Fields.Test_String_Fields;
+var F1, F2: TField;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  FQuery.SQL.Text := 'SELECT DocNo, Agent, WDocNo From Main';
+  FQuery.Open;
+
+  F1 := FMainDataSet.FindField('DocNo');
+  F2 := FQuery.Fields[0];
+  CheckTrue(F1.DataType = F2.DataType, 'DocNo DataType');
+  CheckEquals(F1.Size, F2.Size, 'DocNo Size');
+  CheckEquals(F1.DataSize, F2.DataSize, 'DocNo DataSize');
+
+  F1 := FMainDataSet.FindField('Agent');
+  F2 := FQuery.Fields[1];
+  CheckTrue(F1.DataType = F2.DataType, 'Agent DataType');
+  CheckEquals(F1.Size, F2.Size, 'Agent Size');
+  CheckEquals(F1.DataSize, F2.DataSize, 'Agent DataSize');
+
+  F1 := FMainDataSet.FindField('WDocNo');
+  F2 := FQuery.Fields[2];
+  CheckTrue(F1.DataType = F2.DataType, 'WDocNo DataType');
+  CheckEquals(F1.Size, F2.Size, 'WDocNo Size');
+  CheckEquals(F1.DataSize, F2.DataSize, 'WDocNo DataSize');
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -1635,6 +1713,7 @@ initialization
     AddSuite(TTest_Min.Suite);
     AddSuite(TTest_Extract.Suite);
     AddSuite(TTest_ParamByName.Suite);
+    AddSuite(TTest_Fields.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);
