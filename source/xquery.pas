@@ -6331,10 +6331,10 @@ Begin
           vs := vField.Asstring;
           If Length(vs) > 0 Then begin
             FldDef := FieldDefs[I];
-            if FieldDefs[I].DataType = ftString then begin
+            if (FieldDefs[I].DataType = ftString) or (FieldDefs[I].DataType = ftMemo) then begin
               Avs := AnsiString(vs);
               Move(Avs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(Avs)));
-            end else if FieldDefs[I].DataType = ftWideString then begin
+            end else if (FieldDefs[I].DataType = ftWideString) or (FieldDefs[I].DataType = ftWideMemo) then begin
               Wvs := vs;
               Move(Wvs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(Wvs)) * SizeOf(WideChar));
             end else
