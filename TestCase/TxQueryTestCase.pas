@@ -180,6 +180,7 @@ type{$M+}
     procedure Test_String_Fields;
     procedure Test_MaxString;
     procedure Test_OrderBy_WideString_Field;
+    procedure Test_Memo_Fields;
   end;
 
 var TxQueryTestSuite: TTestSuite;
@@ -225,6 +226,8 @@ begin
     FieldDefs.Add('UnitPrice', ftFmtBCD,  8);
     FieldDefs.Add('Amount',    ftFmtBCD,  8);
     FieldDefs.Add('WDocNo',    ftWideString, 7);
+    FieldDefs.Add('Memo',      ftMemo,     80);
+    FieldDefs.Add('WMemo',     ftWideMemo, 80);
     CreateDataSet;
   end;
 
@@ -1639,6 +1642,26 @@ begin
   CheckEquals(FMainDataSet.FindField('Agent').AsString, FQuery.Fields[1].AsString);
   CheckEquals(FMainDataSet.FindField('DocNo').AsString, FQuery.Fields[2].AsString);
   CheckEquals(FMainDataSet.FindField('WDocNo').AsString, FQuery.Fields[3].AsString);
+end;
+
+procedure TTest_Fields.Test_Memo_Fields;
+var F1, F2: TField;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  FQuery.SQL.Text := 'SELECT Memo, WMemo From Main';
+  FQuery.Open;
+
+  F1 := FMainDataSet.FindField('Memo');
+  F2 := FQuery.Fields[0];
+  CheckTrue(F1.DataType = F2.DataType, 'Memo DataType');
+  CheckEquals(F1.DataSize, F2.DataSize, 'Memo DataSize');
+
+  F1 := FMainDataSet.FindField('WMemo');
+  F2 := FQuery.Fields[1];
+  CheckTrue(F1.DataType = F2.DataType, 'Memo DataType');
+  CheckEquals(F1.DataSize, F2.DataSize, 'WMemo DataSize');
 end;
 
 procedure TTest_Fields.Test_OrderBy_WideString_Field;

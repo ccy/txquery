@@ -1137,13 +1137,13 @@ Var
   AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
   A: AnsiString;                                     
 Begin
-  if (SourceField = nil) or (SourceField.DataType = ftString) then begin
+  if (SourceField = nil) or (SourceField.DataType = ftString) or (SourceField.DataType = ftMemo) then begin
     Result := GetData(@AnsiBuffer);
     If Result Then begin
       A := AnsiBuffer;
       Value := String(A);
     end;
-  end else if SourceField.DataType = ftWideString then begin
+  end else if (SourceField.DataType = ftWideString) or (SourceField.DataType = ftWideMemo) then begin
     Result := GetData(@Buffer);
     If Result Then
       Value := Buffer;
@@ -1194,13 +1194,13 @@ Var
   L: Integer;
   A: AnsiString;
 Begin
-  if (SourceField = nil) or (SourceField.DataType = ftString) then begin
+  if (SourceField = nil) or (SourceField.DataType = ftString) or (SourceField.DataType = ftMemo) then begin
     A := AnsiString(Value);
     FillChar(AnsiBuffer, FDataSize, 0);
     L := Length(A);
     StrLCopy(AnsiBuffer, PAnsiChar(A), L);
     SetData(@AnsiBuffer);
-  end else if SourceField.DataType = ftWideString then begin
+  end else if (SourceField.DataType = ftWideString) or (SourceField.DataType = ftWideMemo) then begin
     FillChar(Buffer, FDataSize, 0);
     L := Length(Value);
     Move(Value[1], Buffer, L * SizeOf(WideChar));
