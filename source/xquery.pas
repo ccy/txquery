@@ -3857,7 +3857,7 @@ Begin
       Try
         CheckExpr.ParseExpression(S);
         iSize := SizeOf(AnsiChar);                                { patched by ccy }
-        if CheckExpr.CheckData.Field.DataType = ftWideString then { patched by ccy }
+        if Assigned(CheckExpr.CheckData.Field) and (CheckExpr.CheckData.Field.DataType = ftWideString) then { patched by ccy }
           iSize := SizeOf(WideChar);                              { patched by ccy }
         n := CheckExpr.Expression.MaxLen + 1 * iSize;             { patched by ccy }
       Finally
@@ -6592,7 +6592,7 @@ Begin
       Case DataType Of
         ttstring: begin { patched by ccy }
                     iSize := SizeOf(AnsiChar);
-                    if SourceField.DataType = ftWideString then
+                    if Assigned(SourceField) and (SourceField.DataType = ftWideString) then
                       iSize := SizeOf(WideChar);
                     DataSize := (ColWidth + 1) * iSize;
                   end;
@@ -6740,7 +6740,9 @@ Begin
       Case Field.DataType Of
         ttString:
           Begin
-            DataType := Field.SourceField.DataType; { patched by ccy }
+            DataType := {$if RTLVersion <= 18.5}ftString{$else}ftString{$ifend}; { patched by ccy }; { this fixes bug with ftWidestring }
+            if Assigned(Field.SourceField) then
+              DataType := Field.SourceField.DataType; { patched by ccy }
             Size := Field.DataSize;
           End;
         ttFloat:

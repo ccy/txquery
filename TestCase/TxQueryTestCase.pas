@@ -183,6 +183,18 @@ type{$M+}
     procedure Test_Memo_Fields;
   end;
 
+  TTest_DateTime = class(TTest_TxQuery)
+  published
+    procedure Test_ExtractDate;
+    procedure Test_FormatDateTime1;
+    procedure Test_FormatDateTime2;
+  end;
+
+  TTest_Hardcode_String = class(TTest_TxQuery)
+  published
+    procedure Test_Hardcode_String_Select;
+  end;
+
 var TxQueryTestSuite: TTestSuite;
 
 implementation
@@ -204,6 +216,17 @@ begin
     P.Free;
     DataSet.EnableControls;
   end;
+end;
+
+function GetUSFormatSettings: TFormatSettings;
+begin
+  {$if CompilerVersion >= 22}
+  Result := TFormatSettings.Create('en-us');
+  {$else}
+  GetLocaleFormatSettings(1033, Result);
+  {$ifend}
+  Result.DecimalSeparator := '.';
+  Result.ThousandSeparator := ',';
 end;
 
 procedure TTest_TxQuery.SetUp;
@@ -1712,6 +1735,67 @@ begin
   CheckEquals(F1.DataSize, F2.DataSize, 'WDocNo DataSize');
 end;
 
+procedure TTest_DateTime.Test_ExtractDate;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+   with FQuery.SQL do begin
+    Clear;
+    Add(         'SELECT ''P'' || EXTRACT(YEAR FROM DocDate) || ''_'' || EXTRACT(MONTH FROM DocDate) AS Period');
+    Add(           'FROM Main');
+    Add(          'WHERE DocKey=1');
+  end;
+  FQuery.Open;
+  CheckEquals(1, FQuery.RecordCount);
+  CheckEquals('P2005_5', FQuery.Fields[0].AsString);
+end;
+
+procedure TTest_DateTime.Test_FormatDateTime1;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add(         'SELECT FormatDateTime("yyyy-mm", DocDate) AS Interval');
+    Add(           'FROM Main');
+    Add(          'WHERE DocKey=1');
+  end;
+  FQuery.Open;
+  CheckEquals(1, FQuery.RecordCount);
+  CheckEquals('2005-05', FQuery.Fields[0].AsString);
+end;
+
+procedure TTest_DateTime.Test_FormatDateTime2;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add(         'SELECT *');
+    Add(           'FROM Main');
+    Add(Format(   'WHERE FormatDateTime("yyyymmdd", DocDate) < %s', [FormatDateTime('yyyymmdd', IncDay(FDate, 2), GetUSFormatSettings)]));
+  end;
+  FQuery.Open;
+  CheckEquals(1, FQuery.RecordCount);
+end;
+
+procedure TTest_Hardcode_String.Test_Hardcode_String_Select;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add(         'SELECT "a"');
+    Add(           'FROM Main');
+  end;
+  FQuery.Open;
+  CheckEquals(FMainDataSet.RecordCount, FQuery.RecordCount);
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -1737,6 +1821,9 @@ initialization
     AddSuite(TTest_Extract.Suite);
     AddSuite(TTest_ParamByName.Suite);
     AddSuite(TTest_Fields.Suite);
+
+    AddSuite(TTest_DateTime.Suite);
+    AddSuite(TTest_Hardcode_String.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);
