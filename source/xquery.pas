@@ -5578,7 +5578,7 @@ Type
     OnValidate: TFieldNotifyEvent;
   End;
 Var
-  BookmarkList: TList;
+  BookmarkList: {$if RTLVersion >= 20}TList<TBookmark>{$else}TList{$ifend};
   bm: TBookmark;
   I: Integer;
   DisabledState: array of boolean;
@@ -5713,7 +5713,7 @@ Begin
   If Assigned(FxQuery.FOnBeforeQuery) Then
     FxQuery.FOnBeforeQuery(Self);
   SFS := SaveFormatSettings;                                       // Nonn
-  BookmarkList := TList.Create;
+  BookmarkList := {$if RTLVersion >= 20}TList<TBookmark>{$else}TList{$ifend}.Create;
   SetLength( DisabledState, FxQuery.DataSets.Count );
   SetLength( DataSetState, FxQuery.DataSets.Count );
   SetLength( DataSetEvents, FxQuery.DataSets.Count );
