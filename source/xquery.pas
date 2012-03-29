@@ -2655,7 +2655,7 @@ Var
   B: TBookmark; { pathced by ccy }
 Begin
   // GROUP BY clause
-  If Not( {(ResultSet.RecordCount > 0) And}
+  If Not( (ResultSet.RecordCount > 0) And
      ((FGroupByList.Count > 0) Or HasAggregates) ) Then Exit;
 
   if ResultSet.RecordCount=0 Then

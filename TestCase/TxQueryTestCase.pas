@@ -148,6 +148,7 @@ type{$M+}
 
   TTest_Insert = class(TTest_TxQuery)
   published
+    procedure Test_Insert_BlankDataSet;
     procedure Test_Insert_WithSelectSQL;
     procedure Test_Insert_WithValues;
   end;
@@ -1494,6 +1495,39 @@ begin
   CheckEquals(8, FMainDataSet.RecordCount, 'FMainDataSet Record Count incorrect');
   CheckFalse(FMainDataSet.Locate('DocKey', 1, []), 'Record DocKey = 1 still exists even has been deleted');
   CheckFalse(FMainDataSet.Locate('DocKey', 7, []), 'Record DocKey = 7 still exists even has been deleted');
+end;
+
+procedure TTest_Insert.Test_Insert_BlankDataSet;
+var D1, D2: TClientDataSet;
+begin
+  D1 := TClientDataSet.Create(nil);
+  D2 := TClientDataSet.Create(nil);
+  try
+    with D1 do begin
+      FieldDefs.Add('Code', ftString, 10);
+      FieldDefs.Add('Qty',  ftCurrency, 0);
+      CreateDataSet;
+    end;
+    D2.FieldDefs.Assign(D1.FieldDefs);
+    D2.CreateDataSet;
+
+    FQuery.DataSets.Clear;
+    FQuery.AddDataSet(D1, 'Main');
+    FQuery.AddDataSet(D2, 'Document');
+
+    with FQuery.SQL do begin
+      Clear;
+      Add('INSERT INTO Main (Code, Qty)');
+      Add('(SELECT Code, SUM(Qty)');
+      Add(  'FROM Document');
+      Add( 'GROUP BY Code)');
+    end;
+    FQuery.ExecSQL;
+    CheckEquals(0, D1.RecordCount);
+  finally
+    D1.Free;
+    D2.Free;
+  end;
 end;
 
 procedure TTest_Insert.Test_Insert_WithSelectSQL;
