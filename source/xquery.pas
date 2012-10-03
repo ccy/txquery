@@ -1147,8 +1147,10 @@ Begin
     Result := GetData(@Buffer);
     If Result Then
       Value := Buffer;
-  end else
+  end else begin
     Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
+    Result := False;
+  end;
 End;
 
 Function TxqStringField.GetAsstring: String;
@@ -2931,7 +2933,7 @@ Begin
                   Replacestring(vS, Format('{Aggregate %d}', [K]), FloatToStr(DValue));
                 End;
               End;
-              Replacestring(vS, DecimalSeparator, '.');
+              Replacestring(vS, {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator, '.');
             End;
           End;
           vColumn.Resolver.ParseExpression(vS);
@@ -3014,7 +3016,7 @@ Begin
                 DValue:= SparseList.Values[I];
                 Replacestring(vS, Format('{Aggregate %d}', [K]), FloatToStr(DValue));
               End;
-              Replacestring(vS, DecimalSeparator, '.');
+              Replacestring(vS, {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator, '.');
             End;
           End;
           vTempExpr.ParseExpression(vS);
@@ -3516,12 +3518,12 @@ End;
 Procedure TSqlAnalizer.CreateResultSet;
 Var
   Column            : TColumnItem;
-  Index             : Integer;
+//  Index             : Integer;
   I, J, K, L,
-  n, JS             : Integer;
-  ps                : Integer;
-  Pivot             : Integer;
-  IntValue          : Integer;
+  n{, JS}             : Integer;
+//  ps                : Integer;
+//  Pivot             : Integer;
+//  IntValue          : Integer;
   NumAccepted       : Integer;
   MustAccept        : Integer;
   NumAsc            : Integer;
@@ -3536,21 +3538,21 @@ Var
   EndOptimize       : Integer;
   TmpDataSet        : TDataSet;
   EventWasCalled    : Boolean;
-  TmpDeleted        : Boolean;
-  Pass              : Boolean;
+//  TmpDeleted        : Boolean;
+//  Pass              : Boolean;
   Accepted          : Boolean;
   TempBool          : Boolean;
-  Succeed           : Boolean;
+//  Succeed           : Boolean;
   FilterActive      : Boolean;
   CheckExpr,
   SubqExpr,
   TempExpr          : TExprParser;
-  Value             : Double;
+//  Value             : Double;
   TempS             : String;
-  Lasts             : String;
+//  Lasts             : String;
   S                 : String;
-  TableName         : String;
-  TempList          : TList;
+//  TableName         : String;
+//  TempList          : TList;
   OldCursor         : TCursor;
   ReadOnly          : Boolean;
   Cancel            : Boolean;
@@ -4619,35 +4621,35 @@ end;
 
 Function TSqlAnalizer.CheckIntegrity: Boolean;
 Var
-  I, J, K, L, vp1, tmp: Integer;
+  I, J, K, L{, vp1, tmp}: Integer;
   NumAccepted: Integer;
   Column: TColumnItem;
   TmpWhereStr: String;
   s, AFieldName, temp: String;
   CheckExpres: String;
   tablnam, lrt, rrt: String;
-  filename: String;
+//  filename: String;
   Found, Al, Ar: Boolean;
   GroupBy: TOrderByItem;
   OrderBy: TOrderByItem;
   LCheckExpr: TExprParser;
   RCheckExpr: TExprParser;
   TempExpr: TExprParser;
-  JoinOn: TJoinOnItem;
+//  JoinOn: TJoinOnItem;
   F: TField;
   WhereOptimize: TWhereOptimizeItem;
   ReferencedDataSets: TReferencedDataSetList;
-  LeftDataset: TDataSet;
-  RightDataset: TDataSet;
+//  LeftDataset: TDataSet;
+//  RightDataset: TDataSet;
   Idx1, Idx2: Integer;
   OptimizeList: TWhereOptimizeList;
-  TmpDataset: TDataset;
+//  TmpDataset: TDataset;
   TmpAnalizer: TSqlAnalizer;
   GroupOrder: TOrderByItem;
   ADataset: TDataset;
   DatasetItem: TxDataSetItem;
   FromxQuery: TxQuery;
-  JoinOnItem: TJoinOnItem;
+//  JoinOnItem: TJoinOnItem;
   LeftTable, RightTable,
   LeftField, RightField: String;
   LeftTableAlias, RightTableAlias: String;
@@ -5925,16 +5927,16 @@ Begin
     FxQuery.ReindexTable(FTableList);
     Exit;
   End;
-  TmpThousandSeparator := ThousandSeparator; { LAS : 05-30-2000 }
-  TmpDecimalSeparator := DecimalSeparator; { LAS : 05-30-2000 }
-  ThousandSeparator := ','; { LAS : 05-30-2000 }
-  DecimalSeparator := '.'; { LAS : 05-30-2000 }
+  TmpThousandSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator; { LAS : 05-30-2000 }
+  TmpDecimalSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator; { LAS : 05-30-2000 }
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := ','; { LAS : 05-30-2000 }
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := '.'; { LAS : 05-30-2000 }
   FxQuery.FRowsAffected := 0;
   Try
     SafeCreateResultSet;
   Finally
-    ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
-    DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
   End;
 End;
 
@@ -6544,10 +6546,10 @@ Begin
       FreeObject(FResultSet);
 
     { Clear the list of referenced fields on the SQL }
-    TmpThousandSeparator := ThousandSeparator;
-    TmpDecimalSeparator := DecimalSeparator;
-    ThousandSeparator := ',';
-    DecimalSeparator := '.';
+    TmpThousandSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator;
+    TmpDecimalSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator;
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := ',';
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := '.';
 
     If FDataLink.DataSource <> Nil Then
       SetParamsFromDataSet;
@@ -6577,8 +6579,8 @@ Begin
       (*if Found then
         FSQL.Text:= SavedSQLText; *)
 
-      ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
-      DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
+      {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
+      {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
     End;
   End;
 
@@ -8018,7 +8020,7 @@ Var
   sb, cb: boolean;
   xqField: TxqField;
   I, J, rnum: integer;
-  Fields: TList;
+  Fields: TList{$if RTLVersion >=24}<TField>{$ifend};
   FieldCount, MatchCount: Integer;
   IsEqual, Found: Boolean;
 Begin
@@ -8028,7 +8030,7 @@ Begin
   Found := False;
   Result := 0;
   rnum := 0;
-  Fields := TList.Create;
+  Fields := TList{$if RTLVersion >=24}<TField>{$ifend}.Create;
   Try
     GetFieldList(Fields, KeyFields);
     FieldCount := Fields.Count;

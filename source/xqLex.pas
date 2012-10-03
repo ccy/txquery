@@ -212,15 +212,15 @@ procedure TXQLexer.yyaction ( yyruleno : Integer );
 
       Function ReturnDate( const ADate: String ): string;
       begin
-        SaveDate := ShortDateFormat;
+        SaveDate := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
         if Length( Self.FDateFormat ) = 0 then
-           Self.FDateFormat := ShortDateFormat;//SDefaultDateFormat;
-        ShortDateFormat := Self.FDateFormat;
+           Self.FDateFormat := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;//SDefaultDateFormat;
+        {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := Self.FDateFormat;
         try
            Result := FloatToStr( StrToDate( ADate ) );
            if FIsWhereActive then
               Result := 'DummyDate(' + Result + ')';
-           ShortDateFormat := SaveDate;
+           {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SaveDate;
            returni( _NUMERIC );
         except
            if not FIgnoreBadDates then
@@ -240,15 +240,15 @@ begin
   begin
     If AnsiCompareText( yylval.yystring, 'NOW' ) = 0 Then
     Begin
-      SaveDate := ShortDateFormat;
+      SaveDate := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
       if Length( Self.FDateFormat ) = 0 then
-         Self.FDateFormat := ShortDateFormat;//SDefaultDateFormat;
-      ShortDateFormat := Self.FDateFormat;
+         Self.FDateFormat := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;//SDefaultDateFormat;
+      {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := Self.FDateFormat;
       try
          yylval.yystring := FloatToStr( Now );
          if FIsWhereActive then
             yylval.yystring := 'DummyDate(' + yylval.yystring + ')';
-         ShortDateFormat := SaveDate;
+         {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SaveDate;
          returni( _NUMERIC );
       except
          if not FIgnoreBadDates then

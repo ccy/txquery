@@ -602,32 +602,32 @@ Var
   SFS: TSaveFormatSettings;
   I: Integer;
 Begin
-  SFS.FS.CurrencyFormat        := CurrencyFormat;
-  SFS.FS.NegCurrFormat         := NegCurrFormat;
-  SFS.FS.ThousandSeparator     := ThousandSeparator;
-  SFS.FS.DecimalSeparator      := DecimalSeparator;
-  SFS.FS.CurrencyDecimals      := CurrencyDecimals;
-  SFS.FS.DateSeparator         := DateSeparator;
-  SFS.FS.TimeSeparator         := TimeSeparator;
-  SFS.FS.ListSeparator         := ListSeparator;
-  SFS.FS.CurrencyString        := CurrencyString;
-  SFS.FS.ShortDateFormat       := ShortDateFormat;
-  SFS.FS.LongDateFormat        := LongDateFormat;
-  SFS.FS.TimeAMString          := TimeAMString;
-  SFS.FS.TimePMString          := TimePMString;
-  SFS.FS.ShortTimeFormat       := ShortTimeFormat;
-  SFS.FS.LongTimeFormat        := LongTimeFormat;
+  SFS.FS.CurrencyFormat        := {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyFormat;
+  SFS.FS.NegCurrFormat         := {$if RTLVersion >= 23}FormatSettings.{$ifend}NegCurrFormat;
+  SFS.FS.ThousandSeparator     := {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator;
+  SFS.FS.DecimalSeparator      := {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator;
+  SFS.FS.CurrencyDecimals      := {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyDecimals;
+  SFS.FS.DateSeparator         := {$if RTLVersion >= 23}FormatSettings.{$ifend}DateSeparator;
+  SFS.FS.TimeSeparator         := {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeSeparator;
+  SFS.FS.ListSeparator         := {$if RTLVersion >= 23}FormatSettings.{$ifend}ListSeparator;
+  SFS.FS.CurrencyString        := {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyString;
+  SFS.FS.ShortDateFormat       := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
+  SFS.FS.LongDateFormat        := {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDateFormat;
+  SFS.FS.TimeAMString          := {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeAMString;
+  SFS.FS.TimePMString          := {$if RTLVersion >= 23}FormatSettings.{$ifend}TimePMString;
+  SFS.FS.ShortTimeFormat       := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortTimeFormat;
+  SFS.FS.LongTimeFormat        := {$if RTLVersion >= 23}FormatSettings.{$ifend}LongTimeFormat;
 
   For I := 1 To 12 Do
-    SFS.FS.ShortMonthNames[I] := ShortMonthNames[I];
+    SFS.FS.ShortMonthNames[I] := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortMonthNames[I];
   For I := 1 To 12 Do
-    SFS.FS.LongMonthNames[I] := LongMonthNames[I];
+    SFS.FS.LongMonthNames[I] := {$if RTLVersion >= 23}FormatSettings.{$ifend}LongMonthNames[I];
   For I := 1 To 7 Do
-    SFS.FS.ShortDayNames[I] := ShortDayNames[I];
+    SFS.FS.ShortDayNames[I] := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDayNames[I];
   For I := 1 To 7 Do
-    SFS.FS.LongDayNames[I] :=  LongDayNames[I];
+    SFS.FS.LongDayNames[I] :=  {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDayNames[I];
 
-  SFS.FS.TwoDigitYearCenturyWindow := TwoDigitYearCenturyWindow;
+  SFS.FS.TwoDigitYearCenturyWindow := {$if RTLVersion >= 23}FormatSettings.{$ifend}TwoDigitYearCenturyWindow;
 
   SFS.SL.DefaultLCID := SysLocale.DefaultLCID;
   SFS.SL.PriLangID   := SysLocale.PriLangID;
@@ -643,32 +643,32 @@ Procedure RestoreFormatSettings(aSFS: TSaveFormatSettings);
 Var
   I: Integer;
 Begin
-  CurrencyFormat        := aSFS.FS.CurrencyFormat;
-  NegCurrFormat         := aSFS.FS.NegCurrFormat;
-  ThousandSeparator     := aSFS.FS.ThousandSeparator;
-  DecimalSeparator      := aSFS.FS.DecimalSeparator;
-  CurrencyDecimals      := aSFS.FS.CurrencyDecimals;
-  DateSeparator         := aSFS.FS.DateSeparator;
-  TimeSeparator         := aSFS.FS.TimeSeparator;
-  ListSeparator         := aSFS.FS.ListSeparator;
-  CurrencyString        := aSFS.FS.CurrencyString;
-  ShortDateFormat       := aSFS.FS.ShortDateFormat;
-  LongDateFormat        := aSFS.FS.LongDateFormat;
-  TimeAMString          := aSFS.FS.TimeAMString;
-  TimePMString          := aSFS.FS.TimePMString;
-  ShortTimeFormat       := aSFS.FS.ShortTimeFormat;
-  LongTimeFormat        := aSFS.FS.LongTimeFormat;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyFormat        := aSFS.FS.CurrencyFormat;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}NegCurrFormat         := aSFS.FS.NegCurrFormat;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator     := aSFS.FS.ThousandSeparator;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator      := aSFS.FS.DecimalSeparator;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyDecimals      := aSFS.FS.CurrencyDecimals;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}DateSeparator         := aSFS.FS.DateSeparator;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeSeparator         := aSFS.FS.TimeSeparator;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}ListSeparator         := aSFS.FS.ListSeparator;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyString        := aSFS.FS.CurrencyString;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat       := aSFS.FS.ShortDateFormat;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDateFormat        := aSFS.FS.LongDateFormat;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeAMString          := aSFS.FS.TimeAMString;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}TimePMString          := aSFS.FS.TimePMString;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortTimeFormat       := aSFS.FS.ShortTimeFormat;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}LongTimeFormat        := aSFS.FS.LongTimeFormat;
 
   For I := 1 To 12 Do
-    ShortMonthNames[I] := aSFS.FS.ShortMonthNames[I];
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortMonthNames[I] := aSFS.FS.ShortMonthNames[I];
   For I := 1 To 12 Do
-    LongMonthNames[I] := aSFS.FS.LongMonthNames[I];
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}LongMonthNames[I] := aSFS.FS.LongMonthNames[I];
   For I := 1 To 7 Do
-    ShortDayNames[I] := aSFS.FS.ShortDayNames[I];
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDayNames[I] := aSFS.FS.ShortDayNames[I];
   For I := 1 To 7 Do
-    LongDayNames[I] :=  aSFS.FS.LongDayNames[I];
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDayNames[I] :=  aSFS.FS.LongDayNames[I];
 
-  TwoDigitYearCenturyWindow := aSFS.FS.TwoDigitYearCenturyWindow;
+  {$if RTLVersion >= 23}FormatSettings.{$ifend}TwoDigitYearCenturyWindow := aSFS.FS.TwoDigitYearCenturyWindow;
 
   SysLocale.DefaultLCID := aSFS.SL.DefaultLCID;
   SysLocale.PriLangID   := aSFS.SL.PriLangID;

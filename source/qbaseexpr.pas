@@ -52,7 +52,7 @@ Type
     Function GetAsBoolean: Boolean; Virtual;
     Function GetExprType: TExprType; Virtual; Abstract;
     Function GetIsNull: boolean; Virtual;
-    function StringCharSize: integer; virtual; abstract; { patched by ccy }
+    function StringCharSize: integer; virtual;
   Public
     Function CanReadAs( aExprType: TExprType ): Boolean;
     {means 'can be interpreted as'. Sort of}
@@ -610,6 +610,11 @@ Function TExpression.CanReadAs( aExprType: TExprType ): Boolean;
 Begin
   Result := Ord( ExprType ) >= Ord( aExprType )
 End;
+
+function TExpression.StringCharSize: integer;
+begin
+  Result := SizeOf(AnsiChar);
+end;
 
 { TStringLiteral }
 Function TStringLiteral.GetAsString: String;

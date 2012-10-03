@@ -312,7 +312,7 @@ Begin
   If Assigned( FXQuery ) Then
     ( lexer As TXQlexer ).DateFormat := FXQuery.DateFormat
   Else
-    ( lexer As TXQlexer ).DateFormat := ShortDateFormat;//SDefaultDateFormat;
+    ( lexer As TXQlexer ).DateFormat := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;//SDefaultDateFormat;
 
   RtfHeader :=
     '{\rtf1\ansi\deff0\deftab720' +

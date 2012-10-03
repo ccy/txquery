@@ -191,10 +191,10 @@ begin
   if Length( yylval.yystring ) >= 10 then
   begin
     { section to handle dates in the format m/d/yyyy }
-    SaveDate := ShortDateFormat;
-    ShortDateFormat := SDefaultDateFormat;
+    SaveDate := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SDefaultDateFormat;
     yylval.yystring := FloatToStr(StrToDate(Copy(yylval.yystring, 2, yyTextLen - 2)));
-    ShortDateFormat := SaveDate;
+    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SaveDate;
     returni(_NUMERIC);
   end;
   10:
