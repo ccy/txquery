@@ -813,6 +813,9 @@ Type
     Function GetFieldData(Field: TField; Buffer: Pointer): Boolean; Override;
     Procedure SetBlockReadSize(Value: Integer); Override;
 {$ENDIF}
+{$if RtlVersion >= 24}
+    function GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean; overload; override;
+{$ifend}
     Function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; Override;
     Function IsSequenced: Boolean; Override;
     Function IsDataSetDisabled(DataSet: TDataSet): Boolean;
@@ -2933,7 +2936,7 @@ Begin
                   Replacestring(vS, Format('{Aggregate %d}', [K]), FloatToStr(DValue));
                 End;
               End;
-              Replacestring(vS, {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator, '.');
+              Replacestring(vS, {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator, '.');
             End;
           End;
           vColumn.Resolver.ParseExpression(vS);
@@ -3016,7 +3019,7 @@ Begin
                 DValue:= SparseList.Values[I];
                 Replacestring(vS, Format('{Aggregate %d}', [K]), FloatToStr(DValue));
               End;
-              Replacestring(vS, {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator, '.');
+              Replacestring(vS, {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator, '.');
             End;
           End;
           vTempExpr.ParseExpression(vS);
@@ -5927,16 +5930,16 @@ Begin
     FxQuery.ReindexTable(FTableList);
     Exit;
   End;
-  TmpThousandSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator; { LAS : 05-30-2000 }
-  TmpDecimalSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator; { LAS : 05-30-2000 }
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := ','; { LAS : 05-30-2000 }
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := '.'; { LAS : 05-30-2000 }
+  TmpThousandSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator; { LAS : 05-30-2000 }
+  TmpDecimalSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator; { LAS : 05-30-2000 }
+  {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := ','; { LAS : 05-30-2000 }
+  {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := '.'; { LAS : 05-30-2000 }
   FxQuery.FRowsAffected := 0;
   Try
     SafeCreateResultSet;
   Finally
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
+    {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
+    {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
   End;
 End;
 
@@ -6546,10 +6549,10 @@ Begin
       FreeObject(FResultSet);
 
     { Clear the list of referenced fields on the SQL }
-    TmpThousandSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator;
-    TmpDecimalSeparator := {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator;
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := ',';
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := '.';
+    TmpThousandSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator;
+    TmpDecimalSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator;
+    {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := ',';
+    {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := '.';
 
     If FDataLink.DataSource <> Nil Then
       SetParamsFromDataSet;
@@ -6579,8 +6582,8 @@ Begin
       (*if Found then
         FSQL.Text:= SavedSQLText; *)
 
-      {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
-      {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
+      {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
+      {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
     End;
   End;
 
@@ -7196,6 +7199,95 @@ Begin
   If CalcFieldsSize > 0 Then
     FillChar(Buffer[StartCalculated], CalcFieldsSize, 0);
 End;
+
+{$if RtlVersion >= 24}
+function TCustomxQuery.GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean;
+Var
+  vFieldOffset: Integer;
+  vxqField: TxqField;
+  RecBuffer: TRecordBuffer;
+  c: Currency;
+  d: Double;
+  i: integer;
+  IsBlank: Boolean;
+Begin
+  Result := False;
+  If Field.FieldNo < 1 Then Exit;
+
+  { IMPORTANT:
+    It's very important not to access Recno property inside this method because
+    this causes stack overflow when this TDataset is filtered }
+  If Not Filtered And (Recno <> FResultSet.Recno) And (Recno > 0) And
+     (Recno < FResultSet.RecordCount) Then
+    FResultSet.Recno := Recno;
+  IsBlank := FResultSet.Fields[Field.FieldNo - 1].IsNull;
+  If Buffer = Nil Then
+  Begin
+    //Dataset checks if field is null by passing a nil buffer
+    //Return true if it is not null
+    Result := Not IsBlank;
+    Exit;
+  End;
+  RecBuffer := GetActiveRecordBuffer;
+  If Not FIsOpen Or (RecBuffer = Nil) Then Exit;
+  If Field.FieldKind In [fkCalculated, fkLookup] Then
+  Begin
+    inc(RecBuffer, StartCalculated + Field.Offset);
+    If Not ((Byte(RecBuffer[0]) = 0) Or (Buffer = Nil)) Then
+      CopyMemory(Buffer, @RecBuffer[1], Field.DataSize);
+  End
+  Else
+  Begin
+    vxqField := FResultSet.Fields[Field.FieldNo - 1];
+    vFieldOffset := vxqField.FFieldOffset;
+    If Assigned(Buffer) Then
+    Begin
+      If (Field.DataType = ftBCD) And (vxqField.DataType = ttInteger) Then
+      Begin
+        Move((RecBuffer + vFieldOffset)^, i, SizeOf(integer));
+        c := i;
+        TBitConverter.FromCurrency(c, Buffer);
+      End
+      Else If (Field.DataType = ftBCD) Then
+      Begin
+        Move((RecBuffer + vFieldOffset)^, d, SizeOf(Double));
+        c := d;
+        TBitConverter.FromCurrency(c, Buffer);
+      End
+      Else
+      Begin
+         if Field.DataType in [ftDate, ftTime] Then
+         Begin
+           Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
+           if Field.DataType = ftDate then
+             TBitConverter.FromInteger(DateTimeToTimeStamp(d).Date, Buffer)
+           else
+             TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer);
+         End Else
+           Move((RecBuffer + vFieldOffset)^, Buffer[0], Field.DataSize);
+      End;
+      { empty date problem fixed by Stephan Trapp 05.01.2000 }
+      If (vxqField.SourceField <> Nil) And
+         (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
+      Begin
+        If TBitConverter.ToDouble(Buffer) = 0 Then { 693594 = Delphi1-Zero-Date }
+        Begin
+          Result := False;
+          Exit;
+        End;
+      End;
+    End
+    Else
+    Begin
+      If Field.DataType = ftBoolean Then
+      Begin
+        Move((RecBuffer + vFieldOffset)^, Buffer[0], Field.DataSize);
+      End;
+    End;
+  End;
+  Result := Not IsBlank;
+End;
+{$ifend}
 
 Function TCustomxQuery.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 Var

@@ -304,14 +304,14 @@ end;
 procedure TTest_Between.SetUp;
 begin
   inherited;
-  FShortDateFormat := ShortDateFormat;
-  ShortDateFormat := 'dd/mm/yyyy';
+  FShortDateFormat := {$if RtlVersion >= 22}FormatSettings.{$ifend}ShortDateFormat;
+  {$if RtlVersion >= 22}FormatSettings.{$ifend}ShortDateFormat := 'dd/mm/yyyy';
 end;
 
 procedure TTest_Between.TearDown;
 begin
   inherited;
-  ShortDateFormat := FShortDateFormat;
+  {$if RtlVersion >= 22}FormatSettings.{$ifend}ShortDateFormat := FShortDateFormat;
 end;
 
 procedure TTest_Between.TTest_Between_SQL;
