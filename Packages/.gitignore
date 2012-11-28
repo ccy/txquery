@@ -1,0 +1,8 @@
+*.local
+*.res
+*.identcache
+*.dsk
+*.tvsconfig
+*.dres
+bin/
+lib/
