@@ -48,6 +48,8 @@ contains
   xqbase in '..\..\source\xqbase.pas',
   xqYacc in '..\..\source\xqYacc.pas',
   xquery in '..\..\source\xquery.pas',
-  xqLex in '..\..\source\xqLex.pas';
+  xqLex in '..\..\source\xqLex.pas',
+  XQTypes in '..\..\source\XQTypes.pas',
+  QFormatSettings in '..\..\source\QFormatSettings.pas';
 
 end.

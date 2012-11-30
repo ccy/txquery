@@ -1132,10 +1132,28 @@ WhereExpr : DefineField
           | WhereExpr InOperator _LPAREN InPredicate _RPAREN
             { $<string>$ := CreateInListExpression( $<string>1 ); }
           | WhereExpr InOperator AnyAllSubquery
-            { if Pos('NOT',UpperCase($<string>2)) = 0 then
-                $<string>$ := $<string>1 + Format(' = (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1])
-             else
-                $<string>$ := $<string>1 + Format(' <> (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]);
+            {	if Pos('NOT',UpperCase(yyv[yysp-1].yystring)) = 0 then
+         			begin
+          		 yyval.yystring := yyv[yysp-2].yystring + Format(' = (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]);
+          		 if CurrentAnalizer.SubQueryIsNotInListFlagList.Count < CurrentAnalizer.SubQueryKindList.Count then
+                  CurrentAnalizer.SubQueryIsNotInListFlagList.Add( Pointer(false) ) {added by fduenas}
+		           else
+    		          CurrentAnalizer.SubQueryIsNotInListFlagList[CurrentAnalizer.SubQueryKindList.Count-1] := Pointer(false);
+
+				       if Boolean( CurrentAnalizer.SubQueryKindIsDefaultFlagList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] ) then
+								  CurrentAnalizer.SubqueryKindList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] := Pointer(skAny) ;
+			        end
+        			else
+         			begin
+          			yyval.yystring := yyv[yysp-2].yystring + Format(' <> (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]); {changed by fduenas}
+          			if CurrentAnalizer.SubQueryIsNotInListFlagList.Count < CurrentAnalizer.SubQueryKindList.Count then
+             			 CurrentAnalizer.SubQueryIsNotInListFlagList.Add( Pointer(true ) ) {added by fduenas}
+          			else
+            			 CurrentAnalizer.SubQueryIsNotInListFlagList[CurrentAnalizer.SubQueryKindList.Count-1] := Pointer(true);
+
+			          if Boolean( CurrentAnalizer.SubQueryKindIsDefaultFlagList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] ) then
+      			       CurrentAnalizer.SubqueryKindList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] := Pointer(skAll) ;
+         			end;
             }
           | WhereExpr RW_LIKE _STRING EscapeCharacter
             { if fEscapeChar = '' then fEscapeChar := #39#39;
@@ -1263,9 +1281,13 @@ RangeConstant : _STRING
                | DefineParam
                ;
 
-AnyAllSubquery : Subquery         {CurrentAnalizer.SubqueryKindList.Add( Pointer(skAny) );}
-                | RW_ANY Subquery  {CurrentAnalizer.SubqueryKindList.Add( Pointer(skAny) );}
-                | RW_ALL Subquery  {CurrentAnalizer.SubqueryKindList.Add( Pointer(skAll) );}
+AnyAllSubquery : Subquery         {CurrentAnalizer.SubqueryKindList.Add( Pointer(skAny) );
+         													 CurrentAnalizer.SubQueryKindIsDefaultFlagList.Add( Pointer(True) ); {added by fduenas}
+         													 CurrentAnalizer.SubQueryIsNotInListFlagList.Add( Pointer(false) ); {added by fduenas}
+                | RW_ANY Subquery  {CurrentAnalizer.SubqueryKindList.Add( Pointer(skAny) );
+         														CurrentAnalizer.SubQueryKindIsDefaultFlagList.Add( Pointer(false) ); {added by fduenas}
+                | RW_ALL Subquery  {CurrentAnalizer.SubqueryKindList.Add( Pointer(skAll) );
+         														CurrentAnalizer.SubQueryKindIsDefaultFlagList.Add( Pointer(false) ); {added by fduenas}
                 ;
 
 Subquery : _LPAREN FirstSubquery EndSubquery

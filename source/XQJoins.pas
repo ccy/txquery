@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is xqJoins.pas                                       }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: xqJoins                                             }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 unit xqJoins;
 
@@ -64,7 +68,8 @@ Type
     // gis product
     FGraphicJoin : Boolean;
   Public
-    Constructor Create( JOINOnList: TJOINOnList );
+    Constructor Create( JOINOnList: TJOINOnList;
+     aRuntimeSettings, aSystemSettings: TFormatSettings);
     Destructor Destroy; Override;
     Procedure Assign( Source: TJOINOnItem );
 
@@ -102,17 +107,21 @@ Type
 implementation
 
 uses
-  xquery, xqconsts;
+  xquery, xqconsts, xqtypes;
 
 {-------------------------------------------------------------------------------}
 {                  Implement TJOINOnItem                                        }
 {-------------------------------------------------------------------------------}
 
-Constructor TJOINOnItem.Create( JOINOnList: TJOINOnList );
+Constructor TJOINOnItem.Create( JOINOnList: TJOINOnList;
+     aRuntimeSettings, aSystemSettings: TFormatSettings );
 Begin
   Inherited Create;
   fJOINOnList := JOINOnList;
-  FSortList := TMemSortList.Create( True );
+
+  FSortList := TMemSortList.Create( True,
+   aRuntimeSettings,
+   aSystemSettings  );
 End;
 
 Destructor TJOINOnItem.Destroy;
@@ -164,7 +173,9 @@ End;
 
 Function TJOINOnList.Add: TJOINOnItem;
 Begin
-  Result := TJOINOnItem.Create( Self );
+  Result := TJOINOnItem.Create( Self,
+   TSqlAnalizer(FAnalizer).fRuntimeFormatSettings,
+   TSqlAnalizer(FAnalizer).fSystemFormatSettings );
   FItems.Add( Result );
 End;
 
@@ -264,7 +275,7 @@ procedure TJOINOnList.DoJOINOn;
 
       If JOI.JOINAction = jkLeftInnerJOIN Then
       Begin
-        If Not JOI.FLeftField.IsNull Then
+        If {Not JOI.FLeftField.IsNull} true Then { changed by fduenas, Null values at left side should be tested}
         Begin
           { filter the right Dataset with the value of the related left field }
           JOI.FSortList.Filter( JOI.FLeftField.Value );
@@ -281,7 +292,7 @@ procedure TJOINOnList.DoJOINOn;
             RightDataset.GotoBookmark( JOI.FSortList.SourceBookmark ); { patched by ccy }
             {$ifend}
 
-            If JOI.Resolver.Expression.AsBoolean Then
+            If {JOI.FLeftField.IsNull or} JOI.Resolver.Expression.AsBoolean Then {added by fduenas: allow null left side field values to be included}
             Begin
               If HasMoreJOINs Then
               Begin
@@ -309,7 +320,7 @@ procedure TJOINOnList.DoJOINOn;
         { con esto se cubre el caso en que el campo es nulo }
         ThisCount:= 0;
         RightDataset := TableList[ RightIndex ].Dataset;
-        If JOI.FLeftField.IsNull Then
+        If {JOI.FLeftField.IsNull} false Then
         Begin
           { disable all right Datasets }
           if HasMoreJoins then
@@ -515,7 +526,6 @@ begin
           End ;
 
           if (lrtIndex >= 0) and (rrtIndex >= 0) then Break;
-
         end;
 
         if (lrtIndex < 0) or (rrtIndex < 0) then
@@ -539,12 +549,12 @@ begin
 
         DSet := TableList[ rrtIndex ].Dataset;
 
-        Resolver := TExprParser.Create( FAnalizer, DefDataset );
+        Resolver := TExprParser.Create( FAnalizer, DefDataset, TSqlAnalizer(FAnalizer).fRuntimeFormatSettings, TSqlAnalizer(FAnalizer).fSystemFormatSettings );
         Try
           FResolver.ParseExpression( JOINExpression );
           { now define the sort list for the first field on the referenced
             fields of the right table }
-          Index:= AnsiPos( '.', ThisRef);
+          Index := AnsiPos( '.', ThisRef);
           fname := TrimSquareBrackets( Copy( ThisRef, Index + 1, Length( ThisRef ) ) );
           { ahora ordena por esta tabla. Nota: necesito guardar los bookmarks
             de la tabla para rapidamente localizar el registro correspondiente
@@ -571,9 +581,18 @@ begin
             {$ifend}
             Case FieldExprType Of
               ttString : SortList.Fields[0].AsString  := FRightField.AsString;
-              ttFloat  : SortList.Fields[0].AsFloat   := FRightField.AsFloat;
-              ttInteger: SortList.Fields[0].AsInteger := FRightField.AsInteger;
-              ttBoolean: SortList.Fields[0].AsBoolean := FRightField.AsBoolean;
+             {$IFDEF LEVEL4}
+              ttWideString : SortList.Fields[0].AsString  := FRightField.AsWideString;
+             {$ENDIF}
+              ttFloat  :  SortList.Fields[0].AsFloat     := FRightField.AsFloat;
+              ttInteger:  SortList.Fields[0].AsInteger   := FRightField.AsInteger;
+              ttLargeInt:
+               {$IFDEF Delphi2010Up}
+                SortList.Fields[0].AsLargeInt := FRightField.AsLargeInt;
+               {$ELSE}
+                SortList.Fields[0].AsFloat := FRightField.AsFloat;
+               {$ENDIF} {added by fduenas: added LargeInt (Int64) support}
+              ttBoolean:  SortList.Fields[0].AsBoolean   := FRightField.AsBoolean;
             End;
             DSet.Next;
           End;

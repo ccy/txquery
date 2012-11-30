@@ -1,57 +1,68 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   Copyright (C) <1999-2003> of                                           }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Open Source patch review (2009) with permission from Alfonso Moreno by }
-{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
-{   email: cychau@gmail.com                                                }
-{   url: http://code.google.com/p/txquery/                                 }
-{        http://groups.google.com/group/txquery                            }
-{                                                                          }
-{   This program is free software: you can redistribute it and/or modify   }
-{   it under the terms of the GNU General Public License as published by   }
-{   the Free Software Foundation, either version 3 of the License, or      }
-{   (at your option) any later version.                                    }
-{                                                                          }
-{   This program is distributed in the hope that it will be useful,        }
-{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
-{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
-{   GNU General Public License for more details.                           }
-{                                                                          }
-{   You should have received a copy of the GNU General Public License      }
-{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: xquery.pas                                          }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
-Unit xquery;
+Unit XQuery;
 
 {$I XQ_FLAG.INC}
 Interface
 
 Uses
   SysUtils, Windows, Classes, Controls, Forms, Db,
-  XQMiscel, xqbase, Qlexlib, Qyacclib, Qbaseexpr, QExprYacc, XQJoins
+  xqbase, Qlexlib, Qyacclib, Qbaseexpr, QExprYacc, XQJoins
 {$IFDEF LEVEL3}
-  , DBTables
+    , DBTables
+{$ENDIF}
+{$IFDEF LEVEL4}
+    , WideStrUtils, SyncObjs
 {$ENDIF}
 {$IFDEF LEVEL6}
-  , Variants
+    , Variants
 {$ENDIF}
 {$if RTLVersion >= 20}
-  , Generics.Collections
+    , Generics.Collections
 {$ifend}
-  ;
-
+  , XQTypes, QFormatSettings;
+  
+const
+  SAggregateKind: array[TAggregateKind] of string=('Sum', 'Avg','StDev', 'Min', 'Max', 'Count'); {added by fduenas: to give correct field names to transform aggregated fields}
+  SAggregateKindOf = 'OF_';
 Type
 
-  {-------------------------------------------------------------------------------}
-  {                  Define forward declarations and class definitions            }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define forward declarations and class definitions }
+  { ------------------------------------------------------------------------------- }
 
   TResultSet = Class;
   TxqFields = Class;
@@ -59,53 +70,72 @@ Type
   TDataSetClass = Class Of TDataSet;
   TSqlAnalizer = Class;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxqField                                              }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqField }
+  { ------------------------------------------------------------------------------- }
 
   TxqField = Class
   Private
-    FFields: TxqFields; { the list of fields that this field belongs to                                  }
-    FFieldName: String; { the column name sample: Customer.Addr1                                         }
-    FAlias: String; { the alias of the field: Customer.Addr1 main_address                            }
-    FDataType: TExprType; { the data type (ttstring, ttFloat, ttInteger, ttBoolean)                        }
-    FDataSize: Word; { calculated datasize for ttstring (used in TxQuery)                             }
-    FBufferOffset: Integer; { offset in the list of buffers for every record                                 }
-    FFieldOffset: Integer; { Offset in the buffer in TxQuery dataset                                        }
+    FFields: TxqFields; { the list of fields that this field belongs to }
+    FFieldName: String; { the column name sample: Customer.Addr1 }
+    FDataSetFieldName: String; {added by fduenas: Field name that will be used in Result TDataset }
+    FAlias: String; { the alias of the field: Customer.Addr1 main_address }
+    FDataType: TExprType; { the data type (ttstring, ttFloat, ttLargeInt, ttInteger, ttBoolean)                        }
+    FDataSize: Word; { calculated datasize for ttstring (used in TxQuery) }
+    FBufferOffset: Integer; { offset in the list of buffers for every record }
+    FFieldOffset: Integer; { Offset in the buffer in TxQuery dataset }
     FReadOnly: Boolean; { = true, means that comes from single field, False = expression or joined field }
     FSourceField: TField; { Field that originated this column, =nil if it is an expression                 }
-    FCastType: Word; { field must be casted to this type on creation                                  }
-    FCastLen: Word; { field must be of this len if CastType = RW_CHAR                                }
+    FCastType: Word; { field must be casted to this type on creation }
+    FCastLen: Word; { field must be of this len if CastType = RW_CHAR }
     FUseDisplayLabel: Boolean; { true = use labels from SrcField.DisplayLabel for column alias                   }
-    FFieldNo: Integer; { the number of the field, in base 1                                             }
+    FFieldNo: Integer; { the number of the field, in base 1 }
+    FDataSizeMaxMove: Word; { added by fduenas } { help in CAST functions }
+    FMaxDataSizeMaxMove: Word; { added by fduenas } { help in CAST and SetFieldData functions }
+    FMinDataSizeMaxMove: Word; { added by fduenas } { help in CAST and SetFieldData functions }
     Function GetData(Buffer: Pointer): Boolean;
     Procedure SetData(Buffer: Pointer);
     Function GetColWidth: Integer;
     Function GetIsNull: Boolean;
     { LAS : 5/JUN/2003 }
     Procedure SetIsNull;
+    procedure SetDataSize(const Value: Word);
+    procedure SetDataSizeMaxMove(const Value: Word);
   Protected
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
     Function GetAsVariant: Variant; Virtual;
     Procedure SetAsVariant(const Value: Variant);
     Procedure SetVarValue(const Value: Variant); Virtual; Abstract;
-    Function GetAsstring: String; Virtual;
-    Procedure SetAsstring(Const Value: String); Virtual;
+    Function GetAsString: String; Virtual;
+    Procedure SetAsString(Const Value: String); Virtual;
+    {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Virtual;
+    Procedure SetAsWideString(Const Value: WideString); Virtual;
+    {$ENDIF}
     Function GetAsFloat: double; Virtual;
     Procedure SetAsFloat(Value: double); Virtual;
     Function GetAsInteger: Longint; Virtual;
-    Procedure SetAsInteger(Value: Longint); Virtual;
+    Procedure SetAsInteger(const Value: Longint); Virtual;
+    Function GetAsLargeInt: Int64; Virtual; { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Virtual; { added by fduenas: fix issues for ftLargeInt }
     Function GetAsBoolean: Boolean; Virtual;
     Procedure SetAsBoolean(Value: Boolean); Virtual;
     Procedure SetDataType(Value: TExprType);
+    function NativeExprTypeSize: integer; Virtual; { patched by ccy }
   Public
     Constructor Create(Fields: TxqFields; FieldNo: Integer); Virtual;
     Procedure Clear; Virtual; Abstract;
 
     Property FieldName: String Read FFieldName Write FFieldName;
+    Property DataSetFieldName: String Read FDataSetFieldName Write FDataSetFieldName; {added by fduenas: Field name that will be used in Result TDataset }
     Property Alias: String Read FAlias Write FAlias;
     Property FieldNo: Integer Read FFieldNo;
     Property DataType: TExprType Read FDataType Write FDataType;
-    Property DataSize: Word Read FDataSize Write FDataSize;
+    Property DataSize: Word Read FDataSize Write SetDataSize;
+    Property DataSizeMaxMove: Word Read FDataSizeMaxMove Write SetDataSizeMaxMove; { added by fduenas } { help in CAST functions }
+    Property MinDataSizeMaxMove: Word Read FMinDataSizeMaxMove Write FMinDataSizeMaxMove; { added by fduenas } { help in CAST functions }
+    Property MaxDataSizeMaxMove: Word Read FMaxDataSizeMaxMove Write FMaxDataSizeMaxMove; { added by fduenas } { help in CAST functions }
     Property ReadOnly: Boolean Read FReadOnly Write FReadOnly;
     Property FieldOffset: Integer Read FFieldOffset Write FFieldOffset;
     Property SourceField: TField Read FSourceField Write FSourceField;
@@ -116,39 +146,77 @@ Type
     Property UseDisplayLabel: Boolean Read FUseDisplayLabel Write FUseDisplayLabel;
 
     Property AsVariant: Variant Read GetAsVariant Write SetAsVariant;
-    Property Asstring: String Read GetAsstring Write SetAsstring;
+    Property AsString: String Read GetAsString Write SetAsString;
+    {$IFDEF LEVEL4}
+    Property AsWideString: WideString Read GetAsWideString Write SetAsWideString;
+    {$ENDIF}
     Property AsFloat: double Read GetAsFloat Write SetAsFloat;
     Property AsInteger: Longint Read GetAsInteger Write SetAsInteger;
+    Property AsLargeInt: Int64 Read GetAsLargeInt Write SetAsLargeInt; { added by fduenas: fix issues for ftLargeInt }
     Property AsBoolean: Boolean Read GetAsBoolean Write SetAsBoolean;
     Property IsNull: Boolean Read GetIsNull;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxqStringField                                        }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqStringField }
+  { ------------------------------------------------------------------------------- }
 
   TxqStringField = Class(TxqField)
   Private
     Function GetValue(Var Value: String): Boolean;
+    Function GetWideValue(Var Value: WideString): Boolean;
   Protected
     Function GetAsVariant: Variant; Override;
     Procedure SetVarValue(const Value: Variant); Override;
-    Function GetAsstring: String; Override;
-    Procedure SetAsstring(Const Value: String); Override;
+    Function GetAsString: String; Override;
+    Procedure SetAsString(Const Value: String); Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString(Const Value: WideString); Override;
+   {$ENDIF}
     Function GetAsFloat: double; Override;
     Procedure SetAsFloat(Value: double); Override;
     Function GetAsInteger: Longint; Override;
-    Procedure SetAsInteger(Value: Longint); Override;
+    Procedure SetAsInteger(const Value: Longint); Override;
+    Function GetAsLargeInt: Int64; Override; { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Override; { added by fduenas: fix issues for ftLargeInt }
     Function GetAsBoolean: Boolean; Override;
     Procedure SetAsBoolean(Value: Boolean); Override;
   Public
     Constructor Create(Fields: TxqFields; FieldNo: Integer); Override;
     Procedure Clear; Override;
   End;
+ {$IFDEF LEVEL4}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqWideStringField }
+  { ------------------------------------------------------------------------------- }
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxqFloatField                                         }
-  {-------------------------------------------------------------------------------}
+  TxqWideStringField = Class(TxqStringField)
+  Private
+    Function GetValue(Var Value: WideString): Boolean;
+  Protected
+    Function GetAsVariant: Variant; Override;
+    Procedure SetVarValue(const Value: Variant); Override;
+    Function GetAsString: String; Override;
+    Procedure SetAsString(Const Value: String); Override;
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString(Const Value: WideString); Override;
+    Function GetAsFloat: double; Override;
+    Procedure SetAsFloat(Value: double); Override;
+    Function GetAsInteger: Longint; Override;
+    Procedure SetAsInteger(const Value: Longint); Override;
+    Function GetAsLargeInt: Int64; Override; { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Override; { added by fduenas: fix issues for ftLargeInt }
+    Function GetAsBoolean: Boolean; Override;
+    Procedure SetAsBoolean(Value: Boolean); Override;
+  Public
+    Constructor Create(Fields: TxqFields; FieldNo: Integer); Override;
+    Procedure Clear; Override;
+  End;
+ {$ENDIF}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqFloatField }
+  { ------------------------------------------------------------------------------- }
 
   TxqFloatField = Class(TxqField)
   Private
@@ -157,18 +225,20 @@ Type
     Procedure SetVarValue(const Value: Variant); Override;
     Function GetAsFloat: double; Override;
     Function GetAsInteger: Longint; Override;
-    Function GetAsstring: String; Override;
+    Function GetAsString: String; Override;
     Procedure SetAsFloat(Value: double); Override;
-    Procedure SetAsInteger(Value: Longint); Override;
-    Procedure SetAsstring(Const Value: String); Override;
+    Procedure SetAsInteger(const Value: Longint); Override;
+    Procedure SetAsString(Const Value: String); Override;
+    Function GetAsLargeInt: Int64; Override;  { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Override; { added by fduenas: fix issues for ftLargeInt }
   Public
     Constructor Create(Fields: TxqFields; FieldNo: Integer); Override;
     Procedure Clear; Override;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxqIntegerField                                       }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqIntegerField }
+  { ------------------------------------------------------------------------------- }
 
   TxqIntegerField = Class(TxqField)
   Private
@@ -177,18 +247,42 @@ Type
     Procedure SetVarValue(const Value: Variant); Override;
     Function GetAsFloat: double; Override;
     Function GetAsInteger: Longint; Override;
-    Function GetAsstring: String; Override;
+    Function GetAsString: String; Override;
     Procedure SetAsFloat(Value: double); Override;
-    Procedure SetAsInteger(Value: Longint); Override;
-    Procedure SetAsstring(Const Value: String); Override;
+    Procedure SetAsInteger(const Value: Longint); Override;
+    Procedure SetAsString(Const Value: String); Override;
+    Function GetAsLargeInt: Int64; Override; { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Override; { added by fduenas: fix issues for ftLargeInt }
   Public
     Constructor Create(Fields: TxqFields; FieldNo: Integer); Override;
     Procedure Clear; Override;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxqBooleanField                                       }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqLargeIntField }
+  { ------------------------------------------------------------------------------- }
+
+  TxqLargeIntField = Class(TxqIntegerField)  {added by fduenas: added LargeInt (Int64) support}
+  Private
+  Protected
+    Function GetAsVariant: Variant; Override;
+    Procedure SetVarValue(const Value: Variant); Override;
+    Function GetAsFloat: double; Override;
+    Function GetAsInteger: Longint; Override;
+    Function GetAsString: String; Override;
+    Procedure SetAsFloat(Value: double); Override;
+    Procedure SetAsInteger(const Value: Longint); Override;
+    Procedure SetAsString(Const Value: String); Override;
+    Function GetAsLargeInt: Int64; Override; { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Override; { added by fduenas: fix issues for ftLargeInt }
+  Public
+    Constructor Create(Fields: TxqFields; FieldNo: Integer); Override;
+    Procedure Clear; Override;
+  End;
+
+  { ------------------------------------------------------------------------------- }
+  { Define TxqBooleanField }
+  { ------------------------------------------------------------------------------- }
 
   TxqBooleanField = Class(TxqField)
   Private
@@ -196,39 +290,51 @@ Type
     Function GetAsVariant: Variant; Override;
     Procedure SetVarValue(const Value: Variant); Override;
     Function GetAsBoolean: Boolean; Override;
-    Function GetAsstring: String; Override;
+    Function GetAsString: String; Override;
     Procedure SetAsBoolean(Value: Boolean); Override;
-    Procedure SetAsstring(Const Value: String); Override;
+    Procedure SetAsString(Const Value: String); Override;
+    Function GetAsInteger: Longint; Override;  { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsInteger(const Value: Longint); Override; { added by fduenas: fix issues for ftLargeInt }
+    Function GetAsLargeInt: Int64; Override; { added by fduenas: fix issues for ftLargeInt }
+    Procedure SetAsLargeInt(const Value: Int64); Override; { added by fduenas: fix issues for ftLargeInt }
   Public
     Constructor Create(Fields: TxqFields; FieldNo: Integer); Override;
     Procedure Clear; Override;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxqFields                                             }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxqFields }
+  { ------------------------------------------------------------------------------- }
+  TQueryDataSetFieldNameEvent = Procedure(Sender: TObject;
+    FieldIndex: Integer;
+    Var FieldName: String) Of Object;
 
   TxqFields = Class
+  private
     FResultSet: TResultSet;
     FItems: TList;
     Function GetCount: Integer;
     Function GetItem(Index: Integer): TxqField;
+  protected
+    function RuntimeFormatSettings: TFormatSettings;
+    function SystemFormatSettings: TFormatSettings;
   Public
-    Constructor Create(ResultSet: TResultSet);
+    Constructor Create(aResultSet: TResultSet);
     Destructor Destroy; Override;
     Function Add(DataType: TExprType): TxqField;
     Procedure Clear;
     Procedure Delete(Index: Integer);
     Function FindField(Const FieldName: String): TxqField;
-
+    Function FindByDataSetFieldName(Const DataSetFieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
+    function PrepareDataSetFieldNames( OnQueryDataSetFieldName:TQueryDataSetFieldNameEvent=nil): Boolean; {modified by fduenas: use Field name instead of Field Index}
     Property Count: Integer Read GetCount;
     Property Items[Index: Integer]: TxqField Read GetItem; Default;
     Property ResultSet: TResultSet Read FResultSet;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define abstract TResultSet                                   }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define abstract TResultSet }
+  { ------------------------------------------------------------------------------- }
 
   TResultSet = Class
   Private
@@ -240,6 +346,8 @@ Type
     FBookmarkSize: integer;                         { patched by ccy }
     procedure CheckRecordBufferSize(DataSet: TDataSet); { patched by ccy }
   Protected
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
     Function GetFieldData(Field: TxqField; Buffer: Pointer): Boolean; Virtual;
     Procedure SetFieldData(Field: TxqField; Buffer: Pointer); Virtual; Abstract;
     Function GetIsNull(Field: TxqField): Boolean; Virtual;
@@ -262,6 +370,8 @@ Type
     Procedure Delete; Virtual; Abstract;
     Function FindField(Const FieldName: String): TxqField;
     Function FieldByName(Const FieldName: String): TxqField;
+    Function FindFieldByDataSetFieldName(Const FieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
+    Function FieldByDataSetFieldName(Const FieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
     Procedure Clear; Virtual;
     Procedure SaveToText(Const FileName: String); // debuggin purposes
     Procedure SetSourceBookmark(Bookmark: TBookmark); Virtual; Abstract;
@@ -276,11 +386,11 @@ Type
     Property Fields: TxqFields Read FFields;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TMemResultSet                                         }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TMemResultSet }
+  { ------------------------------------------------------------------------------- }
 
-  TxBuffer = {$if RtlVersion <= 18.5}PAnsiChar{$else}TBytes{$ifend}; { patched by ccy }
+  // TxBuffer = {$if RtlVersion <= 18.5}PAnsiChar{$else}TBytes{$ifend}; { patched by ccy } {moved to xqbase}
 
   TMemResultSet = Class(TResultSet)
   Private
@@ -306,17 +416,18 @@ Type
     Procedure FreeSourceBookmark; Override;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TFileResultSet                                        }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TFileResultSet }
+  { ------------------------------------------------------------------------------- }
 
   TFileResultSet = Class(TResultSet)
   Private
-    FBufferList: TList;
+    FBufferList: TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND};
+    { patched by fduenas based on ccy }
     FMemMapFile: TMemMapFile;
     FTmpFile: String;
-    FBuffer: PChar;
-    Function ActiveBuffer: PChar;
+    FBuffer: TxBuffer; { patched by fduenas based on ccy }
+    Function ActiveBuffer: TxBuffer; { patched by fduenas based on ccy }
   Protected
     Function GetFieldData(Field: TxqField; Buffer: Pointer): Boolean; Override;
     Procedure SetFieldData(Field: TxqField; Buffer: Pointer); Override;
@@ -337,61 +448,63 @@ Type
     Procedure FreeSourceBookmark; Override;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TSqlAnalizer                                          }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TSqlAnalizer }
+  { ------------------------------------------------------------------------------- }
 
   TSqlAnalizer = Class(TObject)
   Private
-    FParentAnalizer: TSqlAnalizer; { the parent analizer if this is a subquery       }
-    FResultSet: TResultSet; { the Result Set                                  }
-    FParams: TParams; { Params passed from TxQuery                      }
-    FStatement: TSqlStatement; { The statement: SELECT, UPDATE, etc.             }
-    FxQuery: TCustomxQuery; { Linked to this TxQuery                          }
-    FDefDataSet: TDataSet; { the default TDataSet                            }
-    FColumnList: TColumnList; { SELECT                                          }
-    FIsDistinct: Boolean; { syntax: SELECT DISTINCT                         }
-    FTableList: TTableList; { FROM                                            }
-    FJoinList: TJoinOnList; { JOIN ON                                         }
-    FLJoinCandidateList: TStringList; { candidates for converting to join               }
-    FRJoinCandidateList: TStringList; {                                                 }
-    FWhereStr: String; { WHERE clause expression                         }
-    FIsJoinInWhere: Boolean; { JOINing in a where clause                       }
+    FParentAnalizer: TSqlAnalizer; { the parent analizer if this is a subquery }
+    FResultSet: TResultSet; { the Result Set }
+    FParams: TParams; { Params passed from TxQuery }
+    FStatement: TSqlStatement; { The statement: SELECT, UPDATE, etc. }
+    FxQuery: TCustomxQuery; { Linked to this TxQuery }
+    FDefDataSet: TDataSet; { the default TDataSet }
+    FColumnList: TColumnList; { SELECT }
+    FIsDistinct: Boolean; { syntax: SELECT DISTINCT }
+    FTableList: TTableList; { FROM }
+    FJoinList: TJoinOnList; { JOIN ON }
+    FLJoinCandidateList: TStringList; { candidates for converting to join }
+    FRJoinCandidateList: TStringList; { }
+    FWhereStr: String; { WHERE clause expression }
+    FIsJoinInWhere: Boolean; { JOINing in a where clause }
     FJoinInWhereExpres: String;
     FJoinInWhereResolver: TExprParser;
-    FMainWhereResolver: TExprParser; { WHERE expression resolver class                 }
+    FMainWhereResolver: TExprParser; { WHERE expression resolver class }
     FWhereOptimizeList: TWhereOptimizeList; { used for optimizing the Result set generation}
-    FOrderByList: TOrderByList; { ORDER BY list                                   }
-    FGroupByList: TOrderByList; { GROUP BY list                                   }
-    FHavingCol: Integer; { HAVING predicate                                }
-    FSubQueryList: TList; { Subqueries in the expression                    }
-    FSubQueryKindList: TList; {                                                 }
-    FDoSelectAll: Boolean; { syntax: SELECT * FROM...                        }
-    FTableAllFields: TStringList; { syntax: SELECT customer.* FROM customer;        }
-    FUpdateColumnList: TUpdateList; { UPDATE statement                                }
-    FInsertList: TInsertList; { INSERT statement                                }
-    FCreateTableList: TCreateTableList; { CREATE TABLE statement                          }
-    FAlterTableList: TCreateTableList; { ALTER TABLE statement                          }
+    FOrderByList: TOrderByList; { ORDER BY list }
+    FGroupByList: TOrderByList; { GROUP BY list }
+    FHavingCol: Integer; { HAVING predicate }
+    FSubQueryList: TList; { Subqueries in the expression }
+    FSubQueryKindList: TList; { }
+    FSubQueryKindIsDefaultFlagList: TList; { added by fduenas }
+    FSubQueryIsNotInListFlagList: TList; { added by fduenas }
+    FDoSelectAll: Boolean; { syntax: SELECT * FROM... }
+    FTableAllFields: TStringList; { syntax: SELECT customer.* FROM customer; }
+    FUpdateColumnList: TUpdateList; { UPDATE statement }
+    FInsertList: TInsertList; { INSERT statement }
+    FCreateTableList: TCreateTableList; { CREATE TABLE statement }
+    FAlterTableList: TCreateTableList; { ALTER TABLE statement }
     FIndexUnique: Boolean; { CREATE INDEX, DROP TABLE, DROP INDEX statements }
-    FIndexDescending: Boolean; {                                                 }
-    FIndexColumnList: TStringList; {                                                 }
-    FIndexName: String; {                                                 }
-    FIndexTable: String; {                                                 }
-    FPivotStr: String; { syntax: TRANSFORM...PIVOT                       }
+    FIndexDescending: Boolean; { }
+    FIndexColumnList: TStringList; { }
+    FIndexName: String; { }
+    FIndexTable: String; { }
+    FPivotStr: String; { syntax: TRANSFORM...PIVOT }
     FPivotInList: TStringList;
     FTransformColumnList: TColumnList; { LAS 25:07:2000 }
     FTransfBaseColumns: Integer;
     FTransfGroupedColumns: Integer;
-    FTransfResultSet: TResultSet; { used in the TRANSFORM...PIVOT}
+    FTransfResultSet: TResultSet; { used in the TRANSFORM...PIVOT }
     FUnionAnalizer: TSqlAnalizer; { syntax select_statement UNION second_select_statement }
     FWhereFilter: String; { used to check if a WHERE clause can be filtered }
     FSubqueryInPivotPredicate: Boolean; { syntax: 	transform count(it.AutoId)
-    select 'No. of Items' as Items from pe, it
-    where  (pe.Title=it.ItDateM)
-    and (pe.ReportId=:REPID)
-       pivot pe.Title in (select pe.Title by pe order by pe.Title)
-  }
-    FIntoTable: String; { select * from customer INTO newcust}
+      select 'No. of Items' as Items from pe, it
+      where  (pe.Title=it.ItDateM)
+      and (pe.ReportId=:REPID)
+      pivot pe.Title in (select pe.Title by pe order by pe.Title)
+    }
+    FIntoTable: String; { select * from customer INTO newcust }
     FUserDefinedRange: TUserDefinedRange;
     FWhereContainsOnlyBasicFields: Boolean;
     FTopNInSelect: Integer;
@@ -412,7 +525,7 @@ Type
     Procedure CreateResultSet;
     Procedure InitializeResultSet;
     Function HasDistinctAggregates: Boolean;
-    { define the procedure for the Result set creation}
+    { define the procedure for the Result set creation }
     Procedure DoJoinInWhere;
     Procedure DoInsertStatement;
     Procedure DoUpdateRecord;
@@ -427,6 +540,8 @@ Type
     Function GetResultSet: TResultSet;
     Procedure SetResultSet(Value: TResultSet);
   Public
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
     Constructor Create(ParentAnalizer: TSqlAnalizer; XQuery: TCustomxQuery);
     Destructor Destroy; Override;
     Procedure ClearSQL;
@@ -460,6 +575,11 @@ Type
     Property HavingCol: Integer Read FHavingCol Write FHavingCol;
     Property SubQueryList: TList Read FSubQueryList;
     Property SubQueryKindList: TList Read FSubQueryKindList;
+    Property SubQueryKindIsDefaultFlagList: TList
+      Read FSubQueryKindIsDefaultFlagList; { added by fduenas }
+    Property SubQueryIsNotInListFlagList: TList
+      Read FSubQueryIsNotInListFlagList; { added by fduenas }
+
     Property doSelectAll: Boolean Read FDoSelectAll Write FDoSelectAll;
     Property TableAllFields: TStringList Read FTableAllFields;
     Property InsertList: TInsertList Read FInsertList;
@@ -488,11 +608,13 @@ Type
     { lex / yacc information }
     Property Parser: TCustomParser Read FParser;
     Property Lexer: TCustomLexer Read FLexer;
+    //property RuntimeFormatSettings: TFormatSettings  read GetRuntimeFormatSettings;
+    //property SystemFormatSettings: TFormatSettings  read GetSystemFormatSettings;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TDataSetItem                                          }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TDataSetItem }
+  { ------------------------------------------------------------------------------- }
 
   TxDataSetItem = Class(TCollectionItem)
   Private
@@ -512,9 +634,9 @@ Type
     Property DataSet: TDataSet Read FDataSet Write SetDataSet;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxDataSets                                            }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxDataSets }
+  { ------------------------------------------------------------------------------- }
 
   TxDataSets = Class(TOwnedCollection)
   Private
@@ -530,9 +652,9 @@ Type
     Property DataSetClass: TDataSetClass Read FDataSetClass Write FDataSetClass;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define Events in TCustomxQuery                               }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define Events in TCustomxQuery }
+  { ------------------------------------------------------------------------------- }
 
   TOptimizeMethod = (omNone, omSetFilter, omSetRange);
 
@@ -623,9 +745,12 @@ Type
   TCancelUserRangeEvent = Procedure(Sender: TObject;
     Dataset: TDataset) Of Object;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define Bookmark information                                  }
-  {-------------------------------------------------------------------------------}
+  TSetupLocaleFormatSettings = procedure(Sender: TObject;
+    var AFormatSettings: TFormatSettings) of Object;
+
+  { ------------------------------------------------------------------------------- }
+  { Define Bookmark information }
+  { ------------------------------------------------------------------------------- }
 
   PRecInfo = ^TRecInfo;
   TRecInfo = Record
@@ -633,25 +758,79 @@ Type
     BookmarkFlag: TBookmarkFlag;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TCustomxQuery dataset                                 }
-  {-------------------------------------------------------------------------------}
+  TxSystemFormatSettings = Class;
+  TxParserFormatSettings = Class;
 
-  {$if RTLVersion <= 18.5}TRecordBuffer = PChar; {$ifend}
+  TxFormatSettings = Class( TPersistent )
+  private
+    fSystem: TxSystemFormatSettings;
+    fParser: TxParserFormatSettings;
+    procedure SetParser(const Value: TxParserFormatSettings);
+    procedure SetSystem(const Value: TxSystemFormatSettings);
+  protected
+    fOwner: TObject;
+  published
+   property Parser: TxParserFormatSettings read fParser write SetParser;
+   property System: TxSystemFormatSettings read fSystem write SetSystem;
+  public
+    constructor Create( aOwner: TObject; aInitSettings: boolean=true );
+    destructor Destroy; override;
+  End;
 
+  TxParserFormatSettings = Class(TQCustomFormatSettings)
+  protected
+    procedure SetDateSeparator(const Value: Char); override;
+    procedure SetShortDateFormat(const Value: String); override;
+  published
+    property DateSeparator;
+    property TimeSeparator;
+    property ShortDateFormat;
+    property TimeAMString;
+    property TimePMString;
+    property ShortTimeFormat;
+    property ThousandSeparator;
+    property DecimalSeparator;
+  End;
+
+  TxSystemFormatSettings = Class(TQCustomFormatSettings)
+  published
+    property CurrencyString;
+    property CurrencyFormat;
+    property CurrencyDecimals;
+    property DateSeparator;
+    property TimeSeparator;
+    property ListSeparator;
+    property ShortDateFormat;
+    property LongDateFormat;
+    property TimeAMString;
+    property TimePMString;
+    property ShortTimeFormat;
+    property LongTimeFormat;
+    property ThousandSeparator;
+    property DecimalSeparator;
+    property TwoDigitYearCenturyWindow;
+    property NegCurrFormat;
+  End;
+
+  { ------------------------------------------------------------------------------- }
+  { Define TCustomxQuery dataset }
+  { ------------------------------------------------------------------------------- }
+
+  TxActiveStoredUsage = (asDesignTime, asRunTime);
+  TxActiveStoredUsageSet = Set of TxActiveStoredUsage;
   TCustomxQuery = Class(TDataSet)
   Private
     { Data }
-    FDataSets: TxDataSets; {  list of queried datasets               }
-    FAllSequenced: Boolean; {  Means all datasets accepts RecNo prop. }
-    FResultSet: TResultSet; {  the abstract Result set                }
-    FRecordCount: Integer; {  current number of record               }
-    FRecordSize: Integer; {  the size of the actual data            }
-    FRecordBufferSize: Integer; {  data + housekeeping(TRecInfo)          }
-    FRecordInfoOffset: Integer; {  offset of RecInfo in record buffer     }
-    FRecNo: Integer; {  current record(0 to FRecordCount - 1)  }
-    BofCrack: Integer; {  before the first record(crack)         }
-    EofCrack: Integer; {  after the last record(crack)           }
+    FDataSets: TxDataSets; { list of queried datasets }
+    FAllSequenced: Boolean; { Means all datasets accepts RecNo prop. }
+    FResultSet: TResultSet; { the abstract Result set }
+    FRecordCount: Integer; { current number of record }
+    FRecordSize: Integer; { the size of the actual data }
+    FRecordBufferSize: Integer; { data + housekeeping(TRecInfo) }
+    FRecordInfoOffset: Integer; { offset of RecInfo in record buffer }
+    FRecNo: Integer; { current record(0 to FRecordCount - 1) }
+    BofCrack: Integer; { before the first record(crack) }
+    EofCrack: Integer; { after the last record(crack) }
     StartCalculated: Integer;
     FIsOpen: Boolean;
     FReadOnly: Boolean;
@@ -667,8 +846,9 @@ Type
     FUseDisplayLabel: Boolean;
     FInMemResultSet: Boolean;
     FDateFormat: String;
+    FDateSeparator: Char;
     FDisabledDataSets: TList;
-    FMapFileSize: Longint; { Temporary file max size in bytes     }
+    FMapFileSize: Longint; { Temporary file max size in bytes }
     { script section }
     FScriptStatementType: TSQLStatement;
     FScriptIsRunning: Boolean;
@@ -679,8 +859,8 @@ Type
     FWhereOptimizeMethod: TOptimizeMethod;
     FRefFields: TStrings;
     FWithDummies: Boolean;
-    FActiveDataSetEvents: Boolean;           // Nonn
-
+    FActiveDataSetEvents: Boolean; // Nonn
+    FActiveStoredUsage: TxActiveStoredUsageSet;
     { events }
     FOnUDFCheck: TUDFCheckEvent;
     FOnUDFSolve: TUDFSolveEvent;
@@ -705,7 +885,10 @@ Type
     FOnQueryFieldName: TQueryFieldNameEvent;
     FOnSetUserRange: TSetUserRangeEvent;
     FOnCancelUserRange: TCancelUserRangeEvent;
-
+    fOnPrepareParserFormatSettings: TSetupLocaleFormatSettings;
+    fOnPrepareSystemFormatSettings: TSetupLocaleFormatSettings;
+    fOnRestoreFormatSettings: TSetupLocaleFormatSettings;
+    FLock: TCriticalSection; {added to lock/release current TxQuery}
     Procedure SetParamsAsFields(Value: TParamsAsFields);
     Function GetFieldSize(FieldType: TFieldType; Size: longint): longint;
     function GetActiveRecordBuffer: TRecordBuffer;
@@ -725,14 +908,26 @@ Type
     Procedure SetParamsFromDataSet;
 {$IFDEF level4}
     Procedure ReadParamData(Reader: TReader);
-    Procedure writeParamData(writer: Twriter);
+    Procedure WriteParamData(writer: Twriter);
 {$ENDIF}
     Procedure FixDummiesForQuerying(Var Filter: String);
     Procedure ClearTempDatasets;
     Function LocateRecord(Const KeyFields: String; Const KeyValues: Variant;
       Options: TLocateOptions): Integer;
     Procedure SetDataSets(Value: TxDatasets);
+    procedure SetDateFormat(const Value: String);
+    function GetDateFormat: String;
+    procedure SetCustomFormatSettings(const Value: TxSystemFormatSettings);
+    function GetDateSeparator: Char;
+    procedure SetDateSeparator(const Value: Char);
+    procedure SetFormatSettings(const Value: TxFormatSettings);
   Protected
+    fGlobalFormatSettings: TxSystemFormatSettings;
+    fRunTimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
+    fSavedFormatSettings: TFormatSettings;
+    fOldRunTimeFormatSettings: TFormatSettings;
+    fFormatSettings: TxFormatSettings;
     Procedure InternalEdit; Override; // editing
     Procedure SetFieldData(Field: TField; Buffer: Pointer); Override; // editing
     Procedure InternalRefresh; Override;
@@ -758,15 +953,14 @@ Type
     Procedure InternalFirst; Override;
     Procedure InternalGotoBookmark(Bookmark: Pointer); Override;
     Function InternalBookmarkValid(Bookmark: Pointer): boolean;
-
+    Procedure SetActive( aValue: Boolean ); override;
     Procedure InternalInitFieldDefs; Override;
     procedure InternalInitRecord(Buffer: TRecordBuffer); override;
     Procedure InternalLast; Override;
     Procedure InternalOpen; Override;
     procedure InternalSetToRecord(Buffer: TRecordBuffer); override;
     Function IsCursorOpen: Boolean; Override;
-    procedure SetBookmarkFlag(Buffer: TRecordBuffer; Value: TBookmarkFlag);
-        override;
+    procedure SetBookmarkFlag(Buffer: TRecordBuffer; Value: TBookmarkFlag); override;
     procedure SetBookmarkData(Buffer: TRecordBuffer; Data: Pointer); override;
     Function GetCanModify: Boolean; Override;
     procedure ClearCalcFields(Buffer: TRecordBuffer); override;
@@ -778,6 +972,7 @@ Type
     procedure InternalInsert; Override;
     Procedure InternalHandleException; Override;
     Procedure InternalPost; Override;
+    Procedure Loaded; Override;
     Procedure Notification(AComponent: TComponent; Operation: toperation); Override;
     Procedure SetFilterText(Const Value: String); Override;
     Procedure SetFiltered(Value: Boolean); Override;
@@ -797,6 +992,9 @@ Type
     Procedure ReindexTable(TableList: TTableList); Virtual;
 
     procedure _ReadRecord(Buffer: TRecordBuffer; IntRecNum: Integer);
+    function DoPrepareFormatSettings(var aNewRuntimeFormatSettings: TFormatSettings;
+     aRefreshCurrentFormatSettings:Boolean=true ): TFormatSettings;
+    function DoRestoreFormatSettings(var aOldRuntimeFormatSettings: TFormatSettings ): TFormatSettings;
 
     { properties }
     Property AllSequenced: Boolean Read FAllSequenced Write FAllSequenced;
@@ -813,9 +1011,9 @@ Type
     Function GetFieldData(Field: TField; Buffer: Pointer): Boolean; Override;
     Procedure SetBlockReadSize(Value: Integer); Override;
 {$ENDIF}
-{$if RtlVersion >= 24}
+{$ifdef DelphiXE3Up}
     function GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean; overload; override;
-{$ifend}
+{$endif}
     Function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; Override;
     Function IsSequenced: Boolean; Override;
     Function IsDataSetDisabled(DataSet: TDataSet): Boolean;
@@ -846,11 +1044,12 @@ Type
     Procedure ExecSQLScript;
     Procedure SortByColumns(Const Columns: Array Of integer; Descending: Boolean);
     Function SourceBookmark: TBookmark;
-
+    Function RefreshCurrentFormatSettings( aPrepareRuntimeSettings: Boolean=true ) :TFormatSettings;
+    Function RefreshRuntimeFormatSettings( aNewFormatSettings: TFormatSettings ) :TFormatSettings;
     { properties }
     Property DataSets: TxDataSets Read FDataSets Write SetDataSets;
     Property DisabledDataSets: TList read FDisabledDataSets;  { mainly used internally}
-    Property ResultSet: TResultSet Read FResultSet;           { mainly used internally}
+    Property ResultSet: TResultSet Read FResultSet; { mainly used internally }
     Property ParamCount: Word Read GetParamsCount;
     Property Prepared: Boolean Read GetPrepared Write SetPrepare;
     Property ReadOnly: Boolean Read FReadOnly Write FReadOnly Default False;
@@ -862,6 +1061,9 @@ Type
     Property RowsAffected: Integer Read FRowsAffected Write FRowsAffected;
     Property RefFields: TStrings Read FRefFields;
     Property WithDummies: Boolean read FWithDummies write FWithDummies;
+    Property GlobalFormatSettings: TxSystemFormatSettings read fGlobalFormatSettings write SetCustomFormatSettings;
+    Property RunTimeFormatSettings: TFormatSettings read fRunTimeFormatSettings;
+    Property SystemFormatSettings: TFormatSettings read fSystemFormatSettings;
 
     { new events }
     Property OnIndexNeededFor: TIndexNeededForEvent Read FOnIndexNeededFor Write FOnIndexNeededFor;
@@ -878,18 +1080,21 @@ Type
 
   Published
     Property DataSource: TDataSource Read GetDataSource Write SetDataSource;
-    Property SQL: Tstrings Read FSQL Write SetQuery;
-    Property SQLScript: Tstrings Read FSQLScript Write SetSQLScript;
+    Property SQL: TStrings Read FSQL Write SetQuery;
+    Property SQLScript: TStrings Read FSQLScript Write SetSQLScript;
     Property Params: TParams Read FParams Write SetParamsList Stored False;
     Property ParamCheck: Boolean Read FParamCheck Write FParamCheck Default True;
     Property About: String Read GetAbout Write SetAbout;
     Property AutoDisableControls: Boolean Read FAutoDisableControls Write FAutoDisableControls Default True;
     Property UseDisplayLabel: Boolean Read FUseDisplayLabel Write FUseDisplayLabel Default False;
-    Property DateFormat: String Read FDateFormat Write FDateFormat;
+    Property DateFormat: String Read GetDateFormat Write SetDateFormat;
+    Property DateSeparator: Char Read GetDateSeparator Write SetDateSeparator;
     Property ShowWaitCursor: Boolean Read FShowWaitCursor Write FShowWaitCursor Default true;
     Property WhereOptimizeMethod: TOptimizeMethod Read FWhereOptimizeMethod Write FWhereOptimizeMethod Default omSetFilter;
     Property ParamsAsFields: TParamsAsFields read FParamsAsFields write SetParamsAsFields;
     Property ActiveDataSetEvents: Boolean Read FActiveDataSetEvents Write FActiveDataSetEvents Default True;   // Nonn
+    Property ActiveStoredUsage: TxActiveStoredUsageSet read FActiveStoredUsage write FActiveStoredUsage Default [asDesignTime, asRunTime]; {added by fduenas}
+    property FormatSettings: TxFormatSettings read fFormatSettings write SetFormatSettings;
     { inherited properties }
     Property Active;
     Property Filter;
@@ -908,6 +1113,9 @@ Type
     Property OnQueryFieldName: TQueryFieldNameEvent Read FOnQueryFieldName Write FOnQueryFieldName;
     Property OnSetUserRange: TSetUserRangeEvent Read FOnSetUserRange Write FOnSetUserRange;
     Property OnCancelUserRange: TCancelUserRangeEvent Read FOnCancelUserRange Write FOnCancelUserRange;
+    Property OnPrepareParserFormatSettings: TSetupLocaleFormatSettings read fOnPrepareParserFormatSettings write fOnPrepareParserFormatSettings;
+    Property OnPrepareSystemFormatSettings: TSetupLocaleFormatSettings read fOnPrepareSystemFormatSettings write fOnPrepareSystemFormatSettings;
+    Property OnRestoreFormatSettings: TSetupLocaleFormatSettings read fOnRestoreFormatSettings write fOnRestoreFormatSettings;
 
     { inherited events }
     Property BeforeOpen;
@@ -934,9 +1142,9 @@ Type
     Property OnPostError;
   End;
 
-  {-------------------------------------------------------------------------------}
-  {                  Define TxQuery                                               }
-  {-------------------------------------------------------------------------------}
+  { ------------------------------------------------------------------------------- }
+  { Define TxQuery }
+  { ------------------------------------------------------------------------------- }
 
   TxQuery = Class(TCustomXQuery)
   Published
@@ -979,22 +1187,28 @@ Uses
 {$IFDEF XQDEMO}
   DemoReg,
 {$ENDIF}
-  xqLex, xqYacc, xqConsts, CnvStrUtils;
+  xqLex, xqYacc, xqConsts, CnvStrUtils, XQMiscel;
 
 Function VarTypeToExprType(Const Value: Variant): TExprType;
 Begin
   Case VarType(Value) Of
     varSingle, varDouble, varCurrency, varDate: Result := ttFloat;
-    varSmallint, varByte, varInteger: Result := ttInteger;
-    varBoolean: Result := ttBoolean;
+    varSmallint, varShortInt, varWord, varLongWord, varByte, varInteger:  Result := ttInteger; { added by fduenas: added VarShortInt, varWord and VarLongWord testing }
+    varInt64: Result := ttLargeInt; {added by fduenas: added LargeInt (Int64) support}
+    varBoolean:
+      Result := ttBoolean;
+    {$IFDEF LEVEL4}
+     varOleStr{$IFDEF LEVEL12}, varUString{$ENDIF}:
+      Result := ttWideString;
+    {$ENDIF}
   Else
     Result := ttstring;
   End;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Define as a demo section                                     }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Define as a demo section }
+{ ------------------------------------------------------------------------------- }
 
 {$IFDEF xqdemo}
 Var
@@ -1013,15 +1227,18 @@ Begin
 End;
 {$ENDIF}
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxqField                                          }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TxqField }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TxqField.Create(Fields: TxqFields; FieldNo: Integer);
 Begin
   Inherited Create;
   FFields := Fields;
   FFieldNo := FieldNo;
+  fRuntimeFormatSettings := FFields.RuntimeFormatSettings;
+  fSystemFormatSettings  := FFields.SystemFormatSettings;
+  FDataSetFieldName := ''; {modified by fduenas: use Field Name instead of Field Index}
 End;
 
 Function TxqField.GetData(Buffer: Pointer): Boolean;
@@ -1034,6 +1251,20 @@ Begin
   FFields.ResultSet.SetFieldData(Self, Buffer);
 End;
 
+procedure TxqField.SetDataSize(const Value: Word);
+begin
+ FDataSize := Value;
+ FMinDataSizeMaxMove := IMin(FDataSize, FDataSizeMaxMove);
+ FMaxDataSizeMaxMove := IMax(FDataSize, FDataSizeMaxMove);
+end;
+
+procedure TxqField.SetDataSizeMaxMove(const Value: Word);
+begin
+ FDataSizeMaxMove := Value;
+ FMinDataSizeMaxMove := IMin(FDataSize, FDataSizeMaxMove);
+ FMaxDataSizeMaxMove := IMax(FDataSize, FDataSizeMaxMove);
+end;
+
 Procedure TxqField.SetDataType(Value: TExprType);
 Begin
   FDataType := Value;
@@ -1043,6 +1274,11 @@ Function TxqField.GetIsNull: Boolean;
 Begin
   Result := FFields.ResultSet.GetIsNull(Self);
 End;
+
+function TxqField.NativeExprTypeSize: integer;
+begin
+ result := XQMiscel.SizeOfExprType( DataType );
+end;
 
 { LAS : 5/JUN/2003 }
 Procedure TxqField.SetIsNull;
@@ -1065,12 +1301,18 @@ Begin
   Raise ExQueryError.Create(SReadIntegerField);
 End;
 
-Function TxqField.GetAsstring: String;
+function TxqField.GetAsLargeInt: Int64;
+{ added by fduenas: fix for ftLargeInt issues }
+begin
+  Raise ExQueryError.Create(SReadIntegerField);
+end;
+
+Function TxqField.GetAsString: String;
 Begin
   Raise ExQueryError.Create(SReadstringField);
 End;
 
-Procedure TxqField.SetAsstring(Const Value: String);
+Procedure TxqField.SetAsString(Const Value: String);
 Begin
   Raise ExQueryError.Create(SwritestringField);
 End;
@@ -1079,7 +1321,12 @@ Function TxqField.GetAsVariant: Variant;
 Begin
   Raise ExQueryError.Create(SReadstringField);
 End;
-
+{$IFDEF LEVEL4}
+function TxqField.GetAsWideString: WideString;
+begin
+ Raise ExQueryError.Create(SReadWideStringField);
+end;
+{$ENDIF}
 Procedure TxqField.SetAsVariant(Const Value: Variant);
 Begin
   If VarIsNull(Value) Then
@@ -1087,16 +1334,27 @@ Begin
   Else
     SetVarValue(Value);
 End;
-
+{$IFDEF LEVEL4}
+procedure TxqField.SetAsWideString(const Value: WideString);
+begin
+  Raise ExQueryError.Create(SWriteWideStringField);
+end;
+{$ENDIF}
 Procedure TxqField.SetAsFloat(Value: double);
 Begin
   Raise ExQueryError.Create(SwriteFloatField);
 End;
 
-Procedure TxqField.SetAsInteger(Value: Longint);
+Procedure TxqField.SetAsInteger(const Value: Longint);
 Begin
   Raise ExQueryError.Create(SwriteIntegerField);
 End;
+
+procedure TxqField.SetAsLargeInt(const Value: Int64);
+{ added by fduenas: fix for ftLargeInt issues }
+begin
+  Raise ExQueryError.Create(SwriteLargeIntegerField);
+end;
 
 Procedure TxqField.SetAsBoolean(Value: Boolean);
 Begin
@@ -1107,20 +1365,22 @@ Function TxqField.GetColWidth: Integer;
 Begin
   If Assigned(FSourceField) Then
   Begin
-    If FSourceField.DataType In [ftstring{$IFDEF LEVEL4}, ftFixedChar,
-    ftWidestring{$ENDIF}
+    If FSourceField.DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar,
+      ftWidestring, ftFixedWideChar{$ENDIF}
 {$IFDEF LEVEL5}, ftGUID{$ENDIF}] Then
       Result := FSourceField.Size
     Else
       Result := FSourceField.DataSize;
   End
-  Else
+  Else if DataType in [ttstring {$IFDEF LEVEL4}, ttWideString{$ENDIF}] then
+    Result := Trunc((FDataSize - SizeOf(WordBool)) / NativeExprTypeSize)
+  else
     Result := FDataSize;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxqStringField                                    }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TxqStringField }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TxqStringField.Create(Fields: TxqFields; FieldNo: Integer);
 Begin
@@ -1130,33 +1390,65 @@ End;
 
 Procedure TxqStringField.Clear;
 Begin
-  SetAsstring('');
+  SetAsString('');
   SetIsNull;
 End;
 
-Function TxqStringField.GetValue(Var Value: String): Boolean; { patched by ccy }
+Function TxqStringField.GetValue(Var Value: String): Boolean;
 Var
-  Buffer: Array[0..dsMaxstringSize] Of Char;
+  Buffer: Array [0 .. dsMaxstringSize] Of WideChar;
   AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
-  A: AnsiString;                                     
+  A: AnsiString;
 Begin
-  if (SourceField = nil) or (SourceField.DataType = ftString) or (SourceField.DataType = ftMemo) then begin
-    Result := GetData(@AnsiBuffer);
-    If Result Then begin
-      A := AnsiBuffer;
-      Value := String(A);
-    end;
-  end else if (SourceField.DataType = ftWideString) or (SourceField.DataType = ftWideMemo) then begin
-    Result := GetData(@Buffer);
+  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  begin
+    FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
+	  Result := GetData(@AnsiBuffer);
     If Result Then
+    begin
+     A := AnsiBuffer;
+     Value := String(A);
+    end;
+  end
+  else
+  begin
+   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+   Result := GetData(@Buffer);
+   If Result Then
       Value := Buffer;
-  end else begin
-    Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
-    Result := False;
-  end;
+  end
+  {else
+	  Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring')};
 End;
-
-Function TxqStringField.GetAsstring: String;
+{$IFDEF LEVEL4}
+function TxqStringField.GetWideValue(var Value: WideString): Boolean;
+Var
+  Buffer: Array [0 .. dsMaxstringSize] Of WideChar;
+  AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
+  A: AnsiString;
+Begin
+  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  begin
+    FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
+	  Result := GetData(@AnsiBuffer);
+    If Result Then
+    begin
+     A := AnsiBuffer;
+     Value := WideString(A);
+    end;
+  end
+  else
+  begin
+   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+   Result := GetData(@Buffer);
+   If Result Then
+     Value := Buffer;
+  end
+  {else
+	  Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsWide')};
+End;
+{$ENDIF}
+Function TxqStringField.GetAsString: String;
 Begin
   If Not GetValue(Result) Then
     Result := '';
@@ -1164,7 +1456,7 @@ End;
 
 Function TxqStringField.GetAsFloat: double;
 Begin
-  Result := StrToFloat(GetAsstring);
+  Result := StrToFloat(GetAsString{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} );
 End;
 
 Function TxqStringField.GetAsVariant: Variant;
@@ -1173,7 +1465,13 @@ Var
 Begin
   If GetValue(S) Then Result:= S Else Result:= Null;
 End;
-
+{$IFDEF LEVEL4}
+function TxqStringField.GetAsWideString: WideString;
+begin
+  If Not GetWideValue(Result) Then
+    Result := '';
+end;
+{$ENDIF}
 Procedure TxqStringField.SetVarValue(const Value: Variant);
 Begin
   SetAsString(Value);
@@ -1184,54 +1482,210 @@ Begin
   Result := StrToInt(GetAsstring);
 End;
 
+function TxqStringField.GetAsLargeInt: Int64;
+begin
+  Result := StrToInt64(GetAsString);
+end;
+
 Function TxqStringField.GetAsBoolean: Boolean;
 Var
   S: String;
 Begin
   S := GetAsstring;
-  Result := (Length(S) > 0) And CharInSet(S[1], ['T', 't', 'Y', 'y']);
+    Result := (Length(S) > 0) And
+   (CharInSet(S[1], xqtypes.SBooleanValues) OR
+    SameText(Trim(S), xqtypes.NBoolean[True]) ) ;
 End;
 
-Procedure TxqStringField.SetAsstring(Const Value: String); { patched by ccy }
+Procedure TxqStringField.SetAsString(Const Value: String);
 Var
-  Buffer: Array[0..dsMaxstringSize] Of Char;
+  Buffer: Array [0 .. dsMaxstringSize] Of WideChar;
   AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
-  L: Integer;
   A: AnsiString;
 Begin
-  if (SourceField = nil) or (SourceField.DataType = ftString) or (SourceField.DataType = ftMemo) then begin
-    A := AnsiString(Value);
-    FillChar(AnsiBuffer, FDataSize, 0);
-    L := Length(A);
-    StrLCopy(AnsiBuffer, PAnsiChar(A), L);
-    SetData(@AnsiBuffer);
-  end else if (SourceField.DataType = ftWideString) or (SourceField.DataType = ftWideMemo) then begin
-    FillChar(Buffer, FDataSize, 0);
-    L := Length(Value);
-    Move(Value[1], Buffer, L * SizeOf(WideChar));
-    SetData(@Buffer);
-  end else
-    Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
+  { FillChar(Buffer, FDataSize, 0) ; }
+  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  begin
+   FillChar(AnsiBuffer, dsMaxStringSize, #0); { added by fduenas }
+   A := AnsiString(Value);
+   StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
+   SetData(@AnsiBuffer);
+  end
+  else
+  begin
+   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+   CopyMemory(@Buffer[0], PWideChar(Value), Length(Value) * NativeExprTypeSize); { changed by fduenas }
+   SetData(@Buffer);
+  end
+  {else Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring')};
 End;
-
+{$IFDEF LEVEL4}
+procedure TxqStringField.SetAsWideString(const Value: WideString);
+Var
+  Buffer: Array [0 .. dsMaxstringSize] Of WideChar;
+  AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
+  A: AnsiString;
+Begin
+  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  begin
+   FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
+    A := AnsiString(Value);
+    StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
+    //CopyMemory(@AnsiBuffer[0], PAnsiChar(Value), L);
+    SetData(@AnsiBuffer);
+  end
+  else
+  begin
+   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+   CopyMemory(@Buffer[0], PWideChar(Value), Length(Value) * NativeExprTypeSize); { changed by fduenas }
+   SetData(@Buffer);
+  end
+  {else Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring')};
+End;
+{$ENDIF}
 Procedure TxqStringField.SetAsFloat(Value: double);
 Begin
-  SetAsstring(FloatToStr(Value));
+  SetAsString(FloatToStr(Value {$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
 End;
 
-Procedure TxqStringField.SetAsInteger(Value: Longint);
+Procedure TxqStringField.SetAsInteger(const Value: Longint);
 Begin
-  SetAsstring(IntToStr(Value));
+  SetAsString(IntToStr(Value));
 End;
+
+procedure TxqStringField.SetAsLargeInt(const Value: Int64);
+begin
+  SetAsString(FloatToStr(Value {$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
+end;
 
 Procedure TxqStringField.SetAsBoolean(Value: Boolean);
 Begin
-  SetAsstring(Copy(xqbase.NBoolean[Value], 1, 1));
+  SetAsString(Copy(xqtypes.NBoolean[Value], 1, 1));
+End;
+{$IFDEF LEVEL4}
+{ TxqWideStringField }
+
+procedure TxqWideStringField.Clear;
+Begin
+  SetAsWideString('');
+  SetIsNull;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxqFloatField                                     }
-{-------------------------------------------------------------------------------}
+constructor TxqWideStringField.Create(Fields: TxqFields; FieldNo: Integer);
+begin
+  Inherited Create(Fields, FieldNo);
+  SetDataType(ttWideString);
+end;
+
+function TxqWideStringField.GetAsBoolean: Boolean;
+Var
+  S: WideString;
+Begin
+  S := GetAsWideString;
+  Result := (Length(S) > 0) And
+   (CharInSet(S[1], xqtypes.SBooleanValues) OR
+    WideSameText(Trim(S), xqtypes.NBoolean[True]) ) ;
+End;
+
+function TxqWideStringField.GetAsFloat: double;
+begin
+   Result := StrToFloat(GetAsWideString{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
+end;
+
+function TxqWideStringField.GetAsInteger: Longint;
+begin
+ Result := StrToInt(GetAsWideString);
+end;
+
+function TxqWideStringField.GetAsLargeInt: Int64;
+begin
+ Result := StrToInt64(GetAsWideString);
+end;
+
+function TxqWideStringField.GetAsString: String;
+var
+ _result: WideString;
+begin
+  If Not GetValue(_result) Then
+     Result := ''
+  else
+     Result := _result;
+end;
+
+function TxqWideStringField.GetAsVariant: Variant;
+Var
+  S: WideString;
+Begin
+  If GetWideValue(S) Then Result:= S Else Result:= Null;
+End;
+
+function TxqWideStringField.GetAsWideString: WideString;
+begin
+  If Not GetWideValue(Result) Then
+     Result := '';
+end;
+
+function TxqWideStringField.GetValue(var Value: WideString): Boolean;
+Var
+  Buffer: Array [0 .. dsMaxstringSize] Of WideChar;
+Begin
+  FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+  Result := GetData(@Buffer);
+  If Result Then
+    Value := Buffer;
+End;
+
+procedure TxqWideStringField.SetAsBoolean(Value: Boolean);
+begin
+  SetAsWideString(Copy(xqtypes.NBoolean[Value], 1, 1));
+end;
+
+procedure TxqWideStringField.SetAsFloat(Value: double);
+begin
+ SetAsWideString(FloatToStr(Value{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
+end;
+
+procedure TxqWideStringField.SetAsInteger(const Value: Integer);
+begin
+  SetAsWideString(IntToStr(Value));
+end;
+
+procedure TxqWideStringField.SetAsLargeInt(const Value: Int64);
+begin
+  SetAsWideString(FloatToStr(Value{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
+end;
+
+procedure TxqWideStringField.SetAsString(const Value: String);
+Var
+  Buffer: Array [0 .. dsMaxstringSize] Of Char;
+Begin
+  { FillChar(Buffer, FDataSize, 0) ; }
+  FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+  { StrLCopy(Buffer, PChar(Value), L); }
+  CopyMemory(@Buffer[0], PChar(Value), Length(Value) * NativeExprTypeSize); { changed by fduenas }
+  SetData(@Buffer);
+End;
+
+
+procedure TxqWideStringField.SetAsWideString(const Value: WideString);
+Var
+  Buffer: Array [0 .. dsMaxStringSize] Of WideChar;
+Begin
+  { FillChar(Buffer, FDataSize, 0) ; }
+  FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+  { StrLCopy(Buffer, PChar(Value), L); }
+  CopyMemory(@Buffer[0], PWideChar(Value), Length(Value) * SizeOf(WideChar)); { changed by fduenas }
+  SetData(@Buffer);
+End;
+
+procedure TxqWideStringField.SetVarValue(const Value: Variant);
+begin
+ SetAsString(Value);
+end;
+{$ENDIF}
+{ ------------------------------------------------------------------------------- }
+{ Implements TxqFloatField }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TxqFloatField.Create(Fields: TxqFields; FieldNo: Integer);
 Begin
@@ -1269,12 +1723,17 @@ Begin
   Result := Longint(Round(GetAsFloat));
 End;
 
-Function TxqFloatField.GetAsstring: String;
+function TxqFloatField.GetAsLargeInt: Int64;
+begin
+  Result := Int64( Round(GetAsFloat) );
+end;
+
+Function TxqFloatField.GetAsString: string;
 Var
   F: double;
 Begin
   If GetData(@F) Then
-    Result := FloatToStr(F)
+    Result := FloatToStr(F{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF})
   Else
     Result := '';
 End;
@@ -1284,12 +1743,17 @@ Begin
   SetData(@Value);
 End;
 
-Procedure TxqFloatField.SetAsInteger(Value: Longint);
+Procedure TxqFloatField.SetAsInteger(const Value: Longint);
 Begin
   SetAsFloat(Value);
 End;
 
-Procedure TxqFloatField.SetAsstring(Const Value: String);
+procedure TxqFloatField.SetAsLargeInt(const Value: Int64);
+begin
+  SetAsFloat(Value);
+end;
+
+Procedure TxqFloatField.SetAsString(Const Value: String);
 Var
   F: Extended;
 Begin
@@ -1297,15 +1761,15 @@ Begin
     Clear
   Else
   Begin
-    If Not TextToFloat(PChar(Value), F, fvExtended) Then
-      ExQueryError.CreateFmt(SIsInvalidFloatValue, [Value]);
+    If Not TextToFloat(PChar(Value), F, fvExtended{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}) Then
+       raise ExQueryError.CreateFmt(SIsInvalidFloatValue, [Value]);
     SetAsFloat(F);
   End;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxqIntegerField                                   }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TxqIntegerField }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TxqIntegerField.Create(Fields: TxqFields; FieldNo: Integer);
 Begin
@@ -1329,12 +1793,12 @@ End;
 
 Procedure TxqIntegerField.SetVarValue(const Value: Variant);
 Begin
-  SetAsInteger(Value);
+  SetAsLargeInt(Value);
 End;
 
 Function TxqIntegerField.GetAsFloat: double;
 Begin
-  Result := GetAsInteger;
+  Result := GetAsLargeInt;
 End;
 
 Function TxqIntegerField.GetAsInteger: Longint;
@@ -1343,12 +1807,18 @@ Begin
     Result := 0;
 End;
 
-Function TxqIntegerField.GetAsstring: String;
+function TxqIntegerField.GetAsLargeInt: Int64;
+begin
+  If Not GetData(@Result) Then
+    Result := 0;
+end;
+
+Function TxqIntegerField.GetAsString: String;
 Var
-  L: Longint;
+  L: LongInt;
 Begin
   If GetData(@L) Then
-    Result := IntToStr(L)  { patched by ccy }
+    Result := FloatToStr(L{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}) { patched by ccy }
   Else
     Result := '';
 End;
@@ -1358,25 +1828,116 @@ Begin
   SetAsInteger(Integer(Round(Value)));
 End;
 
-Procedure TxqIntegerField.SetAsInteger(Value: Longint);
+Procedure TxqIntegerField.SetAsInteger(const Value: Longint);
 Begin
   SetData(@Value);
 End;
 
-Procedure TxqIntegerField.SetAsstring(Const Value: String);
+procedure TxqIntegerField.SetAsLargeInt(const Value: Int64);
+begin
+  SetData(@Value);
+end;
+
+Procedure TxqIntegerField.SetAsString(Const Value: String);
 Var
   E: Integer;
-  L: Longint;
+  L: Integer;
 Begin
   Val(Value, L, E);
   If E <> 0 Then
-    ExQueryError.CreateFmt(SIsInvalidIntegerValue, [Value]);
-  SetAsInteger(L);
+     raise ExQueryError.CreateFmt(SIsInvalidIntegerValue, [Value]);
+  (*if Assigned(SourceField) and (SourceField.DataType=ftLargeInt) then { added by fduenas: fix issues for ftLargeInt }
+     SetAsLargeInt(L)
+  else*)
+     SetAsInteger(L);
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxqBooleanField                                   }
-{-------------------------------------------------------------------------------}
+{ TxqLargeIntField }
+
+procedure TxqLargeIntField.Clear;
+begin
+   SetAsLargeInt(0);
+  { LAS : 5/JUN/2003 }
+  SetIsNull;
+end;
+
+constructor TxqLargeIntField.Create(Fields: TxqFields; FieldNo: Integer);
+begin
+  Inherited Create(Fields, FieldNo);
+  SetDataType(ttLargeInt);
+end;
+
+function TxqLargeIntField.GetAsFloat: double;
+begin
+   Result := GetAsLargeInt;
+end;
+
+function TxqLargeIntField.GetAsInteger: Longint;
+begin
+  If Not GetData(@Result) Then
+     Result := 0;
+end;
+
+function TxqLargeIntField.GetAsLargeInt: Int64;
+begin
+  If Not GetData(@Result) Then
+     Result := 0;
+end;
+
+function TxqLargeIntField.GetAsString: String;
+Var
+  L: Int64;
+Begin
+  If GetData(@L) Then
+    Result := IntToStr(L) { patched by ccy }
+  Else
+    Result := '';
+End;
+
+function TxqLargeIntField.GetAsVariant: Variant;
+Var
+  v: Int64;
+Begin
+  If GetData(@v) Then Result:= v Else Result:= Null;
+End;
+
+procedure TxqLargeIntField.SetAsFloat(Value: double);
+begin
+   SetAsInteger(Integer(Round(Value)));
+end;
+
+procedure TxqLargeIntField.SetAsInteger(const Value: Integer);
+begin
+   SetData(@Value);
+end;
+
+procedure TxqLargeIntField.SetAsLargeInt(const Value: Int64);
+begin
+  SetData(@Value);
+end;
+
+procedure TxqLargeIntField.SetAsString(const Value: String);
+Var
+  E: Integer;
+  L: Int64;
+Begin
+  Val(Value, L, E);
+  If E <> 0 Then
+     raise ExQueryError.CreateFmt(SIsInvalidLargeIntValue, [Value]);
+  (*if Assigned(SourceField) and (SourceField.DataType=ftInteger) then { added by fduenas: fix issues for ftLargeInt }
+     SetAsInteger(L)
+  else*)
+     SetAsLargeInt(L);
+End;
+
+procedure TxqLargeIntField.SetVarValue(const Value: Variant);
+begin
+   SetAsLargeInt(Value);
+end;
+
+{ ------------------------------------------------------------------------------- }
+{ Implements TxqBooleanField }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TxqBooleanField.Create(Fields: TxqFields; FieldNo: Integer);
 Begin
@@ -1413,12 +1974,25 @@ Begin
     Result := False;
 End;
 
-Function TxqBooleanField.GetAsstring: String;
+function TxqBooleanField.GetAsInteger: Longint;
+begin
+  if GetAsBoolean then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+function TxqBooleanField.GetAsLargeInt: Int64;
+begin
+  Result := GetAsInteger;
+end;
+
+Function TxqBooleanField.GetAsString: String;
 Var
   B: WordBool;
 Begin
   If GetData(@B) Then
-    Result := Copy(xqbase.NBoolean[B], 1, 1)
+    Result := Copy(xqtypes.NBoolean[B], 1, 1)
   Else
     Result := '';
 End;
@@ -1434,7 +2008,17 @@ Begin
   SetData(@B);
 End;
 
-Procedure TxqBooleanField.SetAsstring(Const Value: String);
+procedure TxqBooleanField.SetAsInteger(const Value: Integer);
+begin
+  SetAsBoolean((Abs(Value) <> 0));
+end;
+
+procedure TxqBooleanField.SetAsLargeInt(const Value: Int64);
+begin
+  SetAsInteger(Value);
+end;
+
+Procedure TxqBooleanField.SetAsString(Const Value: String);
 Var
   L: Integer;
 Begin
@@ -1445,29 +2029,45 @@ Begin
   End
   Else
   Begin
-    If AnsiCompareText(Value, Copy(xqbase.NBoolean[False], 1, L)) = 0 Then
+    If AnsiCompareText(Value, Copy(xqtypes.NBoolean[False], 1, L)) = 0 Then
       SetAsBoolean(False)
-    Else If AnsiCompareText(Value, Copy(xqbase.NBoolean[True], 1, L)) = 0 Then
+    Else If AnsiCompareText(Value, Copy(xqtypes.NBoolean[True], 1, L)) = 0 Then
       SetAsBoolean(True)
     Else
-      ExQueryError.CreateFmt(SIsInvalidBoolValue, [Value]);
+      raise ExQueryError.CreateFmt(SIsInvalidBoolValue, [Value]);
   End;
 End;
 
 { TxqFields }
 
-Constructor TxqFields.Create(ResultSet: TResultSet);
+Constructor TxqFields.Create(aResultSet: TResultSet);
 Begin
   Inherited Create;
-  FResultSet := ResultSet;
+  FResultSet := aResultSet;
   FItems := TList.Create;
 End;
 
 Destructor TxqFields.Destroy;
 Begin
   Clear;
-  FItems.Free;
+  FreeObject(FItems); { patched by fduenas: Pointer was no set to Nil }
   Inherited Destroy;
+End;
+
+function TxqFields.FindByDataSetFieldName(
+  const DataSetFieldName: String): TxqField;
+Var
+  I: Integer;
+Begin
+  For I := 0 To FItems.Count - 1 Do
+  Begin
+    if (DataSetFieldName='') then
+       Break;
+    Result := FItems[I];
+    If (AnsiCompareText(Result.FDataSetFieldName, DataSetFieldName) = 0) Then
+      Exit;
+  End;
+  Result := Nil;
 End;
 
 Function TxqFields.FindField(Const FieldName: String): TxqField;
@@ -1478,6 +2078,7 @@ Begin
   Begin
     Result := FItems[I];
     If (AnsiCompareText(Result.FFieldName, FieldName) = 0) Or
+    { fduenas changed to CompareText }
       (AnsiCompareText(Result.FAlias, FieldName) = 0) Then
       Exit;
   End;
@@ -1494,15 +2095,73 @@ Begin
   Result := FItems[Index];
 End;
 
+function TxqFields.RuntimeFormatSettings: TFormatSettings;
+begin
+ result := FResultSet.fRuntimeFormatSettings
+end;
+
+function TxqFields.SystemFormatSettings: TFormatSettings;
+begin
+ result := FResultSet.fSystemFormatSettings
+end;
+
+function TxqFields.PrepareDataSetFieldNames(
+  OnQueryDataSetFieldName: TQueryDataSetFieldNameEvent): Boolean;
+Var
+  I, J, Numtry: Integer;
+  Field: TxqField;
+  FieldName, Test: String;
+  Found: Boolean;
+begin
+ For I := 0 To Count - 1 Do
+ Begin
+  GetItem(I).DataSetFieldName := '';
+ End;
+
+ For I := 0 To Count - 1 Do
+ Begin
+  Field := GetItem(I);
+  FieldName := TrimSquareBrackets(Field.FieldName);
+  If Length(FieldName) = 0 Then
+     FieldName := 'NULL';
+  If Assigned(OnQueryDataSetFieldName) Then
+     OnQueryDataSetFieldName(Self, I, FieldName);
+  Test := FieldName;
+  J := AnsiPos('.', Test);
+  If J > 0 Then
+  begin
+   Test := TrimSquareBrackets(Copy(Test, J + 1, Length(Test)));
+  end;
+  Numtry := 0;
+  Repeat
+   Found := Assigned( FindByDataSetFieldName( Test ) );
+   If Found Then
+   Begin
+    Inc(Numtry);
+    Test := FieldName + '_' + IntToStr(Numtry);
+    J := AnsiPos('.', Test);
+    If J > 0 Then
+       Test := Copy(Test, J + 1, Length(Test));
+   End;
+  Until Not Found;
+  Field.DataSetFieldName := Test;
+ End;
+ result := true;
+end;
+
 Function TxqFields.Add(DataType: TExprType): TxqField;
 Begin
   Result := Nil;
   Case DataType Of
-    ttstring: Result := TxqStringField.Create(Self, FItems.Count + 1);
+    ttString: Result := TxqStringField.Create(Self, FItems.Count + 1);
+   {$IFDEF LEVEL4}
+    ttWideString: Result := TxqWideStringField.Create(Self, FItems.Count + 1);
+   {$ENDIF}
     ttFloat: Result := TxqFloatField.Create(Self, FItems.Count + 1);
     ttInteger: Result := TxqIntegerField.Create(Self, FItems.Count + 1);
+    ttLargeInt: Result := TxqLargeIntField.Create(Self, FItems.Count + 1); {added by fduenas: added LargeInt (Int64) support}
     ttBoolean: Result := TxqBooleanField.Create(Self, FItems.Count + 1);
-    //ttUnknown: Result:= nil;            { error here if returned nil !}
+    // ttUnknown: Result:= nil;            { error here if returned nil !}
   End;
   FItems.Add(Result);
 End;
@@ -1522,22 +2181,22 @@ Begin
   FItems.Delete(Index);
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TResultSet                                        }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TResultSet }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TResultSet.Create;
 Begin
   Inherited Create;
   FFields := TxqFields.Create(Self);
   FRecNo := -1;
-  { first sizeof(TBookmark) bytes is the SourceBookmark for every table}
+  { first sizeof(TBookmark) bytes is the SourceBookmark for every table }
   {$if RTLVersion <= 18.5}fRecordBufferSize := SizeOf(Integer);{$ifend}  { patched by ccy }
 End;
 
 Destructor TResultSet.Destroy;
 Begin
-  FFields.Free;
+  FreeObject(FFields); { patched by fduenas: Pointer was no set to Nil }
   Inherited Destroy;
 End;
 
@@ -1551,11 +2210,24 @@ Begin
   Result := FFields.FindField(FieldName);
 End;
 
+function TResultSet.FindFieldByDataSetFieldName(
+  const FieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
+begin
+ Result := FFields.FindByDataSetFieldName(FieldName);
+end;
+
+function TResultSet.FieldByDataSetFieldName(const FieldName: String): TxqField;   {modified by fduenas: use Field name instead of Field Index}
+begin
+ Result := FFields.FindByDataSetFieldName(FieldName);
+ If Result = Nil Then
+    raise ExQueryError.CreateFmt(SDataSetFieldNotFound, [FieldName]);
+end;
+
 Function TResultSet.FieldByName(Const FieldName: String): TxqField;
 Begin
   Result := FindField(FieldName);
   If Result = Nil Then
-    ExQueryError.CreateFmt(SFieldNotFound, [FieldName]);
+     raise ExQueryError.CreateFmt(SFieldNotFound, [FieldName]);
 End;
 
 Function TResultSet.GetFieldData(Field: TxqField; Buffer: Pointer): Boolean;
@@ -1582,8 +2254,8 @@ Procedure TResultSet.AddField(Const pFieldName, pAlias: String;
   pCastLen: Integer;
   pUseDisplayLabel: Boolean);
 Begin
-  if Assigned(pField) then                     { patched by ccy }
-    CheckRecordBufferSize(pField.DataSet);     { patched by ccy }
+  if Assigned(pField) then { patched by ccy }
+    CheckRecordBufferSize(pField.DataSet); { patched by ccy }
   With FFields.Add(pDataType) Do
   Begin
     FieldName := pFieldName;
@@ -1594,25 +2266,76 @@ Begin
     CastType := pCastType;
     CastLen := pCastLen;
     UseDisplayLabel := pUseDisplayLabel;
-    Case CastType Of
-      RW_CHAR:
-        begin
-        DataType := ttstring;
-        if pCastType <> 0 then
-          pDataSize:= pCastLen;
-        end;
-      RW_INTEGER: DataType := ttInteger;
-      RW_BOOLEAN: DataType := ttBoolean;
-      RW_DATE, RW_DATETIME, RW_TIME, RW_FLOAT, RW_MONEY: DataType := ttFloat;
-    End;
-    { Calculate the position in the record buffer }
-    BufferOffset := FRecordBufferSize;
-    Case DataType Of
+    Case pDataType Of
       ttstring:
         Begin
           DataSize := pDataSize;
+          // last boolean is the Null indicator
+        End;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        Begin
+          DataSize := pDataSize;
+          // last boolean is the Null indicator
+        End;
+     {$ENDIF}
+      ttFloat:
+        Begin
+          DataSize := SizeOf(double);
+        End;
+      ttInteger:
+        Begin
+{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            DataSize := SizeOf(Integer)
+          else {$ENDIF}
+            DataSize := SizeOf(Integer);
+        End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+          DataSize := SizeOf(Int64);
+        End;
+      ttBoolean:
+        Begin
+          DataSize := SizeOf(WordBool);
+        End;
+    End;
+    DataSizeMaxMove := DataSize;
+
+    Case CastType Of
+      RW_CHAR:
+        begin
+          if pDataType in [{$IFDEF LEVEL4} ttWideString{$ENDIF}] then
+          begin
+           pDataSize := (pCastLen * SizeOfExprType(pDataType)) + SizeOf(WordBool);
+           DataType := pDataType;
+          end
+          else
+          begin
+           pDataSize := (pCastLen * SizeOfExprType(ttString)) + SizeOf(WordBool);
+           { patched by fduenas CastLen }
+           DataType := ttString;
+          end;
+          DataSize := pDataSize;
+        end;
+      RW_INTEGER:
+    {$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            DataType := ttLargeInt
+          else {$ENDIF}
+        DataType := ttInteger;
+      RW_BOOLEAN:
+        DataType := ttBoolean;
+      RW_DATE, RW_DATETIME, RW_TIME, RW_FLOAT, RW_MONEY:
+        DataType := ttFloat;
+    End;
+
+    { Calculate the position in the record buffer }
+    BufferOffset := FRecordBufferSize;
+    Case DataType Of
+      ttstring{$IFDEF LEVEL4}, ttWideString{$ENDIF}:
+        Begin
+          DataSize := pDataSize;
           Inc(FRecordBufferSize, DataSize + (DataSize Mod SizeOf(Word)) + Sizeof(WordBool));
-            // last boolean is the Null indicator
+          // last boolean is the Null indicator
         End;
       ttFloat:
         Begin
@@ -1621,12 +2344,24 @@ Begin
         End;
       ttInteger:
         Begin
-          Inc(FRecordBufferSize, SizeOf(Integer) + Sizeof(WordBool));
-          DataSize := SizeOf(Integer);
+{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            Inc(FRecordBufferSize, SizeOf(Integer) + SizeOf(WordBool))
+          else {$ENDIF}
+            Inc(FRecordBufferSize, SizeOf(Integer) + SizeOf(WordBool));
+
+{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            DataSize := SizeOf(Integer)
+          else {$ENDIF}
+            DataSize := SizeOf(Integer);
+        End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+         Inc(FRecordBufferSize, SizeOf(Int64) + SizeOf(WordBool));
+         DataSize := SizeOf(Int64)
         End;
       ttBoolean:
         Begin
-          Inc(FRecordBufferSize, SizeOf(WordBool) + Sizeof(WordBool));
+          Inc(FRecordBufferSize, SizeOf(WordBool) + SizeOf(WordBool));
           DataSize := SizeOf(WordBool);
         End;
     End;
@@ -1652,7 +2387,7 @@ Procedure TResultSet.SetRecno(Value: Integer);
 Begin
   If FRecNo = Value Then Exit;
   If (Value < 1) Or (Value > GetRecordCount) Then
-    Raise ExQueryError.Create(SRecnoInvalid);
+     raise ExQueryError.Create(SRecnoInvalid);
   FRecNo := Value;
 End;
 
@@ -1670,18 +2405,18 @@ Begin
   f := TStringList.Create;
   s := '';
   For J := 0 To Fields.Count - 1 Do
-    s := s + Format('%12d', [J]);
+    s := s + Format('%12d', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
   f.Add(s);
   For I := 1 To RecordCount Do
   Begin
     Recno := I;
     s := '';
     For J := 0 To Fields.Count - 1 Do
-      s := s + Format('%12s', [Fields[J].Asstring]);
+      s := s + Format('%12s', [Fields[J].Asstring]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
     f.Add(s);
   End;
   f.SaveToFile(FileName);
-  f.free;
+  FreeObject(f); { patched by fduenas: Pointer was no set to Nil }
 End;
 
 procedure TResultSet.SetSourceDataSet(DataSet: TDataSet);
@@ -1690,9 +2425,9 @@ begin
   CheckRecordBufferSize(DataSet);
 end;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TMemResultSet                                     }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TMemResultSet }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TMemResultSet.Create;
 Begin
@@ -1703,7 +2438,7 @@ End;
 Destructor TMemResultSet.Destroy;
 Begin
   Clear;
-  FBufferList.Free;
+  FreeObject(FBufferList); { patched by fduenas: Pointer was no set to Nil }
   Inherited Destroy;
 End;
 
@@ -1718,39 +2453,43 @@ Var
   vTempList: TList{$if RtlVersion>=20}<TxBuffer>{$ifend}; { patched by ccy }
   I: Integer;
 Begin
-  vTempList := TList{$if RtlVersion>=20}<TBookmark>{$ifend}.Create; { patched by ccy }
+  vTempList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
+  { patched by ccy } { fduenas: changes TBookMark to TxBuffer }
   For I := 1 To SortList.Count Do
   Begin
     SortList.Recno := I;
     vTempList.Add(FBufferList[SortList.SourceRecno - 1]);
   End;
-  FBufferList.Free;
+  FreeObject(FBufferList); { patched by fduenas: Pointer was no set to Nil }
   FBufferList := vTempList;
 End;
 
 Procedure TMemResultSet.ClearBufferList;
-{$if RTLVersion <= 18.5}
 Var
   I: Integer;
-  Buffer: PChar;
+  Buffer: TxBuffer;
+{$if RTLVersion <= 18.5}
   Bookmark: TBookmark;
 {$ifend}
 Begin
-  {$if RTLVersion <= 18.5}
   For I := 0 To FBufferList.Count - 1 Do
   Begin
     Buffer := FBufferList[I];
     { free the bookmark }
+{$if RTLVersion <= 18.5}
     Move((Buffer + 0)^, Bookmark, SizeOf(TBookmark));
-    If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) Then
-      //Not (csDestroying in FSourceDataset.ComponentState) Then
+    If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) and
+      (FSourceDataSet.BookmarkValid(Bookmark)) Then
+    // Not (csDestroying in FSourceDataset.ComponentState) Then
     Begin
       // due to the previous test, it is needed first to destroy the TxQuery than others
       FSourceDataSet.FreeBookmark(Bookmark);
     End;
     FreeMem(Buffer, FRecordBufferSize);
+{$else}
+    SetLength(Buffer, 0);
+{$ifend}
   End;
-  {$ifend}
   FBufferList.Clear;
 End;
 
@@ -1771,9 +2510,13 @@ Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
   {$if RTLVersion <= 18.5}
-  Move((RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Buffer^, Field.DataSize);
+  Move((RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Buffer^,
+    Field.MinDataSizeMaxMove);
+  { patched by fduenas: prevents casting DataTypes to Char errors }
   {$else}
-  Move(RecBuf[Field.BufferOffset + SizeOf(WordBool)], Buffer^, Field.DataSize); { patched by ccy }
+  Move(RecBuf[Field.BufferOffset + SizeOf(WordBool)], Buffer^,
+    Field.MinDataSizeMaxMove);
+  { patched by ccy } { patched by fduenas: prevents casting DataTypes to Char errors }
   {$ifend}
   Result := True;
 End;
@@ -1786,15 +2529,15 @@ Begin
   Result := False;
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
-  {$if RTLVersion <= 18.5}
+{$if RTLVersion <= 18.5}
   Move((RecBuf + Field.BufferOffset)^, HasValue, SizeOf(WordBool));
-  {$else}
+{$else}
   Move(RecBuf[Field.BufferOffset], HasValue, SizeOf(WordBool)); { patched by ccy }
-  {$ifend}
+{$ifend}
   Result := Not HasValue;
 End;
 
-{ LAS: 5/JUN/2003}
+{ LAS: 5/JUN/2003 }
 Procedure TMemResultSet.SetIsNull(Field: TxqField);
 Var
   RecBuf: TxBuffer; { patched by ccy }
@@ -1802,12 +2545,12 @@ Var
 Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
-  HasValue:= False;
-  {$if RTLVersion <= 18.5}
+  HasValue := False;
+{$if RTLVersion <= 18.5}
   Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
-  {$else}
+{$else}
   Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool)); { patched by ccy }
-  {$ifend}
+{$ifend}
 End;
 
 Procedure TMemResultSet.SetFieldData(Field: TxqField; Buffer: Pointer);
@@ -1817,17 +2560,25 @@ Var
 Begin
   RecBuf := ActiveBuffer;
   If (RecBuf = Nil) Or (Buffer = Nil) Then Exit;
-  {$if RTLVersion <= 18.5}
-  Move(Buffer^, (RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Field.DataSize);
-  {$else}
-  Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)], Field.DataSize); { patched by ccy }
-  {$ifend}
+{$IF RTLVersion <= 18.5}
+  Move(Buffer^, (RecBuf + Field.BufferOffset + SizeOf(WordBool))^,
+    Field.MinDataSizeMaxMove);
+{$ELSE}
+ { if assigned( Field.SourceField) and (Field.DataType=ttLargeInt) and
+     (Field.SourceField.DataType=ftLargeint)     then
+     Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)],
+          IMax(Field.DataSize, SizeOf(Int64))) { patched by ccy } {added by fduenas: fix for ftLargeInt issue}
+ { else }
+      Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)],
+           Field.MinDataSizeMaxMove); { patched by ccy }
+{$IFEND}
   HasValue := True;
-  {$if RTLVersion <= 18.5}
+{$IF RTLVersion <= 18.5}
   Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
-  {$else}
-  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool)); { patched by ccy }
-  {$ifend}
+{$ELSE}
+  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool));
+  { patched by ccy }
+{$IFEND}
 End;
 
 Function TMemResultSet.GetRecordCount;
@@ -1839,44 +2590,49 @@ Procedure TMemResultSet.SetSourceBookmark(Bookmark: TBookmark);
 Var
   Buffer: TBookmark; { patched by ccy }
 Begin
-  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then
+    Exit;
   { first delete any previous bookmark set }
   FreeSourceBookmark;
   Buffer := FBufferList[FRecNo - 1];
-  {$if RTLVersion <= 18.5}
+{$IF RTLVersion <= 18.5}
   Move(Bookmark, Buffer^, SizeOf(TBookmark));
-  {$else}
+{$ELSE}
+  FillChar(Buffer[0], Length(Buffer), #0); { patched by fduenas }
   Move(Bookmark[0], Buffer[0], Length(Bookmark)); { patched by ccy }
-  {$ifend}
+{$IFEND}
 End;
 
 Function TMemResultSet.GetSourceBookmark: TBookmark;
-{$if RtlVersion <= 18.5}
+{$IF RtlVersion <= 18.5}
 Var
   Buffer: TBookmark; { patched by ccy }
-{$ifend}
+{$IFEND}
 Begin
-  {$if RtlVersion <= 18.5}
+{$IF RtlVersion <= 18.5}
   Result := Nil;
-  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then
+    Exit;
   Buffer := FBufferList[FRecNo - 1];
   Move(Buffer^, Result, SizeOf(TBookmark));
-  {$else}
+{$ELSE}
   Result := Nil;
-  If (fRecNo < 1) Or (fRecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then
+    Exit;
   SetLength(Result, FBookmarkSize);
-  Move(fBufferList[fRecNo - 1][0], Result[0], FBookmarkSize);
-  {$ifend}
+  Move(FBufferList[FRecNo - 1][0], Result[0], FBookmarkSize);
+{$IFEND}
 End;
 
 Procedure TMemResultSet.FreeSourceBookmark;
 Var
   Buffer: TBookmark; { patched by ccy }
-  {$if RtlVersion <= 18.5}Bookmark: TBookmark;{$ifend}
+{$IF RtlVersion <= 18.5}Bookmark: TBookmark; {$IFEND}
 Begin
-  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then
+    Exit;
   Buffer := FBufferList[FRecNo - 1];
-  {$if RtlVersion <= 18.5}
+{$IF RtlVersion <= 18.5}
   Move(Buffer^, Bookmark, SizeOf(TBookmark));
   If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) Then
   Begin
@@ -1884,22 +2640,22 @@ Begin
   End;
   Bookmark := Nil;
   Move(Bookmark, Buffer^, SizeOf(TBookmark));
-  {$else}
-  FillChar(Buffer[0], FBookmarkSize, 0); { patched by ccy }
-  {$ifend}
+{$ELSE}
+  FillChar(Buffer[0], FBookmarkSize, #0); { patched by ccy }
+{$IFEND}
 End;
 
 Procedure TMemResultSet.Insert;
 Var
   Buffer: TxBuffer; { patched by ccy }
 Begin
-  {$if RtlVersion <= 18.5}
+{$IF RtlVersion <= 18.5}
   GetMem(Buffer, FRecordBufferSize);
-  FillChar(Buffer^, FRecordBufferSize, 0);
-  {$else}
-  SetLength(Buffer, fRecordBufferSize); { patched by ccy }
-  FillChar(Buffer[0], FRecordBufferSize, 0); { patched by ccy }
-  {$ifend}
+  FillChar(Buffer^, FRecordBufferSize, #0);
+{$ELSE}
+  SetLength(Buffer, FRecordBufferSize); { patched by ccy }
+  FillChar(Buffer[0], FRecordBufferSize, #0); { patched by ccy }
+{$IFEND}
   FBufferList.Add(Buffer);
   FRecNo := FBufferList.Count;
 End;
@@ -1908,23 +2664,29 @@ Procedure TMemResultSet.Delete;
 Var
   Buffer: TxBuffer; { patched by ccy }
 Begin
-  If (FRecNo < 1) Or (RecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (Recno > GetRecordCount) Then
+    Exit;
   FreeSourceBookmark;
   Buffer := FBufferList[FRecNo - 1];
-  {$if RtlVersion <= 18.5}FreeMem(Buffer, FRecordBufferSize);{$ifend} { patched by ccy }
+{$IF RtlVersion <= 18.5}
+  FreeMem(Buffer, FRecordBufferSize);
+{$ELSE}
+  SetLength(Buffer, 0); { patched by fduenas }
+{$IFEND} { patched by ccy }
   FBufferList.Delete(FRecNo - 1);
   If FRecNo > GetRecordCount Then
     FRecNo := GetRecordCount;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TFileResultSet                                    }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TFileResultSet }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TFileResultSet.Create(MapFileSize: Longint);
 Begin
   Inherited Create;
-  FBufferList := TList.Create;
+  FBufferList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
+  { patched by  fduenas based on ccy }
   { auxiliary files }
   FTmpFile := GetTemporaryFileName('~xq');
   FMemMapFile := TMemMapFile.Create(FTmpFile, fmCreate, MapFileSize, True);
@@ -1932,10 +2694,14 @@ End;
 
 Destructor TFileResultSet.Destroy;
 Begin
+{$IF RtlVersion <= 18.5}
   If Assigned(FBuffer) Then
     FreeMem(FBuffer, FRecordBufferSize);
+{$ELSE}
+  SetLength(FBuffer, 0); { patched by fduenas based on ccy }
+{$IFEND}
   Clear;
-  FBufferList.Free;
+  FreeObject(FBufferList); { patched by fduenas: Pointer was no set to Nil }
   Inherited Destroy;
 End;
 
@@ -1943,6 +2709,7 @@ Procedure TFileResultSet.Clear;
 Var
   I: Integer;
   Bookmark: TBookmark;
+  Buffer: TxBuffer;
 Begin
   Inherited Clear;
   { free the bookmarks }
@@ -1950,10 +2717,20 @@ Begin
   Begin
     FMemMapFile.Seek(Longint(FBufferList[I]), 0);
     FMemMapFile.Read(Bookmark, SizeOf(TBookmark));
-    If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) Then
+{$IF RTLVersion <= 18.5}
+    Buffer := PAnsiChar(FBufferList[I]);
+    If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) and
+      (FSourceDataSet.BookmarkValid(Bookmark)) Then
+    // Not (csDestroying in FSourceDataset.ComponentState) Then
     Begin
+      // due to the previous test, it is needed first to destroy the TxQuery than others
       FSourceDataSet.FreeBookmark(Bookmark);
     End;
+    FreeMem(Buffer, FRecordBufferSize);
+{$ELSE}
+    Buffer := FBufferList[I];
+    SetLength(Buffer, 0);
+{$IFEND}
   End;
   FreeObject(FMemMapFile);
   SysUtils.DeleteFile(FTmpFile);
@@ -1962,82 +2739,137 @@ End;
 
 Procedure TFileResultSet.SortWithList(SortList: TxqSortList);
 Var
-  vTempList: TList;
+  vTempList: TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND};
+  { patched by fduenas based on ccy }
   I: Integer;
 Begin
-  vTempList := TList.Create;
+  vTempList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
+  { patched by fduenas based on ccy }
   For I := 1 To SortList.Count Do
   Begin
     SortList.Recno := I;
     vTempList.Add(FBufferList[SortList.SourceRecno - 1]);
   End;
-  FBufferList.Free;
+  FreeObject(FBufferList); { patched by fduenas: Pointer was no set to Nil }
   FBufferList := vTempList;
 End;
 
-Function TFileResultSet.ActiveBuffer: PChar;
+Function TFileResultSet.ActiveBuffer: TxBuffer;
 Begin
   Result := Nil;
   If (FRecNo < 1) Or (FRecNo > FBufferList.Count) Then
     Exit;
+{$IF RtlVersion <= 18.5}
   If Not Assigned(FBuffer) Then
-    GetMem(FBuffer, FRecordBufferSize);
+    GetMem(FBuffer, FRecordBufferSize); { patched by fduenas based on ccy }
+{$ELSE}
+  SetLength(FBuffer, 0); { patched by fduenas based on ccy }
+  SetLength(FBuffer, FRecordBufferSize); { patched by fduenas based on ccy }
+{$IFEND}
   FMemMapFile.Seek(Longint(FBufferList[FRecNo - 1]), 0);
+
+{$IF RtlVersion <= 18.5}
   FMemMapFile.Read(FBuffer^, FRecordBufferSize);
+  { patched by fduenas based on ccy }
+{$ELSE}
+  FMemMapFile.Read(FBuffer[0], FRecordBufferSize);
+  { patched by fduenas based on ccy }
+{$IFEND}
   Result := FBuffer;
 End;
 
 Function TFileResultSet.GetFieldData(Field: TxqField; Buffer: Pointer): Boolean;
 Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by fduenas based on ccy }
 Begin
   Result := False;
-  If GetIsNull(Field) Then Exit;
-  RecBuf := ActiveBuffer;
-  If RecBuf = Nil Then
+  If GetIsNull(Field) Then
     Exit;
-  Move((RecBuf + Field.BufferOffset + Sizeof(WordBool))^, Buffer^, Field.DataSize);
+  RecBuf := ActiveBuffer;
+  If (RecBuf = Nil) Then
+    Exit;
+ {$if RTLVersion <= 18.5}
+  Move((RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Buffer^,
+        Field.MinDataSizeMaxMove);
+  { patched by fduenas: prevents casting DataTypes to Char errors }
+ {$else}
+  Move(RecBuf[Field.BufferOffset + SizeOf(WordBool)], Buffer^,
+       Field.MinDataSizeMaxMove);
+  { patched by ccy } { patched by fduenas: prevents casting DataTypes to Char errors }
+ {$ifend}
+
   Result := True;
 End;
 
 Function TFileResultSet.GetIsNull(Field: TxqField): Boolean;
 Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by fduenas based on ccy }
   HasValue: WordBool;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then
     Exit;
+{$IF RTLVersion <= 18.5}
   Move((RecBuf + Field.BufferOffset)^, HasValue, SizeOf(WordBool));
+{$ELSE}
+  Move(RecBuf[Field.BufferOffset], HasValue, SizeOf(WordBool));
+  { patched by fduenas based on ccy }
+{$IFEND}
   Result := Not HasValue;
 End;
 
 { LAS : 5/JUN/2003 }
 Procedure TFileResultSet.SetIsNull(Field: TxqField);
 Var
-  RecBuf: PChar;
-  HasValue: WordBool;
-Begin
-  RecBuf := ActiveBuffer;
-  If RecBuf = Nil Then Exit;
-  HasValue:= False;
-  Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
-End;
-
-Procedure TFileResultSet.SetFieldData(Field: TxqField; Buffer: Pointer);
-Var
-  RecBuf: PChar;
+  RecBuf: TxBuffer; { patched by fduenas based on ccy }
   HasValue: WordBool;
 Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then
     Exit;
-  Move(Buffer^, (RecBuf + Field.BufferOffset + Sizeof(Boolean))^, Field.DataSize);
-  HasValue := True;
+  HasValue := False;
+{$IF RTLVersion <= 18.5}
   Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+{$ELSE}
+  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool));
+  { patched by fduenas based on ccy }
+{$IFEND}
+End;
+
+Procedure TFileResultSet.SetFieldData(Field: TxqField; Buffer: Pointer);
+Var
+  RecBuf: TxBuffer; { patched by fduenas based on ccy }
+  HasValue: WordBool;
+Begin
+  RecBuf := ActiveBuffer;
+  If (RecBuf = Nil) Or (Buffer = Nil) Then
+    Exit;
+
+{$IF RTLVersion <= 18.5}
+  Move(Buffer^, (RecBuf + Field.BufferOffset + SizeOf(WordBool))^,
+       Field.MinDataSizeMaxMove);
+{$ELSE}
+   Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)],
+        Field.MinDataSizeMaxMove); { patched by ccy }
+{$IFEND}
+
+  HasValue := True;
+
+{$IF RTLVersion <= 18.5}
+  Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+{$ELSE}
+  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool));
+  { patched by fduenas based on ccy }
+{$IFEND}
   FMemMapFile.Seek(Longint(FBufferList[Recno - 1]), 0);
+
+{$IF RTLVersion <= 18.5}
   FMemMapFile.Write(RecBuf^, FRecordBufferSize);
+{$ELSE}
+  FMemMapFile.Write(RecBuf[0], FRecordBufferSize);
+  { patched by fduenas based on ccy }
+{$IFEND}
 End;
 
 Function TFileResultSet.GetRecordCount;
@@ -2047,7 +2879,8 @@ End;
 
 Procedure TFileResultSet.SetSourceBookmark(Bookmark: TBookmark);
 Begin
-  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then  Exit;
+  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then
+    Exit;
   { first delete any previous bookmark set }
   FreeSourceBookmark;
   FMemMapFile.Seek(Longint(FBufferList[FRecNo - 1]), 0);
@@ -2067,7 +2900,8 @@ Procedure TFileResultSet.FreeSourceBookmark;
 Var
   Bookmark: TBookmark;
 Begin
-  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (FRecNo > GetRecordCount) Then
+    Exit;
   FMemMapFile.Seek(Longint(FBufferList[FRecNo - 1]), 0);
   FMemMapFile.Read(Bookmark, SizeOf(TBookmark));
   If (Longint(Bookmark) > 0) And (FSourceDataSet <> Nil) Then
@@ -2083,19 +2917,32 @@ Procedure TFileResultSet.Insert;
 Var
   Offset: Integer;
 Begin
+{$IF RtlVersion <= 18.5}
   If Not Assigned(FBuffer) Then
     GetMem(FBuffer, FRecordBufferSize);
-  FillChar(FBuffer^, FRecordBufferSize, 0);
+  FillChar(FBuffer^, FRecordBufferSize, #0);
+{$ELSE}
+  SetLength(FBuffer, 0); { patched by fduenas based on ccy }
+  SetLength(FBuffer, FRecordBufferSize); { patched by ccy }
+  FillChar(FBuffer[0], FRecordBufferSize, #0); { patched by ccy }
+{$IFEND}
   Offset := FMemMapFile.VirtualSize;
+
   FMemMapFile.Seek(Offset, 0);
+{$IF RtlVersion <= 18.5}
   FMemMapFile.Write(FBuffer^, FRecordBufferSize);
-  FBufferList.Add(Pointer(Offset)); { the address in temp file is saved }
+{$ELSE}
+  FMemMapFile.Write(FBuffer[0], FRecordBufferSize);
+{$IFEND}
+  FBufferList.Add(TxBuffer(Offset)); { the address in temp file is saved }
   FRecNo := FBufferList.Count;
+
 End;
 
 Procedure TFileResultSet.Delete;
 Begin
-  If (FRecNo < 1) Or (RecNo > GetRecordCount) Then Exit;
+  If (FRecNo < 1) Or (Recno > GetRecordCount) Then
+    Exit;
   FreeSourceBookmark;
   FBufferList.Delete(FRecNo - 1);
   If FRecNo > GetRecordCount Then
@@ -2106,18 +2953,21 @@ Procedure TFileResultSet.ClearBufferList;
 Begin
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TSqlAnalizer                                      }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TSqlAnalizer }
+{ ------------------------------------------------------------------------------- }
 
-Constructor TSqlAnalizer.Create(ParentAnalizer: TSqlAnalizer; XQuery: TCustomxQuery);
+Constructor TSqlAnalizer.Create(ParentAnalizer: TSqlAnalizer;
+  xquery: TCustomxQuery);
 Var
   Temps: String;
 Begin
   Inherited Create;
   FParentAnalizer := ParentAnalizer;
-  FxQuery := XQuery;
-  FParams := TParams.Create{$IFNDEF level3}(FxQuery){$ENDIF};
+  FxQuery := xquery;
+  fRuntimeFormatSettings := FxQuery.fRunTimeFormatSettings;
+  fSystemFormatSettings  := FxQuery.fSystemFormatSettings;
+  FParams := TParams.Create{$IFNDEF LEVEL4}(FxQuery){$ENDIF};
   FColumnList := TColumnList.Create;
   FTableList := TTableList.Create;
   FOrderByList := TOrderByList.Create;
@@ -2137,63 +2987,82 @@ Begin
   FHavingCol := -1;
   FSubQueryList := TList.Create; { LAS: 01-08-00 }
   FSubQueryKindList := TList.Create;
+  FSubQueryKindIsDefaultFlagList := TList.Create; { added by fduenas }
+  FSubQueryIsNotInListFlagList := TList.Create; { added by fduenas }
+
   FUserDefinedRange := TUserDefinedRange.Create;
 
   { create lex / yacc information }
   Temps := FxQuery.SQL.Text;
   FInputStream := TMemoryStream.Create;
-  FInputStream.WriteBuffer(Pointer(Temps)^, Length(Temps) * SizeOf(Char)); { patched by ccy }
+  FInputStream.WriteBuffer(Pointer(Temps)^, Length(Temps) * SizeOf(Char));
+  { patched by ccy }
   FInputStream.Seek(0, 0);
   FOutputStream := TMemoryStream.Create;
   FErrorStream := TMemoryStream.Create;
   FLexer := TxqLexer.Create;
+  FLexer.yyRuntimeFormatSettings := fRuntimeFormatSettings;
+  FLexer.yySystemFormatSettings := fSystemFormatSettings;
   FLexer.yyinput := FInputStream;
   FLexer.yyoutput := FOutputStream;
   FLexer.yyerrorfile := FErrorStream;
   (FLexer As TxqLexer).DateFormat := FxQuery.DateFormat;
-  FParser := TxqParser.Create(Self); { parser and Analizer linked }
+  FParser := TxqParser.Create(Self,fRuntimeFormatSettings, fSystemFormatSettings); { parser and Analizer linked }
   FParser.yyLexer := FLexer; { link lexer and parser }
-
 End;
 
 Destructor TSqlAnalizer.Destroy;
 Begin
   ClearSQL;
-  FColumnList.Free;
-  FTableList.Free;
-  FOrderByList.Free;
-  FGroupByList.Free;
-  FSubQueryList.Free;
-  FSubQueryKindList.Free;
-  //if FSubQueryList.Count > 0 then
-  //   FreeSubQueries(fSubQuery);
+  FreeObject(FColumnList);
+  { patched by fduenas: Pointer was no set to Nil } { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FTableList);
+  { patched by fduenas: Pointer was no set to Nil } { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FOrderByList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FGroupByList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FSubQueryList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FSubQueryKindList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FSubQueryKindIsDefaultFlagList); { added by fduenas }
+  FreeObject(FSubQueryIsNotInListFlagList); { added by fduenas }
+
+  // if FSubQueryList.Count > 0 then
+  // FreeSubQueries(fSubQuery);
   If Assigned(FResultSet) Then
-    FResultSet.Free;
-  FTableAllFields.Free;
-  FJoinList.Free;
-  FLJoinCandidateList.Free;
-  FRJoinCandidateList.Free;
-  FUpdateColumnList.Free;
-  FInsertList.Free;
-  FWhereOptimizeList.Free;
-  FParams.Free;
-  FCreateTableList.Free;
-  FAlterTableList.Free;
-  FIndexColumnList.Free;
-  FTransformColumnList.Free;
-  FPivotInList.Free;
-  FUserDefinedRange.Free;
+    FreeObject(FResultSet); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FTableAllFields); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FJoinList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FLJoinCandidateList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FRJoinCandidateList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FUpdateColumnList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FInsertList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FWhereOptimizeList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FParams); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FCreateTableList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FAlterTableList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FIndexColumnList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FTransformColumnList);
+  { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FPivotInList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FUserDefinedRange);
+  { patched by fduenas: Pointer was no set to Nil }
   If Assigned(FUnionAnalizer) Then
     FreeObject(FUnionAnalizer);
   If Assigned(FTransfResultSet) Then
     FreeObject(FTransfResultSet);
 
   { free lex / yacc information }
-  FParser.free;
-  FInputStream.free;
-  FOutputStream.free;
-  FErrorStream.free;
-  FLexer.free;
+  FreeObject(FParser); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FInputStream); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FOutputStream); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FErrorStream); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FLexer); { patched by fduenas: Pointer was no set to Nil }
 
   Inherited Destroy;
 End;
@@ -2201,30 +3070,32 @@ End;
 Function TSqlAnalizer.CreateSortList(UsingBookmark: Boolean): TxqSortList;
 Begin
   If FxQuery.InMemResultSet Then
-    Result := TMemSortList.Create(UsingBookmark)
+    Result := TMemSortList.Create(UsingBookmark,
+     fRuntimeFormatSettings, fSystemFormatSettings )
   Else
-    Result := TFileSortList.Create(UsingBookmark, FxQuery.FMapFileSize);
+    Result := TFileSortList.Create(UsingBookmark, FxQuery.FMapFileSize,
+     fRuntimeFormatSettings, fSystemFormatSettings);
 End;
 
 { recursively free subqueries }
 
 Procedure TSqlAnalizer.FreeSubQueries(Var SubQ: TSqlAnalizer);
 Var
-  i: integer;
+  I: Integer;
   Analizer: TSqlAnalizer;
 Begin
-  For i := 0 To SubQ.FSubQueryList.Count - 1 Do
+  For I := 0 To SubQ.FSubQueryList.Count - 1 Do
   Begin
-    Analizer := TSqlAnalizer(SubQ.FSubQueryList[i]);
+    Analizer := TSqlAnalizer(SubQ.FSubQueryList[I]);
     FreeSubQueries(Analizer);
   End;
-  FreeObject(SubQ);
+  FreeObject(SubQ); { patched by fduenas: Pointer was no set to Nil }
 End;
 
 Procedure TSqlAnalizer.ClearSQL;
 Var
   TmpAnalizer: TSqlAnalizer;
-  I: integer;
+  I: Integer;
 Begin
   ColumnList.Clear;
   TableList.Clear;
@@ -2238,10 +3109,13 @@ Begin
   Begin
     TmpAnalizer := FSubQueryList[I];
     TmpAnalizer.ClearSQL;
-    FreeSubqueries(TmpAnalizer);
+    FreeSubQueries(TmpAnalizer);
   End;
   FSubQueryList.Clear;
   FSubQueryKindList.Clear;
+  FSubQueryKindIsDefaultFlagList.Clear; { added by fduenas }
+  FSubQueryIsNotInListFlagList.Clear; { added by fduenas }
+
   If Assigned(ResultSet) Then
     ResultSet.Clear;
 End;
@@ -2260,12 +3134,12 @@ Procedure TSqlAnalizer.DoJoinInWhere;
       If Start < FTableList.Count - 2 Then
       Begin
         { call recursively }
-        bm := TmpDataset.GetBookmark;
+        bm := TmpDataSet.GetBookmark;
         Try
           RecursiveJoin(Start + 1)
         Finally
-          TmpDataset.GotoBookmark(bm);
-          TmpDataset.FreeBookmark(bm);
+          TmpDataSet.GotoBookmark(bm);
+          TmpDataSet.FreeBookmark(bm);
         End;
       End
       Else
@@ -2278,15 +3152,17 @@ Procedure TSqlAnalizer.DoJoinInWhere;
       TmpDataSet.Next;
     End;
   End;
+
 Begin
   { recursively joining }
-  if FTableList.Count > 1 then
-    RecursiveJoin(0);
+  if FTableList.Count > 0 then // change to 0 (was 1) from eLion
+    RecursiveJoin(-1);
+  // was 0. Have to start from -1 for queries like select ... where Field1 = Field2
 End;
 
 { --- Add this record to the Result set --- }
 
-Procedure TSqlAnalizer.AddThisRecord(Dataset: TDataset);
+Procedure TSqlAnalizer.AddThisRecord(DataSet: TDataSet);
 Var
   J, K, N: Integer;
   vField: TxqField;
@@ -2296,8 +3172,8 @@ Var
 Begin
   ResultSet.Insert;
 
-  { Dataset can optionally support RecNo property  }
-  ResultSet.SetSourceBookmark(Dataset.GetBookmark);
+  { Dataset can optionally support RecNo property }
+  ResultSet.SetSourceBookmark(DataSet.GetBookmark);
 
   { add all fields }
   For J := 0 To FColumnList.Count - 1 Do
@@ -2308,36 +3184,38 @@ Begin
     If vColumn.AggregateList.Count > 0 Then
       Continue;
 
-    If vColumn.SubqueryList.Count > 0 Then
+    If vColumn.SubQueryList.Count > 0 Then
     Begin
       { a subquery in the SELECT clause must be evaluated here }
       vS := vColumn.ColumnExpr;
-      For K := 0 To vColumn.SubqueryList.Count - 1 Do
+      For K := 0 To vColumn.SubQueryList.Count - 1 Do
       Begin
-        vAnalizer := TSqlAnalizer(vColumn.SubqueryList[K]);
+        vAnalizer := TSqlAnalizer(vColumn.SubQueryList[K]);
         N := vAnalizer.ResultSet.RecordCount;
         If N = 0 then
         begin
-          Replacestring(vS, Format('{Subquery %d}', [K]), '""');
-        end else
+          Replacestring(vS, Format('{Subquery %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '""');
+        end
+        else
         begin
-          If ResultSet.RecNo > N Then
-            vAnalizer.ResultSet.RecNo := N
+          If ResultSet.Recno > N Then
+            vAnalizer.ResultSet.Recno := N
           Else
-            vAnalizer.ResultSet.RecNo := ResultSet.RecNo;
+            vAnalizer.ResultSet.Recno := ResultSet.Recno;
           { only the first field is meaningful }
-          Replacestring(vS, Format('{Subquery %d}', [K]), vAnalizer.ResultSet.Fields[0].Asstring);
+          Replacestring(vS, Format('{Subquery %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
+            vAnalizer.ResultSet.Fields[0].AsString);
         end;
         { due to this, you cannot combine an aggregate function with a subquery in the SELECT
-         columns, example:
-         SELECT custno, SUM(amountpaid) *
-            (SELECT COUNT(*) FROM customer WHERE custno BETWEEN 1000 AND 2000) FROM customer;
+          columns, example:
+          SELECT custno, SUM(amountpaid) *
+          (SELECT COUNT(*) FROM customer WHERE custno BETWEEN 1000 AND 2000) FROM customer;
 
-         is not valid, but you can do this instead:
-         SELECT custno, (SELECT SUM(AmountPaid) FROM Customer) *
-            (SELECT COUNT(*) FROM customer WHERE custno BETWEEN 1000 AND 2000) FROM customer;
+          is not valid, but you can do this instead:
+          SELECT custno, (SELECT SUM(AmountPaid) FROM Customer) *
+          (SELECT COUNT(*) FROM customer WHERE custno BETWEEN 1000 AND 2000) FROM customer;
 
-         }
+        }
       End;
       vColumn.Resolver.ParseExpression(vS);
     End;
@@ -2345,7 +3223,8 @@ Begin
     vField := ResultSet.Fields[J];
     With vColumn Do
     Begin
-      If Assigned(vField.SourceField) And (vField.SourceField Is TBlobField) Then
+      If Assigned(vField.SourceField) And
+        (vField.SourceField Is TBlobField) Then
       Begin
         { Instead of actual data, this will point to the original recno
           that have the blob field of the dataset }
@@ -2354,17 +3233,25 @@ Begin
           If Not Self.FxQuery.IsDataSetDisabled(vField.SourceField.DataSet) Then
           Begin
             { actually, this information is no longer used }
-            ResultSet.Fields[J].AsInteger := {GetRecordNumber(} vField.SourceField.DataSet.Recno {)};
+            ResultSet.Fields[J].AsInteger :=
+            { GetRecordNumber( } vField.SourceField.DataSet.Recno { ) };
           End;
         End;
-      End Else If Not Resolver.Expression.IsNull Then
+      End
+      Else If Not Resolver.Expression.IsNull Then
         Case Resolver.Expression.ExprType Of
           ttstring:
-            vField.Asstring := Resolver.Expression.Asstring;
+            vField.AsString := Resolver.Expression.AsString;
+         {$IFDEF LEVEL4}
+          ttWideString:
+            vField.AsWideString := Resolver.Expression.AsWideString;
+         {$ENDIF}
           ttFloat:
             vField.AsFloat := Resolver.Expression.AsFloat;
           ttInteger:
             vField.AsInteger := Resolver.Expression.AsInteger;
+          ttLargeInt:
+            vField.AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
           ttBoolean:
             vField.AsBoolean := Resolver.Expression.AsBoolean;
         End;
@@ -2392,7 +3279,7 @@ Begin
         TmpAnalizer := FSubQueryList[K];
         For I := 1 To TmpAnalizer.ResultSet.RecordCount Do
         Begin
-          TmpAnalizer.ResultSet.RecNo := I;
+          TmpAnalizer.ResultSet.Recno := I;
           If InsertItem.FieldNames.Count = 0 Then
           Begin
             { insertion on all fields }
@@ -2406,11 +3293,13 @@ Begin
                   Begin
                     If DataType In ftNonTextTypes Then
                     Begin
-                      TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
-                      If Assigned(TmpField) And (TmpField.DataType In ftNonTextTypes) And
-                         Not (TmpField.IsNull) Then
+                      TmpField := TmpAnalizer.ResultSet.FieldByName(InsertItem.FieldNames[J]).SourceField; {search by fieldname}
+                      //TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
+                      If Assigned(TmpField) And
+                        (TmpField.DataType In ftNonTextTypes) And
+                        Not(TmpField.IsNull) Then
                         Assign(TmpField);
-                      //Asstring := TmpAnalizer.ResultSet.Fields[J].Asstring;
+                      // AsString := TmpAnalizer.ResultSet.Fields[J].AsString;
                     End
                     Else
                     Begin
@@ -2418,13 +3307,30 @@ Begin
                       begin
                         Case Field2ExprType(DataType) Of
                           ttstring:
-                            InsertItem.DataSet.Fields[J].Asstring := TmpAnalizer.ResultSet.Fields[J].Asstring;
+                            InsertItem.DataSet.Fields[J].AsString :=
+                              TmpAnalizer.ResultSet.Fields[J].AsString;
+                         {$IFDEF LEVEL4}
+                          ttWideString:
+                            InsertItem.DataSet.Fields[J].AsWideString :=
+                              TmpAnalizer.ResultSet.Fields[J].AsWideString;
+                         {$ENDIF}
                           ttFloat:
-                            InsertItem.DataSet.Fields[J].AsFloat := TmpAnalizer.ResultSet.Fields[J].AsFloat;
+                            InsertItem.DataSet.Fields[J].AsFloat :=
+                              TmpAnalizer.ResultSet.Fields[J].AsFloat;
                           ttInteger:
-                            InsertItem.DataSet.Fields[J].AsInteger := TmpAnalizer.ResultSet.Fields[J].AsInteger;
+                            InsertItem.DataSet.Fields[J].AsInteger :=
+                              TmpAnalizer.ResultSet.Fields[J].AsInteger;
+                          ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+                           {$IFDEF Delphi2010Up}
+                            InsertItem.DataSet.Fields[J].AsLargeInt :=
+                              TmpAnalizer.ResultSet.Fields[J].AsLargeInt;
+                           {$ELSE}
+                            InsertItem.DataSet.Fields[J].AsFloat :=
+                              TmpAnalizer.ResultSet.Fields[J].AsFloat;
+                           {$ENDIF}
                           ttBoolean:
-                            InsertItem.DataSet.Fields[J].AsBoolean := TmpAnalizer.ResultSet.Fields[J].AsBoolean;
+                            InsertItem.DataSet.Fields[J].AsBoolean :=
+                              TmpAnalizer.ResultSet.Fields[J].AsBoolean;
                         End;
                       End;
                     End;
@@ -2448,36 +3354,49 @@ Begin
             Try
               For J := 0 To InsertItem.FieldNames.Count - 1 Do
                 With InsertItem.DataSet.FieldByName(InsertItem.FieldNames[J]) Do
+                begin
+                  TmpField := TmpAnalizer.ResultSet.FieldByName
+                                (InsertItem.FieldNames[J]).SourceField; {changed by fduenas:  serach field by name}
+                  if not assigned (TmpField ) then
+                     TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
                   If DataType In ftNonTextTypes Then
                   Begin
-                    TmpField :=
-                      TmpAnalizer.ResultSet.FieldByName(InsertItem.FieldNames[J]).SourceField;
-                    If Assigned(TmpField) And (TmpField.DataType In ftNonTextTypes) And
-                      Not TmpField.IsNull And Not (AnsiCompareText(InsertItem.ExprList[J], 'NULL') = 0) Then
+                    If Assigned(TmpField) And
+                      (TmpField.DataType In ftNonTextTypes) And
+                      Not TmpField.IsNull And
+                      Not(AnsiCompareText(InsertItem.ExprList[J], 'NULL')
+                      = 0) Then
                       Assign(TmpField);
-                    //Asstring := TmpAnalizer.ResultSet.FieldByName(InsertItem.FieldNames[J]).Asstring
+                    // AsString := TmpAnalizer.ResultSet.FieldByName(InsertItem.FieldNames[J]).AsString
                   End
-                  Else If Not TmpAnalizer.ResultSet.Fields[J].IsNull Then
+                  Else If assigned(TmpField) and (TmpField.IsNull) Then
                   Begin
                     Case Field2ExprType(DataType) Of
                       ttstring:
-                        Asstring :=
-                          TmpAnalizer.ResultSet.Fields[J].Asstring;
+                        AsString := TmpField.AsString;
+                     {$IFDEF LEVEL4}
+                      ttWideString:
+                        AsWideString := TmpField.AsWideString;
+                     {$ENDIF}
                       ttFloat:
-                        AsFloat :=
-                          TmpAnalizer.ResultSet.Fields[J].AsFloat;
+                        AsFloat := TmpField.AsFloat;
                       ttInteger:
-                        AsInteger :=
-                          TmpAnalizer.ResultSet.Fields[J].AsInteger;
+                        AsInteger := TmpField.AsInteger;
+                      ttLargeInt:
+                        {$IFDEF Delphi2010Up}
+                          AsLargeInt := TmpField.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+                        {$ELSE}
+                          AsFloat := TmpField.AsFloat; {added by fduenas: added LargeInt (Int64) support}
+                        {$ENDIF}
                       ttBoolean:
-                        AsBoolean :=
-                          TmpAnalizer.ResultSet.Fields[J].AsBoolean;
+                        AsBoolean := TmpField.AsBoolean;
                     End;
                   End;
+                end;
               Inc(FxQuery.FRowsAffected);
               { for j := 0 to InsertItem.DataSet.FieldCount - 1 do
-                 if InsertItem.FieldNames.IndexOf(Insert.DataSet.Fields[J].FieldName) < 0 then
-                    InsertItem.DataSet.Fields[J].Value := Null; }
+                if InsertItem.FieldNames.IndexOf(Insert.DataSet.Fields[J].FieldName) < 0 then
+                InsertItem.DataSet.Fields[J].Value := Null; }
             Except
               InsertItem.DataSet.Cancel;
               Raise;
@@ -2502,19 +3421,32 @@ Begin
               With InsertItem.DataSet.Fields[I] Do
               Begin
                 Resolver := TExprParser(InsertItem.ResolverList[I]);
-                If Resolver = Nil Then Continue;
-                If (Datatype In ftNonTextTypes) And Not Resolver.Expression.IsNull Then
-                  Asstring := HexToString (Resolver.Expression.Asstring)
+                If Resolver = Nil Then
+                  Continue;
+                If (DataType In ftNonTextTypes) And
+                  Not Resolver.Expression.IsNull Then
+                  AsString := HexToString(Resolver.Expression.AsString)
                   // Encode data in HEX text, probably there's a better way to do this with more code changes
                 Else If Not Resolver.Expression.IsNull Then
                 Begin
                   Case Field2ExprType(DataType) Of
                     ttstring:
-                      Asstring := Resolver.Expression.Asstring;
+                      AsString := Resolver.Expression.AsString;
+                   {$IFDEF LEVEL4}
+                    ttWideString:
+                      AsWideString := Resolver.Expression.AsWideString;
+                   {$ENDIF}
                     ttFloat:
                       AsFloat := Resolver.Expression.AsFloat;
                     ttInteger:
                       AsInteger := Resolver.Expression.AsInteger;
+                    ttLargeInt:
+                      {$IFDEF Delphi2010Up}
+                        AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+                      {$ELSE}
+                         AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+                      {$ENDIF}
+
                     ttBoolean:
                       AsBoolean := Resolver.Expression.AsBoolean;
                   End;
@@ -2543,17 +3475,28 @@ Begin
               Resolver := TExprParser(InsertItem.ResolverList[I]);
               If Resolver = Nil Then
                 Continue;
-              If (DataType In ftNonTextTypes) And Not Resolver.Expression.IsNull Then
-                Asstring := HexToString(Resolver.Expression.Asstring)
+              If (DataType In ftNonTextTypes) And
+                Not Resolver.Expression.IsNull Then
+                AsString := HexToString(Resolver.Expression.AsString)
               Else If Not Resolver.Expression.IsNull Then
               Begin
                 Case Field2ExprType(DataType) Of
                   ttstring:
-                    Asstring := Resolver.Expression.Asstring;
+                    AsString := Resolver.Expression.AsString;
+                 {$IFDEF LEVEL4}
+                  ttWideString:
+                    AsWideString := Resolver.Expression.AsWideString;
+                 {$ENDIF}
                   ttFloat:
                     AsFloat := Resolver.Expression.AsFloat;
                   ttInteger:
                     AsInteger := Resolver.Expression.AsInteger;
+                  ttLargeInt:  {added by fduenas: added LargeInt (Int64) support}
+                    {$IFDEF Delphi2010Up}
+                     AsLargeInt := Resolver.Expression.AsLargeInt;
+                    {$ELSE}
+                     AsFloat := Resolver.Expression.AsLargeInt;
+                    {$ENDIF}
                   ttBoolean:
                     AsBoolean := Resolver.Expression.AsBoolean;
                 End;
@@ -2563,8 +3506,8 @@ Begin
           Inc(FxQuery.FRowsAffected);
           { set to null all other fields }
           { for i := 0 to InsertItem.DataSet.FieldCount - 1 do
-             if InsertItem.FieldNames.IndexOf(InsertItem.DataSet.Fields[i].FieldName) < 0 then
-                InsertItem.DataSet.Fields[J].Value := Null; }
+            if InsertItem.FieldNames.IndexOf(InsertItem.DataSet.Fields[i].FieldName) < 0 then
+            InsertItem.DataSet.Fields[J].Value := Null; }
         Except
           InsertItem.DataSet.Cancel;
           Raise;
@@ -2580,29 +3523,43 @@ End;
 Procedure TSqlAnalizer.DoMassiveUpdates;
 Var
   I, Recno: Integer;
-  Subq: TSqlAnalizer;
+  SubQ: TSqlAnalizer;
   xqField: TxqField;
 Begin
   { this method is called internally when syntax is like:
     UPDATE olditem SET description, name = (SELECT description, name FROM
-    payitem WHERE payitem.itemcode = olditem.itemcode;)}
-  Subq := TSqlAnalizer(FSubQueryList[0]);
+    payitem WHERE payitem.itemcode = olditem.itemcode;) }
+  SubQ := TSqlAnalizer(FSubQueryList[0]);
   FDefDataSet.First;
   Recno := 1;
-  While Not FDefDataSet.Eof Do
+  While Not FDefDataSet.EOF Do
   Begin
-    Subq.ResultSet.Recno := Recno;
+    SubQ.ResultSet.Recno := Recno;
     FDefDataSet.Edit;
     For I := 0 To UpdateColumnList.Count - 1 Do
       With UpdateColumnList[I] Do
       Begin
-        xqField := Subq.ResultSet.Fields[I];
+        xqField := SubQ.ResultSet.Fields[I];
         If Not xqField.IsNull Then
-          Case Field2Exprtype(Field.DataType) Of
-            ttstring: Field.Asstring := xqField.AsString;
-            ttFloat: Field.AsFloat := xqField.AsFloat;
-            ttInteger: Field.AsInteger := xqField.AsInteger;
-            ttBoolean: Field.AsBoolean := xqField.AsBoolean;
+          Case Field2ExprType(Field.DataType) Of
+            ttstring:
+              Field.AsString := xqField.AsString;
+           {$IFDEF LEVEL4}
+            ttWideString:
+              Field.AsWideString := xqField.AsWideString;
+           {$ENDIF}
+            ttFloat:
+              Field.AsFloat := xqField.AsFloat;
+            ttInteger:
+              Field.AsInteger := xqField.AsInteger;
+            ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+              {$IFDEF Delphi2010Up}
+                Field.AsLargeInt := xqField.AsLargeInt;
+              {$ELSE}
+                Field.AsFloat := xqField.AsLargeInt;
+              {$ENDIF}
+            ttBoolean:
+              Field.AsBoolean := xqField.AsBoolean;
           End;
       End;
     FDefDataSet.Post;
@@ -2625,9 +3582,17 @@ Begin
       Begin
         If Not Resolver.Expression.IsNull Then
           Case Field2Exprtype(Field.DataType) Of
-            ttstring: Field.Asstring := Resolver.Expression.Asstring;
+            ttstring: Field.AsString := Resolver.Expression.AsString;
+           {$IFDEF LEVEL4}
+            ttWideString: Field.AsWideString := Resolver.Expression.AsWideString;
+           {$ENDIF}
             ttFloat: Field.AsFloat := Resolver.Expression.AsFloat;
             ttInteger: Field.AsInteger := Resolver.Expression.AsInteger;
+            {$IFDEF Delphi2010Up}
+             ttLargeInt: Field.AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+            {$ELSE}
+             ttLargeInt: Field.AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+            {$ENDIF}
             ttBoolean: Field.AsBoolean := Resolver.Expression.AsBoolean;
           End;
       End Else
@@ -2660,15 +3625,17 @@ Var
   B: TBookmark; { pathced by ccy }
 Begin
   // GROUP BY clause
-  If Not( (ResultSet.RecordCount > 0) And
-     ((FGroupByList.Count > 0) Or HasAggregates) ) Then Exit;
+  If Not(  (ResultSet.RecordCount > 0) And  {patched by cy}
+    ((FGroupByList.Count > 0) Or HasAggregates)) Then
+    Exit;
 
-  if ResultSet.RecordCount=0 Then
+  if ResultSet.RecordCount = 0 Then
   Begin
-    ResultSetHasRecords:= False;
-    ResultSet.Insert();
-  End Else
-    ResultSetHasRecords:= True;
+    ResultSetHasRecords := False;
+    // ResultSet.Insert(); // changed by eLion. Queries without results should have no GroupBy results
+  End
+  Else
+    ResultSetHasRecords := True;
 
   ResultSet.IsSequenced := False;
   vSortList := CreateSortList(False);
@@ -2682,7 +3649,7 @@ Begin
         vColumn := FColumnList[J];
         For K := 0 To vColumn.AggregateList.Count - 1 Do
         Begin
-          If Not (vColumn.AggregateList[K].IsDistinctAg) Then
+          If Not(vColumn.AggregateList[K].IsDistinctAg) Then
             Continue;
           L := vColumn.AggregateList[K].ColIndex;
           vSortList.AddField(ResultSet.Fields[L].DataType,
@@ -2698,7 +3665,7 @@ Begin
           vColumn := FColumnList[J];
           For K := 0 To vColumn.AggregateList.Count - 1 Do
           Begin
-            If Not (vColumn.AggregateList[K].IsDistinctAg) Then
+            If Not(vColumn.AggregateList[K].IsDistinctAg) Then
               Continue;
             { This is the temporary column where the aggregate was defined }
             vSortList.Insert;
@@ -2707,11 +3674,17 @@ Begin
             If Not ResultSet.Fields[L].IsNull Then
               Case ResultSet.Fields[L].DataType Of
                 ttstring:
-                  vSortList.Fields[Idx].Asstring := ResultSet.Fields[L].Asstring;
+                  vSortList.Fields[Idx].AsString := ResultSet.Fields[L].AsString;
+               {$IFDEF LEVEL4}
+                ttWideString:
+                  vSortList.Fields[Idx].AsWideString := ResultSet.Fields[L].AsWideString;
+               {$ENDIF}
                 ttFloat:
                   vSortList.Fields[Idx].AsFloat := ResultSet.Fields[L].AsFloat;
                 ttInteger:
                   vSortList.Fields[Idx].AsInteger := ResultSet.Fields[L].AsInteger;
+                ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+                  vSortList.Fields[Idx].AsLargeInt := ResultSet.Fields[L].AsLargeInt;
                 ttBoolean:
                   vSortList.Fields[Idx].AsBoolean := ResultSet.Fields[L].AsBoolean;
               End;
@@ -2762,7 +3735,7 @@ Begin
           ResultSet.Fields[ColIndex].ColWidth, False);
 
     { An additional field in the sort for ordering by recno also }
-    //vSortList.AddField(ttInteger, 0, False);
+    // vSortList.AddField(ttInteger, 0, False);
 
     For I := 1 To ResultSet.RecordCount Do
     Begin
@@ -2774,15 +3747,21 @@ Begin
           If Not ResultSet.Fields[ColIndex].IsNull Then
             Case ResultSet.Fields[ColIndex].DataType Of
               ttstring:
-                vSortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].Asstring;
+                vSortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].AsString;
+             {$IFDEF LEVEL4}
+              ttWideString:
+                vSortList.Fields[J].AsWideString := ResultSet.Fields[ColIndex].AsWideString;
+             {$ENDIF}
               ttFloat:
                 vSortList.Fields[J].AsFloat := ResultSet.Fields[ColIndex].AsFloat;
               ttInteger:
                 vSortList.Fields[J].AsInteger := ResultSet.Fields[ColIndex].AsInteger;
+              ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+                vSortList.Fields[J].AsLargeInt := ResultSet.Fields[ColIndex].AsLargeInt;
               ttBoolean:
                 vSortList.Fields[J].AsBoolean := ResultSet.Fields[ColIndex].AsBoolean;
             End;
-      //vSortList.Fields[FGroupByList.Count].AsInteger:= I;
+      // vSortList.Fields[FGroupByList.Count].AsInteger:= I;
     End;
     vSortList.Sort;
 
@@ -2791,11 +3770,14 @@ Begin
     vPivot := 1;
     vValue := 0;
 
-    ThisGroupCount:= Self.FTopNInGroupBy;
+    ThisGroupCount := Self.FTopNInGroupBy;
 
     // all but pivots are marked with negative number
-    vSortList.Recno := 1;
-    vSortList.SourceRecno := -vSortList.SourceRecno;
+    if vSortList.Count > 0 then // changed by eLion {applied by fduenas}
+    begin
+      vSortList.Recno := 1;
+      vSortList.SourceRecno := -vSortList.SourceRecno;
+    end;
     While vIndex <= ResultSet.RecordCount Do
     Begin
       If vSortList.IsEqual(vPivot, vIndex) Then
@@ -2813,7 +3795,7 @@ Begin
           For J := 0 To vColumn.AggregateList.Count - 1 Do
           Begin
             { set position to current record and get the values in there }
-            If Not (vColumn.AggregateList[J].Aggregate = akCOUNT) Then
+            If Not(vColumn.AggregateList[J].Aggregate = akCOUNT) Then
             Begin
               { it is in [akSUM, akAVG, akSTDEV, akMIN, akMAX] }
               vSortList.RecNo := vIndex;
@@ -2872,7 +3854,7 @@ Begin
         vSortList.Recno := vPivot;
         vSortList.SourceRecno := -vSortList.SourceRecno;
         vIndex := Pred(vPivot);
-        ThisGroupCount:= Self.FTopNInGroupBy;
+        ThisGroupCount := Self.FTopNInGroupBy;
       End;
       Inc(vIndex);
     End;
@@ -2921,22 +3903,22 @@ Begin
                     SparseList.Values[n] := 0;
                 End;
               End;
-              { replace expressions like (Aggregate 1) with their real value}
+              { replace expressions like (Aggregate 1) with their real value }
               If Aggregate = akCOUNT Then
               Begin
-                Replacestring(vS, Format('{Aggregate %d}', [K]), IntToStr(SparseList.Count[n]));
+               Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), IntToStr(SparseList.Count[n]));
               End
               Else
               Begin
                 If VarType(SparseList.Values[n]) = varString Then
-                  Replacestring(vS, Format('{Aggregate %d}', [K]), '"'+SparseList.Values[n]+'"')
+                  Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '"'+SparseList.Values[n]+'"')
                 Else
                 Begin
                   DValue:= SparseList.Values[n];
-                  Replacestring(vS, Format('{Aggregate %d}', [K]), FloatToStr(DValue));
+                  Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), FloatToStr(DValue{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
                 End;
               End;
-              Replacestring(vS, {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator, '.');
+              Replacestring(vS, fSystemFormatSettings.DecimalSeparator, fRuntimeFormatSettings.DecimalSeparator);
             End;
           End;
           vColumn.Resolver.ParseExpression(vS);
@@ -2944,9 +3926,13 @@ Begin
           With vColumn.Resolver.Expression Do
             If Not IsNull Then
               Case ExprType Of
-                ttstring: ResultSet.Fields[J].Asstring := Asstring;
+                ttstring: ResultSet.Fields[J].Asstring := AsString;
+               {$IFDEF LEVEL4}
+                ttWideString: ResultSet.Fields[J].AsWideString := AsWideString;
+               {$ENDIF}
                 ttFloat: ResultSet.Fields[J].AsFloat := AsFloat;
                 ttInteger: ResultSet.Fields[J].AsInteger := AsInteger;
+                ttLargeInt: ResultSet.Fields[J].AsLargeInt := AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                 ttBoolean: ResultSet.Fields[J].AsBoolean := AsBoolean;
               End;
         End;
@@ -2989,7 +3975,7 @@ Begin
     If FHavingCol >= 0 Then
     Begin
       vColumn := FColumnList[FHavingCol];
-      vTempExpr := TExprParser.Create(Self, FDefDataSet);
+      vTempExpr := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
         For I := ResultSet.RecordCount Downto 1 Do
         Begin
@@ -3009,17 +3995,17 @@ Begin
                     SparseList.Values[I] := 0;
                 End;
               End;
-              { replace expressions like (Aggregate 1) with its real value}
+              { replace expressions like (Aggregate 1) with its real value }
               If Aggregate = akCOUNT Then
               Begin
-                Replacestring(vS, Format('{Aggregate %d}', [K]), IntToStr(SparseList.Count[I]));
+                Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), IntToStr(SparseList.Count[I]));
               End
               Else
               Begin
-                DValue:= SparseList.Values[I];
-                Replacestring(vS, Format('{Aggregate %d}', [K]), FloatToStr(DValue));
+                DValue := SparseList.Values[I];
+                Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), FloatToStr(DValue{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
               End;
-              Replacestring(vS, {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator, '.');
+              Replacestring(vS, fSystemFormatSettings.DecimalSeparator, fRuntimeFormatSettings.DecimalSeparator);
             End;
           End;
           vTempExpr.ParseExpression(vS);
@@ -3032,7 +4018,7 @@ Begin
           End;
         End;
       Finally
-        vTempExpr.Free;
+        FreeObject(vTempExpr); { patched by fduenas: Pointer was no set to Nil }
       End;
     End;
 
@@ -3055,10 +4041,16 @@ Begin
             Case ResultSet.Fields[ColIndex].DataType Of
               ttstring:
                 vSortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].Asstring;
+             {$IFDEF LEVEL4}
+              ttWideString:
+                vSortList.Fields[J].AsWideString := ResultSet.Fields[ColIndex].AsWideString;
+             {$ENDIF}
               ttFloat:
                 vSortList.Fields[J].AsFloat := ResultSet.Fields[ColIndex].AsFloat;
               ttInteger:
                 vSortList.Fields[J].AsInteger := ResultSet.Fields[ColIndex].AsInteger;
+              ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+                vSortList.Fields[J].AsLargeInt := ResultSet.Fields[ColIndex].AsLargeInt;
               ttBoolean:
                 vSortList.Fields[J].AsBoolean := ResultSet.Fields[ColIndex].AsBoolean;
             End;
@@ -3067,7 +4059,7 @@ Begin
     ResultSet.SortWithList(vSortList);
     FColumnList.SortAggregateWithList(vSortList);
   Finally
-    vSortList.Free;
+    FreeObject(vSortList); { patched by fduenas: Pointer was no set to Nil }
   End;
 
 End;
@@ -3097,11 +4089,17 @@ Begin
             If Not ResultSet.Fields[ColIndex].IsNull Then
               Case ResultSet.Fields[ColIndex].DataType Of
                 ttstring:
-                  vSortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].Asstring;
+                  vSortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].AsString;
+               {$IFDEF LEVEL4}
+                ttWideString:
+                  vSortList.Fields[J].AsWideString := ResultSet.Fields[ColIndex].AsWideString;
+               {$ENDIF}
                 ttFloat:
                   vSortList.Fields[J].AsFloat := ResultSet.Fields[ColIndex].AsFloat;
                 ttInteger:
                   vSortList.Fields[J].AsInteger := ResultSet.Fields[ColIndex].AsInteger;
+                ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+                  vSortList.Fields[J].AsLargeInt := ResultSet.Fields[ColIndex].AsLargeInt;
                 ttBoolean:
                   vSortList.Fields[J].AsBoolean := ResultSet.Fields[ColIndex].AsBoolean;
               End;
@@ -3112,7 +4110,7 @@ Begin
       { and the aggregates }
       FColumnList.SortAggregateWithList(vSortList);
     Finally
-      vSortList.Free;
+      FreeObject(vSortList); { patched by fduenas: Pointer was no set to Nil }
     End;
   End;
 End;
@@ -3130,7 +4128,7 @@ Begin
     ResultSet.Insert;
     ResultSet.SetSourceBookmark(FUnionAnalizer.ResultSet.SourceDataset.GetBookmark);
     For J := 0 To N - 1 Do
-      ResultSet.Fields[J].Asstring := FUnionAnalizer.ResultSet.Fields[J].Asstring;
+        ResultSet.Fields[J].AsString := FUnionAnalizer.ResultSet.Fields[J].AsString;
   End;
 End;
 
@@ -3151,17 +4149,17 @@ Var
   vTempField: TxqField;
   vSortList,
     vBaseSortList: TMemSortList;
-  Idx: Array[0..MAX_AGGREGATES - 1] Of Integer;
-  vColumn: Array[0..MAX_AGGREGATES - 1] Of TColumnItem;
+  Idx: Array [0 .. MAX_AGGREGATES - 1] Of Integer;
+  vColumn: Array [0 .. MAX_AGGREGATES - 1] Of TColumnItem;
   vValue,
     vSqrValue,
     vCount,
     vMin,
     vMax: Array[0..MAX_AGGREGATES - 1] Of Double;
-  IsNullValue: Array[0..MAX_AGGREGATES - 1] Of Boolean;
+  IsNullValue: Array [0 .. MAX_AGGREGATES - 1] Of Boolean;
   Analizer: TSqlAnalizer;
 
-  Procedure Transf_CreateSelectValues( Index: Integer );
+  Procedure Transf_CreateSelectValues(Index: Integer);
   Var
     I: Integer;
   Begin
@@ -3171,8 +4169,12 @@ Var
         If Not IsNull Then
           Case DataType Of
             ttstring: vSortList.Fields[I].Asstring := Asstring;
+           {$IFDEF LEVEL4}
+            ttWideString: vSortList.Fields[I].AsWideString := AsWideString;
+           {$ENDIF}
             ttFloat: vSortList.Fields[I].AsFloat := AsFloat;
             ttInteger: vSortList.Fields[I].AsInteger := AsInteger;
+            ttLargeInt: vSortList.Fields[I].AsLargeInt := AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
             ttBoolean: vSortList.Fields[I].AsBoolean := AsBoolean;
           End;
 
@@ -3182,8 +4184,12 @@ Var
         If Not IsNull Then
           Case DataType Of
             ttstring: vBaseSortList.Fields[I].Asstring := Asstring;
+           {$IFDEF LEVEL4}
+            ttWideString: vBaseSortList.Fields[I].AsWideString := AsWideString;
+           {$ENDIF}
             ttFloat: vBaseSortList.Fields[I].AsFloat := AsFloat;
             ttInteger: vBaseSortList.Fields[I].AsInteger := AsInteger;
+            ttLargeInt: vBaseSortList.Fields[I].AsLargeInt := AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
             ttBoolean: vBaseSortList.Fields[I].AsBoolean := AsBoolean;
           End;
   End;
@@ -3193,7 +4199,7 @@ Var
     J: Integer;
   Begin
     FTransfResultSet.RecNo := vCounter + 1;
-    Inc( vCounter );
+    Inc(vCounter);
     { insert a new record in the new Result set }
     vTempResultSet.Insert;
     { add the select columns }
@@ -3201,24 +4207,23 @@ Var
       If Not FTransfResultSet.Fields[J].IsNull Then
         vTempResultSet.Fields[J].Asstring := FTransfResultSet.Fields[J].Asstring;
   End;
-
 Begin
-  { TRANSFORM...PIVOT section}
-  If ( ResultSet.RecordCount = 0 ) Or ( Length( FPivotStr ) = 0 ) Then
+  { TRANSFORM...PIVOT section }
+  If (ResultSet.RecordCount = 0) Or (Length(FPivotStr) = 0) Then
     Exit;
 
-  //ResultSet.SaveToText('c:\xquery\demos\RichardGrossman\Resultset.txt');
-  //FTransfResultSet.SaveToText('c:\xquery\demos\RichardGrossman\transfrs.txt');
+  // ResultSet.SaveToText('c:\xquery\demos\RichardGrossman\Resultset.txt');
+  // FTransfResultSet.SaveToText('c:\xquery\demos\RichardGrossman\transfrs.txt');
 
   ResultSet.IsSequenced := False;
-  vSortList := TMemSortList.Create( False );
-  vBaseSortList := TMemSortList.Create( False );
+  vSortList := TMemSortList.Create(False, fRuntimeFormatSettings, fSystemFormatSettings);
+  vBaseSortList := TMemSortList.Create(False, fRuntimeFormatSettings, fSystemFormatSettings);
   { create the comparison fields
     used TMemSortList to do the comparison }
   For I := 0 To FTransfGroupedColumns - 1 Do
     vSortList.AddField( ResultSet.Fields[I].DataType, ResultSet.Fields[I].ColWidth, False );
   { create the base comparison fields
-    used TMemSortList to do the comparison it is one less than previous sort}
+    used TMemSortList to do the comparison it is one less than previous sort }
   For I := 0 To FTransfGroupedColumns - 2 Do
     vBaseSortList.AddField( ResultSet.Fields[I].DataType, ResultSet.Fields[I].ColWidth, False );
 
@@ -3229,8 +4234,11 @@ Begin
   vBaseSortList.Insert;
   vBaseSortList.Insert;
 
-  { always create a memory Result set}
+  { always create a memory Result set }
   vTempResultSet := TMemResultSet.Create;
+  vTempResultSet.fRuntimeFormatSettings := fRuntimeFormatSettings;
+  vTempResultSet.fSystemFormatSettings := fSystemFormatSettings;
+
   { create the original SELECT columns }
   For I := 0 To FTransfBaseColumns - 1 Do
   Begin
@@ -3250,7 +4258,7 @@ Begin
   If FSubqueryInPivotPredicate Then
   Begin
     // the Result set is always the last Result set in the SQL statement
-    Analizer := TSqlAnalizer( FSubQueryList[FSubQueryList.Count - 1] );
+    Analizer := TSqlAnalizer(FSubQueryList[FSubQueryList.Count - 1]);
     For I := 1 To Analizer.ResultSet.RecordCount Do
     Begin
       Analizer.ResultSet.Recno := I;
@@ -3263,13 +4271,13 @@ Begin
       must search all the Result set to found how many more columns to add }
     ResultSet.RecNo := 1;
     vTemps := ResultSet.Fields[FTransfBaseColumns].Asstring;
-    FPivotInList.Add( vTemps );
+    FPivotInList.Add(vTemps);
     For vIndex := 2 To ResultSet.RecordCount Do
     Begin
       ResultSet.RecNo := vIndex;
       vTemps := ResultSet.Fields[FTransfBaseColumns].Asstring;
-      If FPivotInList.IndexOf( vTemps ) = -1 Then
-        FPivotInList.Add( vTemps );
+      If FPivotInList.IndexOf(vTemps) = -1 Then
+        FPivotInList.Add(vTemps);
     End;
     { by default, the column is sorted }
     FPivotInList.Sort;
@@ -3284,8 +4292,12 @@ Begin
         vTempType := ttFloat
       Else
         vTempType := ttInteger; // the COUNT(*) aggregate
+      vTempS := FPivotInList[I];
+      if vTransfAggCount > 1 then {added by fduenas: give correct field names to transform aggregate fields}
+         vTempS := SAggregateKind[vColumn[J].AggregateList[0].Aggregate] +SAggregateKindOf+ FPivotInList[I];
+
       vTempResultSet.AddField(
-        FPivotInList[I], FPivotInList[I],
+       vTemps{ FPivotInList[I]}, vTemps{ FPivotInList[I]}, {added by fduenas: give correct field names to transform aggregate fields}
         vTempType,
         0,
         Nil,
@@ -3300,7 +4312,7 @@ Begin
   ResultSet.RecNo := 1;
   vCounter := 0;
   { create the SELECT columns value for comparing }
-  Transf_CreateSelectValues( 1 );
+  Transf_CreateSelectValues(1);
   { Get the acumulated first value }
   For J := 0 To vTransfAggCount - 1 Do
   Begin
@@ -3314,15 +4326,15 @@ Begin
       vMin[J] := vValue[J];
       vMax[J] := vValue[J];
       vCount[J] := 1; { used for obtaining the average }
-      vSqrValue[J] := Sqr( vValue[J] );
+      vSqrValue[J] := Sqr(vValue[J]);
     End;
   End;
   { get the value for the pivot column }
   vPivotValue := ResultSet.Fields[FTransfBaseColumns].Asstring;
-  vPivotIndex := FPivotInList.IndexOf( vPivotValue );
+  vPivotIndex := FPivotInList.IndexOf(vPivotValue);
 
   { the column where this aggregate goes into the Result set }
-  vNumCol := FTransfBaseColumns + ( vPivotIndex * vTransfAggCount ); // + J;
+  vNumCol := FTransfBaseColumns + (vPivotIndex * vTransfAggCount); // + J;
 
   { generate a new record in the new Result set }
   Trans_AddNewRecord;
@@ -3332,8 +4344,8 @@ Begin
   Begin
     ResultSet.RecNo := vIndex;
     { it is a change in SELECT columns ? }
-    Transf_CreateSelectValues( 2 );
-    If Not vSortList.IsEqual( 1, 2 ) Then
+    Transf_CreateSelectValues(2);
+    If Not vSortList.IsEqual(1, 2) Then
     Begin
       { save the last value }
       If vPivotIndex >= 0 Then
@@ -3351,7 +4363,7 @@ Begin
                     vTempResultSet.Fields[vNumCol + J].AsFloat := vValue[J] / vCount[J]
                   Else
                   Begin
-                    vDiff := ( vSqrValue[J] - Sqr( vValue[J] ) / vCount[J] );
+                    vDiff := (vSqrValue[J] - Sqr(vValue[J]) / vCount[J]);
                     If vDiff < 0 Then
                       vDiff := 0;
                     vTempResultSet.Fields[vNumCol + J].AsFloat := Sqrt( vDiff / ( vCount[J] - 1 ) );
@@ -3368,10 +4380,10 @@ Begin
           End;
       End;
       { Generate a new record only if select columns changed }
-      If Not vBaseSortList.IsEqual( 1, 2 ) Then
+      If Not vBaseSortList.IsEqual(1, 2) Then
         Trans_AddNewRecord
       Else
-        Inc( vCounter );
+        Inc(vCounter);
 
       { initialize the accumulated }
       For J := 0 To vTransfAggCount - 1 Do
@@ -3380,17 +4392,17 @@ Begin
           vValue[J] := 0 { it is a COUNT(*) }
         Else
         Begin
-          //Idx := vColumn.AggregateList[0].ColIndex;
+          // Idx := vColumn.AggregateList[0].ColIndex;
           vValue[J] := 0; //ResultSet.Fields[Idx].AsFloat; { it is an aggregate }
           vCount[J] := 0;
           vSqrValue[J] := 0;
         End;
         IsNullValue[J] := False;
       End;
-      Transf_CreateSelectValues( 1 );
+      Transf_CreateSelectValues(1);
       vPivotValue := ResultSet.Fields[FTransfBaseColumns].Asstring;
-      vPivotIndex := FPivotInList.IndexOf( vPivotValue );
-      vNumCol := FTransfBaseColumns + ( vPivotIndex * vTransfAggCount );
+      vPivotIndex := FPivotInList.IndexOf(vPivotValue);
+      vNumCol := FTransfBaseColumns + (vPivotIndex * vTransfAggCount);
     End;
     { it is a change in the pivot column ? }
     If vPivotValue <> ResultSet.Fields[FTransfBaseColumns].Asstring Then
@@ -3413,7 +4425,7 @@ Begin
                   End
                   Else
                   Begin
-                    vDiff := ( vSqrValue[J] - Sqr( vValue[J] ) / vCount[J] );
+                    vDiff := (vSqrValue[J] - Sqr(vValue[J]) / vCount[J]);
                     If vDiff < 0 Then
                       vDiff := 0;
                     vTempResultSet.Fields[vNumCol + J].AsFloat := Sqrt( vDiff / ( vCount[J] - 1 ) );
@@ -3440,12 +4452,12 @@ Begin
           IsNullValue[J] := ResultSet.Fields[Idx[J]].IsNull;
           vValue[J] := ResultSet.Fields[Idx[J]].AsFloat; { it is an aggregate }
           vCount[J] := 1;
-          vSqrValue[J] := Sqr( vValue[J] );
+          vSqrValue[J] := Sqr(vValue[J]);
         End;
       End;
       vPivotValue := ResultSet.Fields[FTransfBaseColumns].Asstring;
-      vPivotIndex := FPivotInList.IndexOf( vPivotValue );
-      vNumCol := FTransfBaseColumns + ( vPivotIndex * vTransfAggCount );
+      vPivotIndex := FPivotInList.IndexOf(vPivotValue);
+      vNumCol := FTransfBaseColumns + (vPivotIndex * vTransfAggCount);
     End
     Else
     Begin
@@ -3457,7 +4469,7 @@ Begin
           Idx[J] := vColumn[J].AggregateList[0].ColIndex;
           IsNullValue[J] := IsNullValue[J] Or ResultSet.Fields[Idx[J]].IsNull;
           vValue[J] := vValue[J] + ResultSet.Fields[Idx[J]].AsFloat;
-          vSqrValue[J] := vSqrValue[J] + Sqr( ResultSet.Fields[Idx[J]].AsFloat );
+          vSqrValue[J] := vSqrValue[J] + Sqr(ResultSet.Fields[Idx[J]].AsFloat);
           If vCount[J] = 0 Then
           Begin
             vMin[J] := ResultSet.Fields[Idx[J]].AsFloat;
@@ -3465,8 +4477,8 @@ Begin
           End
           Else
           Begin
-            vMin[J] := Min( ResultSet.Fields[Idx[J]].AsFloat, vMin[J] );
-            vMax[J] := Max( ResultSet.Fields[Idx[J]].AsFloat, vMax[J] );
+            vMin[J] := Min(ResultSet.Fields[Idx[J]].AsFloat, vMin[J]);
+            vMax[J] := Max(ResultSet.Fields[Idx[J]].AsFloat, vMax[J]);
           End;
           vCount[J] := vCount[J] + 1;
         End;
@@ -3475,8 +4487,9 @@ Begin
   { assign the start value to the corresponding column }
   If vPivotIndex >= 0 Then
   Begin
-    vNumCol := FTransfBaseColumns + ( vPivotIndex * vTransfAggCount );
+    vNumCol := FTransfBaseColumns + (vPivotIndex * vTransfAggCount);
     For J := 0 To vTransfAggCount - 1 Do
+    begin
       Case vColumn[J].AggregateList[0].Aggregate Of
         akCount, akSUM:
           If Not IsNullValue[J] Then
@@ -3492,11 +4505,11 @@ Begin
               End
               Else
               Begin
-                vDiff := ( vSqrValue[J] - Sqr( vValue[J] ) / vCount[J] );
+                vDiff := (vSqrValue[J] - Sqr(vValue[J]) / vCount[J]);
                 If vDiff < 0 Then
                   vDiff := 0;
                 vTempResultSet.Fields[vNumCol + J].AsFloat :=
-                  Sqrt( vDiff / ( vCount[J] - 1 ) );
+                  Sqrt(vDiff / (vCount[J] - 1));
               End;
             End
             Else
@@ -3508,77 +4521,80 @@ Begin
           If Not IsNullValue[J] Then
             vTempResultSet.Fields[vNumCol + J].AsFloat := vMax[J];
       End;
+    end;
   End;
 
   { assign the new Result set }
-  FResultSet.Free;
+  FreeObject(FResultSet); { patched by fduenas: Pointer was no set to Nil }
   FResultSet := vTempResultSet;
-  vSortList.Free; { free temporary sort list used for comparisons }
-  vBaseSortList.Free;
-  FreeObject( FTransfResultSet );
+  FreeObject(vSortList);
+  { free temporary sort list used for comparisons } { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(vBaseSortList); { patched by fduenas: Pointer was no set to Nil }
+  FreeObject(FTransfResultSet);
+  { patched by fduenas: Pointer was no set to Nil }
 End;
 
 Procedure TSqlAnalizer.CreateResultSet;
 Var
-  Column            : TColumnItem;
-//  Index             : Integer;
+  Column: TColumnItem;
+  Index: Integer;
   I, J, K, L,
-  n{, JS}             : Integer;
-//  ps                : Integer;
-//  Pivot             : Integer;
-//  IntValue          : Integer;
-  NumAccepted       : Integer;
-  MustAccept        : Integer;
-  NumAsc            : Integer;
-  NumDesc           : Integer;
-  ProgressMin       : Integer;
-  ProgressMax       : Integer;
-  ProgressPosition  : Integer;
-  TmpPosition       : Integer;
-  Range, Progress   : Integer;
-  Position          : Integer;
-  StartOptimize     : Integer;
-  EndOptimize       : Integer;
-  TmpDataSet        : TDataSet;
-  EventWasCalled    : Boolean;
-//  TmpDeleted        : Boolean;
-//  Pass              : Boolean;
-  Accepted          : Boolean;
-  TempBool          : Boolean;
-//  Succeed           : Boolean;
-  FilterActive      : Boolean;
+  n, JS             : Integer;
+  ps: Integer;
+  Pivot: Integer;
+  IntValue: Integer;
+  NumAccepted: Integer;
+  MustAccept: Integer;
+  NumAsc: Integer;
+  NumDesc: Integer;
+  ProgressMin: Integer;
+  ProgressMax: Integer;
+  ProgressPosition: Integer;
+  TmpPosition: Integer;
+  Range, Progress: Integer;
+  Position: Integer;
+  StartOptimize: Integer;
+  EndOptimize: Integer;
+  TmpDataSet: TDataSet;
+  EventWasCalled: Boolean;
+  TmpDeleted: Boolean;
+  Pass: Boolean;
+  Accepted: Boolean;
+  TempBool: Boolean;
+  Succeed: Boolean;
+  FilterActive: Boolean;
   CheckExpr,
   SubqExpr,
   TempExpr          : TExprParser;
-//  Value             : Double;
+  Value             : Double;
   TempS             : String;
-//  Lasts             : String;
-  S                 : String;
-//  TableName         : String;
-//  TempList          : TList;
-  OldCursor         : TCursor;
-  ReadOnly          : Boolean;
-  Cancel            : Boolean;
-  Canceled          : Boolean;
-  F                 : TField;
-  WhereOptimize     : TWhereOptimizeItem;
-  SortList          : TxqSortList;
-  TempAnalizer      : TSqlAnalizer;
-  TempField         : TxqField;
-  TempResultSet     : TResultSet;
-  OptimizeList      : TWhereOptimizeList;
-  TmpAnalizer       : TSqlAnalizer;
+  Lasts: String;
+  S: String;
+  TableName: String;
+  TempList: TList;
+  OldCursor: TCursor;
+  ReadOnly: Boolean;
+  Cancel: Boolean;
+  Canceled: Boolean;
+  F: TField;
+  WhereOptimize: TWhereOptimizeItem;
+  SortList: TxqSortList;
+  TempAnalizer: TSqlAnalizer;
+  TempField: TxqField;
+  TempResultSet: TResultSet;
+  OptimizeList: TWhereOptimizeList;
+  TmpAnalizer: TSqlAnalizer;
   IsDone,
   IsUnionStatement  : Boolean;
-  ExprType          : TExprType;
+  ExprType: TExprType;
   B                 : TBookmark; { patched by ccy }
   iSize             : Integer; { patched by ccy }
 
   Procedure RecursiveSolveSubqueries(n: integer; Const s: String);
   Var
     j, Count  : integer;
-    Analizer  : TSqlAnalizer;
-    tmp       : String;
+    Analizer: TSqlAnalizer;
+    tmp: String;
   Begin
     { warning! a combination of any and all is not supported with multiple
       subqueries, example:
@@ -3595,11 +4611,17 @@ Var
         Case Fields[0].DataType Of
           ttstring:
             Replacestring(tmp,
-              Format('(Subquery %d)', [n]),
+              Format('(Subquery %d)', [n]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
               AddCorrectStrDelim(Fields[0].Asstring));
-          ttFloat, ttInteger, ttBoolean:
+         {$IFDEF LEVEL4}
+          ttWideString:
             Replacestring(tmp,
-              Format('(Subquery %d)', [n]),
+              Format('(Subquery %d)', [n]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
+              AddCorrectStrDelim(Fields[0].AsWideString));
+         {$ENDIF}
+          ttFloat, ttLargeInt, ttInteger, ttBoolean:  {added by fduenas: added LargeInt (Int64) support}
+            Replacestring(tmp,
+              Format('(Subquery %d)', [n]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
               Fields[0].Asstring);
         End;
       Count := FSubQueryList.Count - 1;
@@ -3620,13 +4642,23 @@ Var
         If SubqExpr.Expression.AsBoolean = true Then
         Begin
           Inc(NumAccepted);
-          If TSubqueryKind(FSubQueryKindList[n]) = skAny Then
+          If (TSubqueryKind(FSubQueryKindList[n]) = skAny) and
+          { changed by fduenas }
+            ((Boolean(FSubQueryIsNotInListFlagList[n]) = False) or
+            { changed by fduenas }
+            (Boolean(FSubQueryKindIsDefaultFlagList[n]) = False))
+          then { changed by fduenas }
           Begin
             IsDone := True;
             Break;
           End;
         End
-        Else If TSubqueryKind(FSubQueryKindList[n]) = skAll Then
+        Else If (TSubqueryKind(FSubQueryKindList[n]) = skAll) or
+        { changed by fduenas }
+          ((Boolean(FSubQueryIsNotInListFlagList[n]) = True) and
+          { changed by fduenas }
+          (Boolean(FSubQueryKindIsDefaultFlagList[n]) = True))
+        Then { changed by fduenas }
         Begin
           IsDone := True;
           Break;
@@ -3643,18 +4675,18 @@ Begin
   ProgressMax := 0;
 
   For I := 0 To FSubQueryList.Count - 1 Do
-    TSqlAnalizer(FSubQueryList[I]).CreateResultSet; { exception will be raised on error }
+      TSqlAnalizer(FSubQueryList[I]).CreateResultSet; { exception will be raised on error }
 
   { LAS: 4/jun/2003 }
-  IsUnionStatement := (FStatement = ssUnion) ;
+  IsUnionStatement := (FStatement = ssUnion);
   if IsUnionStatement then
-    FStatement:= ssSelect;
+    FStatement := ssSelect;
 
   If Not CheckIntegrity Then Exit;
 
   { first DataSet listed in SQL is the DataSet that will be joined to other
     DataSets (if join was defined in sql) }
-  If Not (FStatement = ssInsert) Then
+  If Not(FStatement = ssInsert) Then
     FDefDataSet := FTableList[0].DataSet
   Else
     FDefDataSet := FInsertList[0].DataSet;
@@ -3665,7 +4697,7 @@ Begin
     For I := 0 To n Do
     Begin
       Column := FColumnList[I];
-      Column.Resolver := TExprParser.Create(Self, FDefDataSet);
+      Column.Resolver := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       If Column.AggregateList.Count = 0 Then
       Begin
         If Column.SubqueryList.Count = 0 Then
@@ -3681,11 +4713,14 @@ Begin
             { create the Result set ! }
             TempAnalizer.CreateResultSet;
             Case TempAnalizer.ResultSet.Fields[0].DataType Of
-              ttstring: Replacestring(S, Format('{Subquery %d}', [J]), '" "');
-              ttFloat: Replacestring(S, Format('{Subquery %d}', [J]), '1.0');
-              ttInteger: Replacestring(S, Format('{Subquery %d}', [J]), '1');
+              ttstring: Replacestring(S, Format('{Subquery %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '" "');
+             {$IFDEF LEVEL4}
+              ttWideString: Replacestring(S, Format('{Subquery %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '" "');
+             {$ENDIF}
+              ttFloat: Replacestring(S, Format('{Subquery %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '1.0');
+              ttInteger, ttLargeInt: Replacestring(S, Format('{Subquery %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '1'); {added by fduenas: added LargeInt (Int64) support}
               ttBoolean:
-                Replacestring(S, Format('{Subquery %d}', [J]), 'True');
+                Replacestring(S, Format('{Subquery %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), 'True');
             End;
           End;
           Column.Resolver.ParseExpression(S);
@@ -3696,7 +4731,7 @@ Begin
         { First create a dummy expression in order to detect the column type }
         S := Column.ColumnExpr;
         For J := 0 To Column.AggregateList.Count - 1 Do
-          Replacestring(S, Format('{Aggregate %d}', [J]), Column.AggregateList[j].AggregateStr);
+          Replacestring(S, Format('{Aggregate %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), Column.AggregateList[j].AggregateStr);
         Column.Resolver.ParseExpression(S);
         { For all the aggregates in this column, add a new temporary column }
         For J := 0 To Column.AggregateList.Count - 1 Do
@@ -3705,7 +4740,7 @@ Begin
           Begin
             ColumnExpr := Column.AggregateList[J].AggregateStr;
             IsTemporaryCol := (Length(FPivotStr) = 0); {TRANSFORM...PIVOT special case}
-            Resolver := TExprParser.Create(Self, FDefDataSet);
+            Resolver := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
             Resolver.ParseExpression(ColumnExpr)
           End;
           Column.AggregateList[J].ColIndex := FColumnList.Count - 1;
@@ -3732,7 +4767,7 @@ Begin
         Begin
           if Length(ColExpr) > 0 Then
           Begin
-            Resolver := TExprParser.Create(Self, FDefDataSet);
+            Resolver := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
             Resolver.ParseExpression(ColExpr);
           End;
         End;
@@ -3760,12 +4795,13 @@ Begin
           FInsertList[L].ResolverList.Add(Nil);
           Continue;
         End;
-        TempExpr := TExprParser.Create(Self, FInsertList[L].DataSet);
+        TempExpr := TExprParser.Create(Self, FInsertList[L].DataSet, fRuntimeFormatSettings, fSystemFormatSettings);
         Try
           TempExpr.ParseExpression(FInsertList[L].ExprList[I]);
           FInsertList[L].ResolverList.Add(TempExpr);
         Except
-          TempExpr.Free;
+          FreeObject(TempExpr);
+          { patched by fduenas: Pointer was no set to Nil }
           Raise;
         End;
       End;
@@ -3790,7 +4826,7 @@ Begin
   OptimizeList := FWhereOptimizeList;
 
   { for to use in subqueries }
-  SubqExpr := TExprParser.Create(Self, FDefDataSet);
+  SubqExpr := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
 
   { Create the apropriate TResultSet descendant }
   InitializeResultSet;
@@ -3812,12 +4848,12 @@ Begin
       If Column.AggregateList.Count > 0 Then
       Begin
         For J := 0 To Column.AggregateList.Count - 1 Do
-          Replacestring(S, Format('{Aggregate %d}', [J]), Column.AggregateList[J].AggregateStr);
+          Replacestring(S, Format('{Aggregate %d}', [J]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), Column.AggregateList[J].AggregateStr);
       End;
       For J := 0 To FTableList.Count - 1 Do
       Begin
         TmpDataSet := FTableList[J].DataSet;
-        CheckExpr := TExprParser.Create(Self, TmpDataSet);
+        CheckExpr := TExprParser.Create(Self, TmpDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
         Try
           Try
             { is field defined in expression valid for the table ? }
@@ -3834,13 +4870,15 @@ Begin
                     If F.DataType <> ftBoolean Then
                       F := Nil;
                   End;
-                  {case vCheckExpr.Expression.ExprType of
+                  { case vCheckExpr.Expression.ExprType of
                     ttstring: ;
+                    ttWideString: ;
                     ttFloat: ;
                     ttInteger: ;
+                    ttLargeInt: ;
                     ttBoolean:
-                      if vF.DataType <> ftBoolean then vF:= nil;
-                  end;}
+                    if vF.DataType <> ftBoolean then vF:= nil;
+                    end; }
                 End;
               End;
               If TmpDataSet = FDefDataSet Then
@@ -3848,42 +4886,40 @@ Begin
               Break;
             End;
           Except
-            { ignore exception (not bad because I'm only checking expression) }
+           {added by fduenas, memory leak} { ignore exception (not bad because I'm only checking expression) }
           End;
         Finally
-          CheckExpr.Free;
+          CheckExpr.free;
         End;
       End;
     End;
 
-    If Column.Resolver.Expression.ExprType = ttstring Then
+    If Column.Resolver.Expression.ExprType in [ttstring{$IFDEF LEVEL4}, ttWideString{$ENDIF}] Then
     Begin
-      CheckExpr := TExprParser.Create(Self, TmpDataSet);
+      CheckExpr := TExprParser.Create(Self, TmpDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
         CheckExpr.ParseExpression(S);
-        iSize := SizeOf(AnsiChar);                                { patched by ccy }
-        if Assigned(CheckExpr.CheckData.Field) and (CheckExpr.CheckData.Field.DataType = ftWideString) then { patched by ccy }
-          iSize := SizeOf(WideChar);                              { patched by ccy }
-        n := CheckExpr.Expression.MaxLen + 1 * iSize;             { patched by ccy }
+        n := (CheckExpr.Expression.MaxLen * SizeOfExprType(Column.Resolver.Expression.ExprType)) + SizeOf(WordBool)
+        { patched by ccy } { patched by fduenas prevents duplication of size }
       Finally
         CheckExpr.Free;
       End;
     End
     Else
-      n := 0;
+      n := SizeOf(WordBool);
     With Column Do
       ResultSet.AddField(AsAlias, ColumnExpr, ExprType, n, F, ReadOnly,
         CastType, CastLen, (Not IsAsExplicit) And FxQuery.UseDisplayLabel);
   End;
 
   { pre-create WhereExpr }
-  FMainWhereResolver := TExprParser.Create(Self, FDefDataSet);
+  FMainWhereResolver := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
 
-  { pre-create FJoinInWhereResolver}
+  { pre-create FJoinInWhereResolver }
   If FIsJoinInWhere Then
-    FJoinInWhereResolver := TExprParser.Create(Self, FDefDataSet); { used in FJoinInWhereExpres }
+    FJoinInWhereResolver := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings); { used in FJoinInWhereExpres }
 
-  If FxQuery.ShowWaitCursor Then
+  If (FxQuery.ShowWaitCursor) Then
   Begin
     OldCursor := Screen.Cursor;
     Screen.Cursor := crSQLWait;
@@ -3947,12 +4983,12 @@ Begin
         FWhereOptimizeList.Clear;
       If FWhereOptimizeList.Count > 0 Then
       Begin
-        With FWhereOptimizeList[0] Do { TWhereOptimize}
+        With FWhereOptimizeList[0] Do { TWhereOptimize }
         Begin
           If CanOptimize Then
           Begin
-            If Not ((AnsiPos('(Subquery', RangeStart) > 0) Or
-              (AnsiPos('(Subquery', RangeEnd) > 0)) Then
+            If Not((AnsiPos('(Subquery', RangeStart) > 0) Or 
+              (AnsiPos('(Subquery', RangeEnd) > 0)) Then { patched by fduenas: Changed AnsiPos to ComparePos }
             Begin
               TempBool := CanOptimize;
               FxQuery.OnIndexNeededFor(FxQuery, DataSet, FieldNames, False, False, TempBool);
@@ -4072,41 +5108,82 @@ Begin
             IsDone := False;
             RecursiveSolveSubqueries(0, FWhereStr);
 
-            Case TSubqueryKind(FSubQueryKindList[0]) Of
-              skAny:
-                Accepted := (NumAccepted > 0);
-              skAll:
-                Begin
-                  MustAccept := 0;
-                  N := FSubQueryList.Count - 1;
-                  If FSubqueryInPivotPredicate Then
-                    Dec(N);
-                  For j := 0 To N Do
-                  Begin
-                    TmpAnalizer := TSqlAnalizer(FSubQueryList[j]);
-                    Inc(MustAccept, TmpAnalizer.ResultSet.RecordCount);
-                  End;
-                  Accepted := (NumAccepted = MustAccept);
-                End;
+            { changed by fduenas: enable default skALL when using "NOT IN" clause with subqueries }
+            { Ex: select distinct adr_id as id from amr where
+              (adr_id NOT IN (select adr_id from amr where mer_id = 5))
+              will be treated the same as
+              select distinct adr_id as id from amr where
+              (adr_id NOT IN ALL (select adr_id from amr where mer_id = 5))
+            }
+
+            If (TSubqueryKind(FSubQueryKindList[0]) = skAny) and
+              ((Boolean(FSubQueryIsNotInListFlagList[0]) = False) or
+              (Boolean(FSubQueryKindIsDefaultFlagList[0]) = False)) then
+            Begin
+              Accepted := (NumAccepted > 0);
             End;
+
+            { changed by fduenas: enable default skALL when using "NOT IN" clause with subqueries }
+            { Ex: select distinct adr_id as id from amr where
+              (adr_id NOT IN (select adr_id from amr where mer_id = 5))
+              will be treated the same as
+              select distinct adr_id as id from amr where
+              (adr_id NOT IN ALL (select adr_id from amr where mer_id = 5))
+            }
+            If (TSubqueryKind(FSubQueryKindList[0]) = skAll) or
+              ((Boolean(FSubQueryIsNotInListFlagList[0]) = True) and
+              (Boolean(FSubQueryKindIsDefaultFlagList[0]) = True)) Then
+            Begin
+              MustAccept := 0;
+              N := FSubQueryList.Count - 1;
+              If FSubqueryInPivotPredicate Then
+                Dec(N);
+              For j := 0 To N Do
+              Begin
+                TmpAnalizer := TSqlAnalizer(FSubQueryList[j]);
+                Inc(MustAccept, TmpAnalizer.ResultSet.RecordCount);
+              End;
+              Accepted := (NumAccepted = MustAccept);
+            End;
+
+            { commented by fduenas: replace by code above }
+            {
+              Case TSubqueryKind(FSubQueryKindList[0]) Of
+              skAny:
+              Accepted := (NumAccepted > 0);
+              skAll:
+              Begin
+              MustAccept := 0;
+              N := FSubQueryList.Count - 1;
+              If FSubqueryInPivotPredicate Then
+              Dec(N);
+              For J := 0 To N Do
+              Begin
+              TmpAnalizer := TSqlAnalizer(FSubQueryList[J]);
+              Inc(MustAccept, TmpAnalizer.ResultSet.RecordCount);
+              End;
+              Accepted := (NumAccepted = MustAccept);
+              End;
+              End;
+            }
           End
           Else If Length(FWhereStr) > 0 Then
           Begin
             { process WHERE clause with normal expression (without subquery) }
-            {if (FTableList.Count = 2) and (FJoinList.Count = 0) then begin
-               // special case
-               AuxDataset := FTableList[1].DataSet;
-               AuxDataset.First;
-               while not AuxDataset.Eof do begin
+            { if (FTableList.Count = 2) and (FJoinList.Count = 0) then begin
+              // special case
+              AuxDataset := FTableList[1].DataSet;
+              AuxDataset.First;
+              while not AuxDataset.Eof do begin
 
-               end;
-            end else }
+              end;
+              end else }
             Accepted := FMainWhereResolver.Expression.AsBoolean;
           End;
           If Accepted Then
           Begin
             Case FStatement Of
-              { DataSet optionally must support RecNo property  }
+              { DataSet optionally must support RecNo property }
               ssSelect:
                 AddThisRecord(DefDataSet);
               ssUpdate:
@@ -4120,7 +5197,7 @@ Begin
           End;
         End;
 
-        If Not (Accepted And (FStatement = ssDelete)) Then
+        If Not(Accepted And (FStatement = ssDelete)) Then
           FDefDataSet.Next; { delete moves to the next record automatically }
 
         If Assigned(FxQuery.OnProgress) Then
@@ -4163,7 +5240,7 @@ Begin
       FxQuery.OnCancelFilter(FxQuery, FDefDataSet, False);
 
     { cancel user defined range }
-    If Not (FStatement = ssInsert) And (UserDefinedRange.StartValues.Count > 0)
+    If Not(FStatement = ssInsert) And (UserDefinedRange.StartValues.Count > 0)
       And Assigned(FxQuery.OnCancelUserRange) Then
       FxQuery.OnCancelUserRange(FxQuery, FDefDataSet);
 
@@ -4185,6 +5262,8 @@ Begin
 
       { copy the Result set to a temporary memory Result set }
       FTransfResultSet := TMemResultSet.Create;
+      FTransfResultSet.fRuntimeFormatSettings := fRuntimeFormatSettings;
+      FTransfResultSet.fSystemFormatSettings := fSystemFormatSettings;
       { first, create the original SELECT columns }
       For J := 0 To ResultSet.Fields.Count - 1 Do
       Begin
@@ -4229,7 +5308,7 @@ Begin
         ORDER BY }
       With FGroupByList.Add Do
         ColIndex := FTransfBaseColumns;
-      DoOrderBy( FGroupByList );
+      DoOrderBy(FGroupByList);
     End;
 
     { SELECT DISTINCT... syntax }
@@ -4252,10 +5331,16 @@ Begin
               Case ResultSet.Fields[J].DataType Of
                 ttstring:
                   SortList.Fields[J].Asstring := ResultSet.Fields[J].Asstring;
+               {$IFDEF LEVEL4}
+                ttWideString:
+                  SortList.Fields[J].AsWideString := ResultSet.Fields[J].AsWideString;
+               {$ENDIF}
                 ttFloat:
                   SortList.Fields[J].AsFloat := ResultSet.Fields[J].AsFloat;
                 ttInteger:
                   SortList.Fields[J].AsInteger := ResultSet.Fields[J].AsInteger;
+                ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+                  SortList.Fields[J].AsLargeInt := ResultSet.Fields[J].AsLargeInt;
                 ttBoolean:
                   SortList.Fields[J].AsBoolean := ResultSet.Fields[J].AsBoolean;
               End;
@@ -4294,13 +5379,13 @@ Begin
           End;
         End;
       Finally
-        SortList.Free;
+        SortList.free;
       End;
     End;
 
     { Now the TOP N stuff. Ex.: SELECT TOP 10 FROM Customer ORDER BY Custno }
-    If (FTopNInGroupBy = 0) And  { Cannot mix TOP N in select and in Group By }
-       (FTopNInSelect > 0) And (ResultSet.RecordCount > FTopNInSelect) then
+    If (FTopNInGroupBy = 0) And { Cannot mix TOP N in select and in Group By }
+      (FTopNInSelect > 0) And (ResultSet.RecordCount > FTopNInSelect) then
     begin
       For I := ResultSet.RecordCount Downto (FTopNInSelect + 1) Do
       Begin
@@ -4322,16 +5407,19 @@ Begin
     DoTransform;
 
   Finally
+
     FJoinList.Clear;
-    FMainWhereResolver.Free;
+    FreeObject(FMainWhereResolver);
+    { patched by fduenas: Pointer was no set to Nil }
     If FIsJoinInWhere Then
-      FJoinInWhereResolver.Free;
-    SubqExpr.free;
+      FreeObject(FJoinInWhereResolver);
+    { patched by fduenas: Pointer was no set to Nil }
+    FreeObject(SubqExpr); { patched by fduenas: Pointer was no set to Nil }
     If Assigned(FxQuery.FOnProgress) Then
       FxQuery.FOnProgress(FxQuery, psXEnd, 0, 0, 0);
-    If FxQuery.ShowWaitCursor Then
+    If (FxQuery.ShowWaitCursor) Then
     Begin
-      Screen.Cursor := OldCursor;
+     Screen.Cursor := OldCursor;
     End;
   End;
 
@@ -4361,33 +5449,33 @@ Begin
   End;
 End;
 
-{function TSqlAnalizer.GetFieldName(const value: string): string;
-var
+{ function TSqlAnalizer.GetFieldName(const value: string): string;
+  var
   p: Integer;
-begin
+  begin
   p:= Pos('.', value);
   if p=0 then
-    Result:= value
+  Result:= value
   else
-    Result:= Copy(value,p+1,Length(value));
-end; }
+  Result:= Copy(value,p+1,Length(value));
+  end; }
 
 Function TSqlAnalizer.GetRealTableName(Const tn: String; Var Index: Integer): String;
 Var
   I: Integer;
 Begin
   Result := tn;
-  Index:= -1;
+  Index := -1;
   For I := 0 To FTableList.Count - 1 Do
     With FTableList[I] Do
-      If (AnsiCompareText(TableName, tn) = 0) Then
+      If (AnsiCompareText(TableName, tn) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
       begin
-        Index:= I;
+        Index := I;
         Exit;
-      end Else If (AnsiCompareText(Alias, tn) = 0) Then
+      end Else If (AnsiCompareText(Alias, tn) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
       Begin
         Result := TableName;
-        Index:= I;
+        Index := I;
         Exit;
       End;
 End;
@@ -4399,12 +5487,12 @@ Begin
   Result := tn;
   For I := 0 To FTableList.Count - 1 Do
     With FTableList[I] Do
-      If (AnsiCompareText(TableName, tn) = 0) Then
+      If (AnsiCompareText(TableName, tn) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
       Begin
         Result := Alias;
         Exit;
       End
-      Else If (AnsiCompareText(Alias, tn) = 0) Then
+      Else If (AnsiCompareText(Alias, tn) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
       Begin
         Exit;
       End;
@@ -4419,7 +5507,7 @@ Var
   Dataset: TDataset;
 Begin
   Result := False;
-  P := AnsiPos('.', FieldName);
+  P := AnsiPos('.', FieldName); { patched by fduenas: Changed AnsiPos to Pos }
   If P = 0 Then
   Begin
     Alias := '';
@@ -4434,8 +5522,8 @@ Begin
   Begin
     If Length(Alias) > 0 Then
     Begin
-      If (AnsiComparetext(FTableList[0].TableName, Alias) = 0) Or
-         (AnsiComparetext(FTableList[0].Alias, Alias) = 0) Then
+      If (AnsiCompareText(FTableList[0].TableName, Alias) = 0) Or
+         (AnsiCompareText(FTableList[0].Alias, Alias) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
         Dataset := FDefDataSet
       Else
         Dataset := Nil;
@@ -4471,9 +5559,9 @@ Var
     For I := 0 To FColumnList.Count - 1 Do
       With FColumnList[I] Do
       Begin
-        If IsAsExplicit And
-          (AnsiCompareText(Format('\f"%s"', [fldname]), ColumnExpr) <> 0) And
-          (AnsiCompareText(fldname, AsAlias) = 0) Then
+        If IsAsExplicit And 
+          (AnsiCompareText(Format('\f"%s"', [fldname]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), ColumnExpr) <> 0) And
+          (AnsiCompareText(fldname, AsAlias) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
         Begin
           Result := I;
           Exit;
@@ -4483,28 +5571,29 @@ Var
 
 Begin
   Result := FieldName;
-  If Length(Trim(FieldName)) = 0 Then Exit;
-  P := AnsiPos('\f"', Result);
-  While (p > 0) Do
+  If Length(Trim(FieldName)) = 0 Then
+    Exit;
+  P := Pos('\f"', Result); { patched by fduenas: Changed AnsiPos to Pos }
+  While (P > 0) Do
   Begin
-    K := p + 3;
+    K := P + 3;
     FieldFound := False;
     While K <= Length(Result) Do
     Begin
       If Result[K] = '"' Then
       Begin
         FieldFound := True;
-        s := Copy(Result, p + 3, K - (p + 3));
-        J := AnsiPos('.', s);
+        S := Copy(Result, P + 3, K - (P + 3));
+        J := Pos('.', S); { patched by fduenas: Changed AnsiPos to Pos }
         If J = 0 Then
         Begin
           Found := False;
-          Index := FindColumnExplicitAlias(s);
+          Index := FindColumnExplicitAlias(S);
           { if one column alias exists with same fieldname then use original field expression }
-          If (Index >= 0) And
-            (AnsiPos('{Aggregate', FColumnList[Index].ColumnExpr) = 0) Then
+          If (Index >= 0) And (Pos('{Aggregate', FColumnList[Index].ColumnExpr)
+            = 0) Then { patched by fduenas: Changed AnsiPos to Pos }
           Begin
-            Result:= StringReplace(Result, Format('\f"%s"', [s]),
+            Result := StringReplace(Result, Format('\f"%s"', [S]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
               FColumnList[Index].ColumnExpr, [rfReplaceAll, rfIgnoreCase]);
             Found := True;
           End
@@ -4513,40 +5602,40 @@ Begin
             For I := 0 To FTableList.Count - 1 Do
             Begin
               TableItem := FTableList[I];
-              F := TableItem.DataSet.FindField(TrimSquareBrackets(s));
+              F := TableItem.DataSet.FindField(TrimSquareBrackets(S));
               If Assigned(F) Then
               Begin
                 If UseAlias Then
                   tname := TableItem.Alias
                 Else
                   tname := TableItem.TableName;
-                Replacestring(Result, Format('\f"%s"', [s]), Format('%s.%s', [tname, s]));
+                Replacestring(Result, Format('\f"%s"', [S]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
+                  Format('%s.%s', [tname, S]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
                 Found := True;
-                break;
+                Break;
               End;
             End;
           End;
           If Not Found Then
-            Raise ExQueryError.CreateFmt(SFieldNotFound, [s]);
+            Raise ExQueryError.CreateFmt(SFieldNotFound, [S]);
         End
         Else
         Begin
-          tname := GetRealTableName(Copy(s, 1, J - 1), Index);
-          fName := Copy(s, J + 1, Length(s));
-          Replacestring(Result,
-            Format('\f"%s"', [s]),
-            Format('%s.%s', [tname, fName]));
+          tname := GetRealTableName(Copy(S, 1, J - 1), Index);
+          fName := Copy(S, J + 1, Length(S));
+          Replacestring(Result, Format('\f"%s"', [S]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
+            Format('%s.%s', [tname, fName]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
         End;
-        break;
+        Break;
       End;
       Inc(K);
     End;
     If Not FieldFound Then
       Break;
-    p := AnsiPos('\f"', Result);
+    P := Pos('\f"', Result); { patched by fduenas: Changed AnsiPos to Pos }
   End;
 
-  Result:= ReplaceParams(Result);
+  Result := ReplaceParams(Result);
 End;
 
 Function TSqlAnalizer.StripFs(Const Ident: String): String;
@@ -4555,24 +5644,26 @@ Var
   FieldFound: Boolean;
 Begin
   Result := Ident;
-  If Length(Trim(Ident)) = 0 Then Exit;
-  P := AnsiPos('\f"', Result);
-  While p > 0 Do
+  If Length(Trim(Ident)) = 0 Then
+    Exit;
+  P := Pos('\f"', Result); { patched by fduenas: Changed AnsiPos to Pos }
+  While P > 0 Do
   Begin
-    K := p + 3;
+    K := P + 3;
     FieldFound := False;
     While K <= Length(Result) Do
     Begin
       If Result[K] = '"' Then
       Begin
         FieldFound := True;
-        Result := Copy(Result, p + 3, K - (p + 3));
+        Result := Copy(Result, P + 3, K - (P + 3));
         Break;
       End;
       Inc(K);
     End;
-    If Not FieldFound Then Break;
-    p := AnsiPos('\f"', Result);
+    If Not FieldFound Then
+      Break;
+    P := Pos('\f"', Result); { patched by fduenas: Changed AnsiPos to Pos }
   End;
 End;
 
@@ -4582,39 +5673,70 @@ var
   List: TParams;
   I, DblQuote, Quote: Integer;
   ParamValue: string;
+{$IFDEF LEVEL4}
+  ParamValueW: WideString;
+{$ENDIF}
   Param: TParam;
 begin
   List := TParams.Create(Nil);
   try
-    Result:= List.ParseSQL(SQL, True); // Result:= StrPas(PChar(List.ParseSQL(SQL, True))); {patched by ccy}
-    for I:= 0 to List.Count - 1 do
+    // Result := List.ParseSQL(SQL, True); // Result:= StrPas(PChar(List.ParseSQL(SQL, True))); {patched by ccy} <- wrong patch
+    // above patch would replace parameter condition like ':ElementNr' by '1'#0'mentNr' which is wrong: it should be '1'
+    Result := PWideChar(List.ParseSQL(SQL, True)); // changed by eLion
+
+    for I := 0 to List.Count - 1 do
     begin
-      Param:= xQuery.ParamByName(List[I].Name);
+      Param := xquery.ParamByName(List[I].Name);
       if Param <> Nil then
       begin
         case Param.DataType of
           ftBlob:
             ParamValue := #34 + StringToHex(Param.AsString) + #34;
-          ftString, ftWideString: { patched by ccy }
+          ftString{$IFDEF LEVEL4}, ftFixedChar{$ENDIF}, ftMemo, ftFmtMemo: { patched by ccy }
             begin
-              ParamValue:= Param.Asstring;
-              DblQuote:= AnsiPos(#34, ParamValue);
-              Quote:= AnsiPos(#39, ParamValue);
+              ParamValue := Param.AsString;
+              DblQuote := Pos(#34, ParamValue);
+              { patched by fduenas: Changed AnsiPos to Pos }
+              Quote := Pos(#39, ParamValue);
+              { patched by fduenas: Changed AnsiPos to Pos }
               if (Quote > 0) and (DblQuote = 0) then
-                ParamValue:= #34 + ParamValue + #34
+                ParamValue := #34 + ParamValue + #34
               else if (DblQuote >= 0) and (Quote = 0) then
-                ParamValue:= #39 + ParamValue + #39
+                ParamValue := #39 + ParamValue + #39
               else
-                ParamValue:= #39 + ParamValue + #39;
+                ParamValue := #39 + ParamValue + #39;
             end;
-          ftFloat, ftCurrency, ftBCD, ftAutoInc, ftSmallInt, ftInteger, ftWord, ftFmtBcd : { patched by ccy }
-            ParamValue:= Param.Asstring;
+         {$IFDEF LEVEL4}
+          ftWidestring, ftFixedWideChar, ftWideMemo: { patched by ccy }
+            begin
+              ParamValueW := Param.AsWideString;
+              DblQuote := Pos(#34, ParamValueW);
+              { patched by fduenas: Changed AnsiPos to Pos }
+              Quote := Pos(#39, ParamValueW);
+              { patched by fduenas: Changed AnsiPos to Pos }
+              if (Quote > 0) and (DblQuote = 0) then
+                ParamValueW := #34 + ParamValueW + #34
+              else if (DblQuote >= 0) and (Quote = 0) then
+                ParamValueW := #39 + ParamValueW + #39
+              else
+                ParamValueW := #39 + ParamValueW + #39;
+              ParamValue := ParamValueW;
+            end;
+         {$ENDIF}
+          ftFloat, ftCurrency, ftBCD, ftAutoInc, ftSmallInt, {$IFDEF Delphi2009Up} ftShortInt, {$ENDIF}
+            ftInteger, ftWord, ftFmtBcd {$IFDEF LEVEL4}, ftLargeInt {$ENDIF}: { patched by ccy } {added by fduenas: added LargeInt (Int64) support}
+            ParamValue := Param.AsString;
           ftDate, ftTime, ftDateTime:
-            ParamValue:= FloatToStr(Param.AsFloat);
+            ParamValue := FloatToStr(Param.AsFloat {$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
           ftBoolean:
-            ParamValue:= xqbase.NBoolean[Param.AsBoolean];
+            ParamValue := xqtypes.NBoolean[Param.AsBoolean];
         end;
-        Result:= StringReplace(Result, '?', ParamValue, [rfIgnoreCase]);
+       {$IFDEF LEVEL4}
+        if Param.DataType in [ftWidestring, ftFixedWideChar] then
+           Result := WideStringReplace(Result, '?', ParamValueW, [rfIgnoreCase])
+        else
+       {$ENDIF}
+           Result := StringReplace(Result, '?', ParamValue, [rfIgnoreCase]);
       end;
     end;
   finally
@@ -4624,72 +5746,72 @@ end;
 
 Function TSqlAnalizer.CheckIntegrity: Boolean;
 Var
-  I, J, K, L{, vp1, tmp}: Integer;
+  I, J, K, L, vp1, tmp: Integer;
   NumAccepted: Integer;
   Column: TColumnItem;
   TmpWhereStr: String;
-  s, AFieldName, temp: String;
+  S, AFieldName, temp: String;
   CheckExpres: String;
   tablnam, lrt, rrt: String;
-//  filename: String;
+  FileName: String;
   Found, Al, Ar: Boolean;
   GroupBy: TOrderByItem;
   OrderBy: TOrderByItem;
   LCheckExpr: TExprParser;
   RCheckExpr: TExprParser;
   TempExpr: TExprParser;
-//  JoinOn: TJoinOnItem;
+  JoinOn: TJoinOnItem;
   F: TField;
   WhereOptimize: TWhereOptimizeItem;
   ReferencedDataSets: TReferencedDataSetList;
-//  LeftDataset: TDataSet;
-//  RightDataset: TDataSet;
+  LeftDataset: TDataSet;
+  RightDataset: TDataSet;
   Idx1, Idx2: Integer;
   OptimizeList: TWhereOptimizeList;
-//  TmpDataset: TDataset;
+  TmpDataSet: TDataSet;
   TmpAnalizer: TSqlAnalizer;
   GroupOrder: TOrderByItem;
-  ADataset: TDataset;
+  ADataset: TDataSet;
   DatasetItem: TxDataSetItem;
   FromxQuery: TxQuery;
-//  JoinOnItem: TJoinOnItem;
-  LeftTable, RightTable,
-  LeftField, RightField: String;
+  JoinOnItem: TJoinOnItem;
+  LeftTable, RightTable, LeftField, RightField: String;
   LeftTableAlias, RightTableAlias: String;
   FoundAggregate: Boolean;
   TempList: TStringList;
   tempLeft: TStringList;
   tempRight: TStringList;
 
-  Function DetectSimpleField(Const fieldnam: String; Var TheTable, TheField: String): Boolean;
+  Function DetectSimpleField(Const fieldnam: String;
+    Var TheTable, TheField: String): Boolean;
   Var
-    ds : TDataset;
-    sf, tn, fn : String;
-    k : integer;
+    ds: TDataSet;
+    sf, tn, fn: String;
+    K: Integer;
   Begin
     Result := False;
     sf := fieldnam;
-    k := Pos('.', sf);
-    If k > 0 Then
+    K := Pos('.', sf);
+    If K > 0 Then
     Begin
-      tn := copy(sf, 1, k - 1);
-      fn := TrimSquareBrackets(copy(sf, k + 1, Length(sf)));
+      tn := Copy(sf, 1, K - 1);
+      fn := TrimSquareBrackets(Copy(sf, K + 1, Length(sf)));
 
-      ds := Self.FindDatasetByName(tn);
+      ds := Self.FindDataSetByName(tn);
       If Assigned(ds) Then
       Begin
         If ds.FindField(fn) <> Nil Then
         Begin
           TheTable := tn;
           TheField := fn;
-          Result := true;
+          Result := True;
         End;
       End;
     End
     Else
     Begin
       If FindFieldByName(sf) <> Nil Then
-        Result := true;
+        Result := True;
     End;
   End;
 
@@ -4714,22 +5836,25 @@ Var
         Begin
           TmpStr1 := AddSquareBrackets(pTableItem.TableName);
           TmpStr2 := AddSquareBrackets(Fields[K].FieldName);
-          AddColumn(Format('%s.%s', [TmpStr1, TmpStr2]),
+          AddColumn(Format('%s.%s', [TmpStr1, TmpStr2]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
             pTableItem.TableName + '.' + Fields[K].FieldName);
         End;
   End;
 
-  Function DoReplaceCandidates(const AReplaceStr, ALeftTable, ALeftField, ARightTable, ARightField: string): string;
+  Function DoReplaceCandidates(const AReplaceStr, ALeftTable, ALeftField,
+    ARightTable, ARightField: string): string;
   begin
-    Result:= StringReplace(AReplaceStr,
-      ALeftTable + '.' + ALeftField + ' = ' + ARightTable + '.' + ARightField, '0 = 0', [rfReplaceAll, rfIgnoreCase]);
-    Result:= StringReplace(Result,
-      ALeftTable + '.[' + ALeftField + '] = ' + ARightTable + '.[' + ARightField + ']', '0 = 0', [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(AReplaceStr, ALeftTable + '.' + ALeftField + ' = ' +
+      ARightTable + '.' + ARightField, '0 = 0', [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, ALeftTable + '.[' + ALeftField + '] = ' +
+      ARightTable + '.[' + ARightField + ']', '0 = 0',
+      [rfReplaceAll, rfIgnoreCase]);
     // now in reverse order
-    Result:= StringReplace(Result,
-      ARightTable + '.' + ARightField + ' = ' + ALeftTable + '.' + ALeftField, '0 = 0', [rfReplaceAll, rfIgnoreCase]);
-    Result:= StringReplace(Result,
-      ARightTable + '.[' + ARightField + '] = ' + ALeftTable + '.[' + ALeftField + ']', '0 = 0', [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, ARightTable + '.' + ARightField + ' = ' +
+      ALeftTable + '.' + ALeftField, '0 = 0', [rfReplaceAll, rfIgnoreCase]);
+    Result := StringReplace(Result, ARightTable + '.[' + ARightField + '] = ' +
+      ALeftTable + '.[' + ALeftField + ']', '0 = 0',
+      [rfReplaceAll, rfIgnoreCase]);
   end;
 
 Begin
@@ -4757,18 +5882,19 @@ Begin
           FAlias := FTableList[I].Alias;
           FTemporal := True;
         End;
-        FromxQuery.FResultSet := TSqlAnalizer(FSubQueryList[NumSubquery]).ResultSet;
+        FromxQuery.FResultSet := TSqlAnalizer(FSubQueryList[NumSubquery])
+          .ResultSet;
         TSqlAnalizer(FSubQueryList[NumSubquery]).ResultSet := Nil;
-        TSqlAnalizer(FSubQueryList[NumSubquery]).Free;
+        TSqlAnalizer(FSubQueryList[NumSubquery]).free;
         FSubQueryList.Delete(NumSubquery);
-        FromxQuery.FResultSetIsDefined := true;
+        FromxQuery.FResultSetIsDefined := True;
         FromxQuery.Open;
       end;
     end;
   end;
 
   { check that all tables in FROM clause exists }
-  If Not (FStatement = ssInsert) And (FTableList.Count = 0) Then
+  If Not(FStatement = ssInsert) And (FTableList.Count = 0) Then
     Raise ExQueryError.Create(SWrongTableNumber);
 
   // reference the dataset from the table names
@@ -4786,22 +5912,22 @@ Begin
         // we need to add this dataset temporary
         If Assigned(FxQuery.FOnResolveDataset) Then
         Begin
-          //filename:= TableName;
+          // filename:= TableName;
           tablnam := Alias;
           FxQuery.FOnResolveDataset(FxQuery, TableName, tablnam, ADataset);
           If Length(tablnam) > 0 Then
             TableName := tablnam;
-          If Assigned(ADataSet) Then
+          If Assigned(ADataset) Then
           Begin
             // add as a temporary dataset
-            DataSetItem := FxQuery.DataSets.Add;
-            With DataSetItem Do
+            DatasetItem := FxQuery.DataSets.Add;
+            With DatasetItem Do
             Begin
-              Dataset := ADataset;
+              DataSet := ADataset;
               Alias := FTableList[I].Alias;
               Temporal := True;
             End;
-            FTableList[I].Dataset := ADataset;
+            FTableList[I].DataSet := ADataset;
           End
           Else
             Raise ExQueryError.CreateFmt(SWrongDataSetName, [TableName])
@@ -4835,17 +5961,17 @@ Begin
             FxQuery.FOnResolveDataset(FxQuery, TableName, tablnam, ADataset);
             If Length(tablnam) > 0 Then
               TableName := tablnam;
-            If Assigned(ADataSet) Then
+            If Assigned(ADataset) Then
             Begin
               // add as a temporary dataset
-              DataSetItem := FxQuery.DataSets.Add;
-              With DataSetItem Do
+              DatasetItem := FxQuery.DataSets.Add;
+              With DatasetItem Do
               Begin
-                Dataset := ADataset;
+                DataSet := ADataset;
                 Alias := TableName;
                 Temporal := True;
               End;
-              FInsertList[I].Dataset := ADataset;
+              FInsertList[I].DataSet := ADataset;
             End
             Else
               Raise ExQueryError.CreateFmt(SWrongDataSetName, [TableName])
@@ -4882,13 +6008,14 @@ Begin
     Begin
       If Length(AsAlias) = 0 Then
         AsAlias := ColumnExpr;
-      s:= QualifiedField(ColumnExpr, True);
-      FxQuery.FixDummiesForQuerying(s);
-      FxQuery.FixDummiesForFilter(s);
-      ColumnExpr:= s;
+      S := QualifiedField(ColumnExpr, True);
+      FxQuery.FixDummiesForQuerying(S);
+      FxQuery.FixDummiesForFilter(S);
+      ColumnExpr := S;
       For J := 0 To AggregateList.Count - 1 Do
       Begin
-        AggregateList[J].AggregateStr := QualifiedField(AggregateList[J].AggregateStr, True);
+        AggregateList[J].AggregateStr :=
+          QualifiedField(AggregateList[J].AggregateStr, True);
       End;
     End;
 
@@ -4898,10 +6025,10 @@ Begin
     Begin
       if Length(ColExpr) > 0 Then
       Begin
-        s := QualifiedField(ColExpr, True);
-        FxQuery.FixDummiesForQuerying(s);
-        FxQuery.FixDummiesForFilter(s);
-        ColExpr := s;
+        S := QualifiedField(ColExpr, True);
+        FxQuery.FixDummiesForQuerying(S);
+        FxQuery.FixDummiesForFilter(S);
+        ColExpr := S;
       End;
       Field := Self.FindFieldByName(ColName);
       If Field = Nil Then
@@ -4916,10 +6043,10 @@ Begin
       Begin
         For K := 0 To FInsertList[L].ExprList.Count - 1 Do
         Begin
-          s := FInsertList[L].ExprList[I];
-          FxQuery.FixDummiesForQuerying(s);
-          FxQuery.FixDummiesForFilter(s);
-          FInsertList[L].ExprList[I] := s;
+          S := FInsertList[L].ExprList[I];
+          FxQuery.FixDummiesForQuerying(S);
+          FxQuery.FixDummiesForFilter(S);
+          FInsertList[L].ExprList[I] := S;
         End;
         F := FInsertList[L].DataSet.FindField(FInsertList[L].FieldNames[I]);
         If F = Nil Then
@@ -4931,15 +6058,15 @@ Begin
   End;
 
   { check for duplicate table names }
-  (*for I:= 0 to FTableList.Count - 1 do
+  (* for I:= 0 to FTableList.Count - 1 do
     with FTableList[I] do
     begin
-      for K:= 0 to FTableList.Count - 1 do
-        if I <> K then
-        begin
-          if DataSet = FTableList[K].DataSet then
-            raise ExQueryError.CreateFmt(SDuplicateDataSets, [TableName]);
-        end;
+    for K:= 0 to FTableList.Count - 1 do
+    if I <> K then
+    begin
+    if DataSet = FTableList[K].DataSet then
+    Raise ExQueryError.CreateFmt(SDuplicateDataSets, [TableName]);
+    end;
     end; *)
 
   { syntax SELECT * FROM; }
@@ -4952,7 +6079,9 @@ Begin
     For K := 0 To FTableList.Count - 1 Do
       With FTableList[K] Do
         If (AnsiCompareText(TableName, FTableAllFields[I]) = 0) Or
-           (AnsiCompareText(Alias, FTableAllFields[I]) = 0) Then
+        { patched by fduenas: Changed AnsiCompareText to CompareText }
+          (AnsiCompareText(Alias, FTableAllFields[I]) = 0)
+        Then { patched by fduenas: Changed AnsiComparetext to CompareText }
         Begin
           AddAllReferences(FTableList[K]);
           Break;
@@ -4970,8 +6099,9 @@ Begin
         Raise ExQueryError.Create(SSubqueryWrongCols);
     End;
   End;
-  For i := 0 To FSubQueryKindList.Count - 2 Do
-    If TSubqueryKind(FSubQueryKindList[i]) <> TSubqueryKind(FSubQueryKindList[i + 1]) Then
+  For I := 0 To FSubQueryKindList.Count - 2 Do
+    If TSubqueryKind(FSubQueryKindList[I]) <>
+      TSubqueryKind(FSubQueryKindList[I + 1]) Then
       Raise ExQueryError.Create(SSubqueryKindWrong);
 
   { check if join candidates defined in WHERE clause are valids }
@@ -4991,11 +6121,11 @@ Begin
   FxQuery.FixDummiesForQuerying(FWhereStr);
   FxQuery.FixDummiesForQuerying(FWhereStr);
 
-  for I:= 0 to UserDefinedRange.StartValues.Count-1 do
+  for I := 0 to UserDefinedRange.StartValues.Count - 1 do
   begin
-    UserDefinedRange.StartValues[I]:=
+    UserDefinedRange.StartValues[I] :=
       ReplaceParams(UserDefinedRange.StartValues[I]);
-    UserDefinedRange.EndValues[I]:=
+    UserDefinedRange.EndValues[I] :=
       ReplaceParams(UserDefinedRange.EndValues[I]);
   end;
 
@@ -5004,67 +6134,76 @@ Begin
   Try
     If (FStatement = ssSelect) And (FJoinList.Count = 0) Then
     Begin
-{.$ifdef false}
+      { .$ifdef false }
       // first, reorder the join candidate list
-      TempList:= TStringList.Create;
+      TempList := TStringList.Create;
       Try
         For I := 0 To FLJoinCandidateList.Count - 1 Do
         Begin
 
-          FLJoinCandidateList[i] := UpperCase(QualifiedField(FLJoinCandidateList[i], True));
-          FRJoinCandidateList[i] := UpperCase(QualifiedField(FRJoinCandidateList[i], True));
+          FLJoinCandidateList[I] :=
+            UpperCase(QualifiedField(FLJoinCandidateList[I], True));
+          FRJoinCandidateList[I] :=
+            UpperCase(QualifiedField(FRJoinCandidateList[I], True));
 
           { change the coded field to a workable form }
-          Al := DetectSimpleField(FLJoinCandidateList[i], LeftTable, LeftField);
-          Ar := DetectSimpleField(FRJoinCandidateList[i], RightTable, RightField);
+          Al := DetectSimpleField(FLJoinCandidateList[I], LeftTable, LeftField);
+          Ar := DetectSimpleField(FRJoinCandidateList[I], RightTable,
+            RightField);
 
           LeftTable := GetRealTableName(LeftTable, Idx1);
           RightTable := GetRealTableName(RightTable, Idx2);
 
           If Idx1 <= Idx2 then
-            TempList.AddObject(Format('%.3d%.3d', [Idx1, I] ), TObject(i+1))
+            TempList.AddObject(Format('%.3d%.3d', [Idx1, I]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), TObject(I + 1))
           else
-            TempList.AddObject(Format('%.3d%.3d', [Idx2, I] ), TObject(-(i+1)));
+            TempList.AddObject(Format('%.3d%.3d', [Idx2, I]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
+              TObject(-(I + 1)));
         end;
         // order numerically based on index of left tables
         TempList.Sort;
-        tempLeft:= TStringList.Create;
-        tempRight:= TStringList.Create;
-        for I:= 0 to TempList.Count-1 do
+        tempLeft := TStringList.Create;
+        tempRight := TStringList.Create;
+        for I := 0 to TempList.Count - 1 do
         begin
-          temp:= TempList[I];
-          K:= Longint(TempList.Objects[I]);
+          temp := TempList[I];
+          K := Longint(TempList.Objects[I]);
           If K < 0 then
           begin
             // the right is first
-            K:= Abs(K) - 1;
-            tempLeft.Add( FRJoinCandidateList[K] );
-            tempRight.Add( FLJoinCandidateList[K] );
-          end else
+            K := Abs(K) - 1;
+            tempLeft.Add(FRJoinCandidateList[K]);
+            tempRight.Add(FLJoinCandidateList[K]);
+          end
+          else
           begin
             // the left is first
-            tempLeft.Add( FLJoinCandidateList[K-1] );
-            tempRight.Add( FRJoinCandidateList[K-1] );
+            tempLeft.Add(FLJoinCandidateList[K - 1]);
+            tempRight.Add(FRJoinCandidateList[K - 1]);
           end;
         end;
-        FLJoinCandidateList.Free; FLJoinCandidateList:= tempLeft;
-        FRJoinCandidateList.Free; FRJoinCandidateList:= tempRight;
+        FLJoinCandidateList.free;
+        FLJoinCandidateList := tempLeft;
+        FRJoinCandidateList.free;
+        FRJoinCandidateList := tempRight;
       Finally
-        TempList.Free;
+        TempList.free;
       End;
-{.$endif}
+      { .$endif }
       // try to find joins in WHERE clause
       TmpWhereStr := FWhereStr;
       NumAccepted := 0;
       For I := 0 To FLJoinCandidateList.Count - 1 Do
       Begin
 
-        FLJoinCandidateList[i] := UpperCase(QualifiedField(FLJoinCandidateList[i], True));
-        FRJoinCandidateList[i] := UpperCase(QualifiedField(FRJoinCandidateList[i], True));
+        FLJoinCandidateList[I] :=
+          UpperCase(QualifiedField(FLJoinCandidateList[I], True));
+        FRJoinCandidateList[I] :=
+          UpperCase(QualifiedField(FRJoinCandidateList[I], True));
 
         { change the coded field to a workable form }
-        Al := DetectSimpleField(FLJoinCandidateList[i], LeftTable, LeftField);
-        Ar := DetectSimpleField(FRJoinCandidateList[i], RightTable, RightField);
+        Al := DetectSimpleField(FLJoinCandidateList[I], LeftTable, LeftField);
+        Ar := DetectSimpleField(FRJoinCandidateList[I], RightTable, RightField);
 
         LeftTableAlias := GetRealTableAlias(LeftTable);
         RightTableAlias := GetRealTableAlias(RightTable);
@@ -5073,61 +6212,69 @@ Begin
         RightTable := GetRealTableName(RightTable, Idx2);
 
         If (Length(LeftTable) = 0) Or (Length(LeftField) = 0) Or
-           (Length(RightTable) = 0) Or (Length(RightField) = 0) Then Continue;
+          (Length(RightTable) = 0) Or (Length(RightField) = 0) Then
+          Continue;
 
         { create dummy expression for checking fields of left and right expressions }
-        LCheckExpr := TExprParser.Create(Self, FTableList[0].DataSet);
-        RCheckExpr := TExprParser.Create(Self, FTableList[0].DataSet);
+        LCheckExpr := TExprParser.Create(Self, FTableList[0].DataSet, fRuntimeFormatSettings, fSystemFormatSettings);
+        RCheckExpr := TExprParser.Create(Self, FTableList[0].DataSet, fRuntimeFormatSettings, fSystemFormatSettings);
         Try
           { check left expression }
           ReferencedDataSets.Clear;
           LCheckExpr.ReferencedDataSets := ReferencedDataSets;
           { exists parameters? }
-          If AnsiPos('(Subquery', FLJoinCandidateList[I]) > 0 Then Continue;
+          If Pos('(Subquery', FLJoinCandidateList[I]) > 0 Then
+            Continue; { patched by fduenas: Changed AnsiPos to Pos }
           LCheckExpr.CheckExpression(FLJoinCandidateList[I]);
-          If ReferencedDataSets.Count <> 1 Then Continue;
+          If ReferencedDataSets.Count <> 1 Then
+            Continue;
 
           { check right expression }
           ReferencedDataSets.Clear;
           RCheckExpr.ReferencedDataSets := ReferencedDataSets;
           { exists parameters? }
-          If AnsiPos('(Subquery', FRJoinCandidateList[I]) > 0 Then Continue;
+          If Pos('(Subquery', FRJoinCandidateList[I]) > 0 Then
+            Continue; { patched by fduenas: Changed AnsiPos to Pos }
           RCheckExpr.CheckExpression(FRJoinCandidateList[I]);
-          If ReferencedDataSets.Count <> 1 Then Continue;
+          If ReferencedDataSets.Count <> 1 Then
+            Continue;
 
           With FJoinList.Add Do
           Begin
             JoinAction := jkLeftInnerJoin;
-            JoinExpression := FLJoinCandidateList[I] + ' = ' + FRJoinCandidateList[I];
+            JoinExpression := FLJoinCandidateList[I] + ' = ' +
+              FRJoinCandidateList[I];
             LeftRefTest := LeftTable + '.' + LeftField;
             RightRefTest := RightTable + '.' + RightField;
 
-            TmpWhereStr:= DoReplaceCandidates(TmpWhereStr, LeftTable, LeftField, RightTable, RightField);
+            TmpWhereStr := DoReplaceCandidates(TmpWhereStr, LeftTable,
+              LeftField, RightTable, RightField);
             // Now in reverse order
 
-            TmpWhereStr:= DoReplaceCandidates(TmpWhereStr, LeftTableAlias, LeftField, RightTableAlias, RightField);
-          End ;
+            TmpWhereStr := DoReplaceCandidates(TmpWhereStr, LeftTableAlias,
+              LeftField, RightTableAlias, RightField);
+          End;
 
-          {p1:= AnsiPos(UpperCase(FLJoinCandidateList[I]), UpperCase(TmpWhereStr));
-          if p1 > 0 then
+          { p1:= AnsiPos(UpperCase(FLJoinCandidateList[I]), UpperCase(TmpWhereStr));
+            if p1 > 0 then
             TmpWhereStr:= Copy(TmpWhereStr, 1, p1 - 1) + '0' +
-                           Copy(TmpWhereStr, p1 + Length(FLJoinCandidateList[I]), Length(TmpWhereStr));
+            Copy(TmpWhereStr, p1 + Length(FLJoinCandidateList[I]), Length(TmpWhereStr));
 
-          p1:= AnsiPos(UpperCase(FRJoinCandidateList[I]), UpperCase(TmpWhereStr));
-          if p1 > 0 then
+            p1:= AnsiPos(UpperCase(FRJoinCandidateList[I]), UpperCase(TmpWhereStr));
+            if p1 > 0 then
             TmpWhereStr:= Copy(TmpWhereStr, 1, p1 - 1) + '0' +
-                           Copy(TmpWhereStr, p1 + Length(FRJoinCandidateList[I]), Length(TmpWhereStr)); }
+            Copy(TmpWhereStr, p1 + Length(FRJoinCandidateList[I]), Length(TmpWhereStr)); }
 
           Inc(NumAccepted);
         Finally
-          LCheckExpr.Free;
-          RCheckExpr.Free;
+          LCheckExpr.free;
+          RCheckExpr.free;
         End;
       End;
       If NumAccepted > 0 Then
       Begin
-        ReplaceString(TmpWhereStr, 'AND (0 = 0)', '');
-        ReplaceString(TmpWhereStr, '(0 = 0) AND', '');
+        Replacestring(TmpWhereStr, 'AND (0 = 0)', '');
+        Replacestring(TmpWhereStr, '(0 = 0) AND', '');
         If FJoinList.Count >= FTableList.Count Then
         Begin
           FIsJoinInWhere := True;
@@ -5144,47 +6291,49 @@ Begin
     End;
 
     { check if WHERE clause includes only fields from primary table }
-    If Not (FStatement = ssInsert) Then
+    If Not(FStatement = ssInsert) Then
       FDefDataSet := FTableList[0].DataSet
     Else
       FDefDataSet := FInsertList[0].DataSet;
     { where contiene solo campos sencillos de una o mas tablas }
-    FWhereContainsOnlyBasicFields := true;
-    If (Length(FWhereStr) > 0) And (AnsiPos('(subquery', Lowercase(FWhereStr)) = 0) Then
+    FWhereContainsOnlyBasicFields := True;
+    If (Length(FWhereStr) > 0) And (Pos('(subquery', Lowercase(FWhereStr)) = 0)
+    Then { patched by fduenas: Changed AnsiPos to Pos }
     Begin
-      s := FWhereStr;
-      FxQuery.FixDummiesForQuerying(s);
-      FxQuery.FixDummiesForFilter(s);
-      TempExpr := TExprParser.Create(Self, FDefDataSet);
+      S := FWhereStr;
+      FxQuery.FixDummiesForQuerying(S);
+      FxQuery.FixDummiesForFilter(S);
+      TempExpr := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
-        TempExpr.ParseExpression(s);
+        TempExpr.ParseExpression(S);
         For I := 0 To TempExpr.IdReferences.Count - 1 Do
-          If Not IsValidFieldName(TempExpr.IdReferences[I], TRUE) Then
+          If Not IsValidFieldName(TempExpr.IdReferences[I], True) Then
           Begin
             FWhereContainsOnlyBasicFields := False;
-            break;
+            Break;
           End;
       Finally
-        TempExpr.Free;
+        TempExpr.free;
       End;
     End;
 
     { where expression }
     If (Length(FWhereStr) > 0) And FWhereContainsOnlyBasicFields And
-       (FxQuery.WhereOptimizeMethod = omSetFilter) And Assigned(FxQuery.OnSetFilter) Then
+      (FxQuery.WhereOptimizeMethod = omSetFilter) And
+      Assigned(FxQuery.OnSetFilter) Then
     Begin
-      FWhereFilter := QualifiedField(FWhereStr, true);
+      FWhereFilter := QualifiedField(FWhereStr, True);
       If FStatement = ssInsert Then
       Begin
-        ReplaceString(FWhereFilter, FInsertList[0].TableName + '.', '');
-        ReplaceString(FWhereFilter, FInsertList[0].TableName + '.', '');
+        Replacestring(FWhereFilter, FInsertList[0].TableName + '.', '');
+        Replacestring(FWhereFilter, FInsertList[0].TableName + '.', '');
       End
       Else
       Begin
-        for I:= 0 to FTableList.Count-1 do
+        for I := 0 to FTableList.Count - 1 do
         begin
-          ReplaceString(FWhereFilter, FTableList[I].TableName + '.', '');
-          ReplaceString(FWhereFilter, FTableList[I].Alias + '.', '');
+          Replacestring(FWhereFilter, FTableList[I].TableName + '.', '');
+          Replacestring(FWhereFilter, FTableList[I].Alias + '.', '');
         end;
       End;
     End
@@ -5195,7 +6344,7 @@ Begin
       and only if JOINing }
     If (FJoinList.Count > 0) And Not FWhereContainsOnlyBasicFields Then
     Begin
-      TempExpr := TExprParser.Create(Self, FTableList[0].DataSet);
+      TempExpr := TExprParser.Create(Self, FTableList[0].DataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
         { parse the expression for detecting how many references to fields
           exists in WHERE clause. References will be stored in
@@ -5206,21 +6355,27 @@ Begin
         For I := 0 To TempExpr.IdReferences.Count - 1 Do
         Begin
 
-          If Not IsValidFieldName(TempExpr.IdReferences[I], False) Then Continue;
+          If Not IsValidFieldName(TempExpr.IdReferences[I], False) Then
+            Continue;
 
           Found := False;
           For J := 0 To FColumnList.Count - 1 Do
             If AnsiCompareText(FColumnList[J].ColumnExpr,
-              QualifiedField('\f"' + QualifiedFieldAddSquareBrackets(TempExpr.IdReferences[I]) + '"', True)) = 0 Then
+              { patched by fduenas: Changed AnsiCompareText to CompareText }
+              QualifiedField('\f"' + QualifiedFieldAddSquareBrackets
+              (TempExpr.IdReferences[I]) + '"', True)) = 0 Then
             Begin
-              Found := true;
-              break;
+              Found := True;
+              Break;
             End;
           If Not Found Then
             With FColumnList.Add Do
             Begin
-              ColumnExpr := QualifiedField('\f"' + QualifiedFieldAddSquareBrackets(TempExpr.IdReferences[I]) + '"', False);
-              AsAlias := QualifiedFieldAddSquareBrackets(TempExpr.IdReferences[I]);
+              ColumnExpr :=
+                QualifiedField('\f"' + QualifiedFieldAddSquareBrackets
+                (TempExpr.IdReferences[I]) + '"', False);
+              AsAlias := QualifiedFieldAddSquareBrackets
+                (TempExpr.IdReferences[I]);
               If Length(AsAlias) = 0 Then
                 AsAlias := ColumnExpr;
               IsAsExplicit := False;
@@ -5229,44 +6384,50 @@ Begin
             End;
         End;
       Finally
-        TempExpr.Free;
+        TempExpr.free;
       End;
     End;
 
-    For I:= 0 to FJoinList.Count-1 do
+    For I := 0 to FJoinList.Count - 1 do
     begin
       with FJoinList[I] do
       begin
-        lrt:= UpperCase( LeftRefTest );
-        rrt:= UpperCase( RightRefTest );
+        lrt := UpperCase(LeftRefTest);
+        rrt := UpperCase(RightRefTest);
 
-        If AnsiPos('[DUMMY].', lrt) > 0 Then
+        If Pos('[DUMMY].', lrt) >
+          0 Then { patched by fduenas: Changed AnsiPos to Pos }
         Begin
-          AFieldName:= Copy( lrt, 9, Length(lrt));
+          AFieldName := Copy(lrt, 9, Length(lrt));
           // find this fieldname on all tables
-          for J:= 0 to TableList.Count-1 do
+          for J := 0 to TableList.Count - 1 do
             with TableList[J] do
               If DataSet.FindField(AFieldName) <> Nil Then
               Begin
-                temp:= lrt;
-                lrt:= StringReplace(lrt, '[DUMMY]', TableList[J].TableName, [rfReplaceAll, rfIgnoreCase]);
-                JOINExpression:= StringReplace(JOINExpression, temp, lrt, [rfReplaceAll, rfIgnoreCase]);
-                LeftRefTest:= lrt;
+                temp := lrt;
+                lrt := StringReplace(lrt, '[DUMMY]', TableList[J].TableName,
+                  [rfReplaceAll, rfIgnoreCase]);
+                JoinExpression := StringReplace(JoinExpression, temp, lrt,
+                  [rfReplaceAll, rfIgnoreCase]);
+                LeftRefTest := lrt;
                 Break;
               End;
         End;
-        If AnsiPos('[DUMMY].', rrt) > 0 Then
+        If Pos('[DUMMY].', rrt) >
+          0 Then { patched by fduenas: Changed AnsiPos to Pos }
         Begin
-          AFieldName:= Copy( rrt, 9, Length(rrt));
+          AFieldName := Copy(rrt, 9, Length(rrt));
           // find this fieldname on all tables
-          for J:= 0 to TableList.Count-1 do
+          for J := 0 to TableList.Count - 1 do
             with TableList[J] do
               If DataSet.FindField(AFieldName) <> Nil Then
               Begin
-                temp:= rrt;
-                rrt:= StringReplace(rrt, '[DUMMY]', TableList[J].TableName, [rfReplaceAll, rfIgnoreCase]);
-                JOINExpression:= StringReplace(JOINExpression, temp, rrt, [rfReplaceAll, rfIgnoreCase]);
-                RightRefTest:= rrt;
+                temp := rrt;
+                rrt := StringReplace(rrt, '[DUMMY]', TableList[J].TableName,
+                  [rfReplaceAll, rfIgnoreCase]);
+                JoinExpression := StringReplace(JoinExpression, temp, rrt,
+                  [rfReplaceAll, rfIgnoreCase]);
+                RightRefTest := rrt;
                 Break;
               End;
         End;
@@ -5278,19 +6439,20 @@ Begin
     FJoinList.PrepareJoin;
 
   Finally
-    ReferencedDatasets.Free;
+    ReferencedDataSets.free;
   End;
 
-  If Not FIsJoinInWhere And (FTableList.Count > 1) And (FJoinList.Count = 0) Then
+  If Not FIsJoinInWhere And (FTableList.Count > 1) And
+    (FJoinList.Count = 0) Then
     Raise ExQueryError.Create(SWrongJoin);
 
   (* if NOT(FWhereContainsOnlyBasicFields and
-     (FxQuery.WhereOptimizeMethod=omSetFilter) and
-     (AnsiPos('(Subquery)', FWhereStr)=0)) then
-  begin
+    (FxQuery.WhereOptimizeMethod=omSetFilter) and
+    (AnsiPos('(Subquery)', FWhereStr)=0)) then
+    begin
     FWhereOptimizeList.Clear; { no possible optimizations in WHERE when JOINing }
     FWhereFilter:= '';        { no filters possible }
-  end; *)
+    end; *)
   If (Length(FWhereFilter) > 0) And (FSubQueryList.Count > 0) Then
     FWhereFilter := '';
 
@@ -5303,10 +6465,10 @@ Begin
     With WhereOptimize Do
     Begin
       CanOptimize := False; { first try to optimize the where statement }
-      s := QualifiedField(FieldNames, True);
-      LCheckExpr := TExprParser.Create(Self, FTableList[0].DataSet);
+      S := QualifiedField(FieldNames, True);
+      LCheckExpr := TExprParser.Create(Self, FTableList[0].DataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
-        If (Pos(':', s) > 0) Or (Not LCheckExpr.CheckExpression(s)) Then
+        If (Pos(':', S) > 0) Or (Not LCheckExpr.CheckExpression(S)) Then
           Continue;
         CanOptimize := True;
         If LCheckExpr.CheckData.FieldCount > 0 Then
@@ -5315,12 +6477,14 @@ Begin
           FieldNames := '';
           For J := 1 To LCheckExpr.CheckData.FieldCount Do
             If J < LCheckExpr.CheckData.FieldCount Then
-              FieldNames := FieldNames + LCheckExpr.CheckData.Fields[J].FieldName + ';'
+              FieldNames := FieldNames + LCheckExpr.CheckData.Fields[J]
+                .FieldName + ';'
             Else
-              FieldNames := FieldNames + LCheckExpr.CheckData.Fields[J].FieldName;
+              FieldNames := FieldNames + LCheckExpr.CheckData.Fields[J]
+                .FieldName;
         End;
       Finally
-        LCheckExpr.Free;
+        LCheckExpr.free;
       End;
     End;
   End;
@@ -5333,17 +6497,20 @@ Begin
       the indef of the column it is referring to }
     If GroupBy.ColIndex < 0 Then
     Begin
-      s := GroupBy.Alias;
-      GroupBy.Alias := QualifiedField(s, True);
+      S := GroupBy.Alias;
+      GroupBy.Alias := QualifiedField(S, True);
       { find column index
-       find this field in the list of fields }
+        find this field in the list of fields }
       Found := False;
       For K := 0 To FColumnList.Count - 1 Do
       Begin
         Column := FColumnList[K];
         If (AnsiCompareText(Column.ColumnExpr, GroupBy.Alias) = 0) Or
-           (AnsiCompareText(Column.ColumnExpr, QualifiedField(s, False)) = 0) Or
-           (Column.IsAsExplicit And (AnsiCompareText(Column.AsAlias, GroupBy.Alias) = 0))  Then
+        { patched by fduenas: Changed AnsiCompareText to CompareText }
+          (AnsiCompareText(Column.ColumnExpr, QualifiedField(S, False)) = 0) Or
+        { patched by fduenas: Changed AnsiCompareText to CompareText }
+          (Column.IsAsExplicit And (AnsiCompareText(Column.AsAlias, GroupBy.Alias)
+          = 0)) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
         Begin
           GroupBy.ColIndex := K;
           Found := True;
@@ -5355,7 +6522,8 @@ Begin
     End
     Else
     Begin
-      If (GroupBy.ColIndex < 0) Or (GroupBy.ColIndex > FColumnList.Count - 1) Then
+      If (GroupBy.ColIndex < 0) Or
+        (GroupBy.ColIndex > FColumnList.Count - 1) Then
         Raise ExQueryError.Create(SGroupByWrongNum);
     End;
   End;
@@ -5366,33 +6534,37 @@ Begin
     OrderBy := FOrderByList[I];
     If OrderBy.ColIndex < 0 Then
     Begin
-      s := OrderBy.Alias;
-      temp:= StripFs(s);
+      S := OrderBy.Alias;
+      temp := StripFs(S);
       // check if alias corresponds to an aggregate field
-      FoundAggregate:= False;
+      FoundAggregate := False;
       For K := 0 To FColumnList.Count - 1 Do
         With FColumnList[K] Do
         Begin
-          If IsAsExplicit And
-            (AnsiPos('{Aggregate', ColumnExpr) > 0) And
-            (AnsiCompareText(temp, AsAlias) = 0) Then
+          If IsAsExplicit And (Pos('{Aggregate', ColumnExpr) > 0) And
+          { patched by fduenas: Changed AnsiPos to Pos }
+            (AnsiCompareText(temp, AsAlias) = 0)
+          Then { patched by fduenas: Changed AnsiCompareText to CompareText }
           Begin
             OrderBy.ColIndex := K;
-            FoundAggregate:= True;
+            FoundAggregate := True;
             Break;
           End;
         End;
       If Not FoundAggregate Then
       begin
-        OrderBy.Alias := QualifiedField(s, True);
+        OrderBy.Alias := QualifiedField(S, True);
         { find column index. find this field in the list of fields }
         Found := False;
         For K := 0 To FColumnList.Count - 1 Do
         Begin
           Column := FColumnList[K];
           If (AnsiCompareText(Column.ColumnExpr, OrderBy.Alias) = 0) Or
-             (AnsiCompareText(Column.ColumnExpr, QualifiedField(s, False)) = 0)  Or
-             (Column.IsAsExplicit And (AnsiCompareText(Column.AsAlias, OrderBy.Alias) = 0))  Then
+          { patched by fduenas: Changed AnsiCompareText to CompareText }
+            (AnsiCompareText(Column.ColumnExpr, QualifiedField(S, False)) = 0) Or
+          { patched by fduenas: Changed AnsiCompareText to CompareText }
+            (Column.IsAsExplicit And (AnsiCompareText(Column.AsAlias, OrderBy.Alias)
+            = 0)) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
           Begin
             OrderBy.ColIndex := K;
             Found := True;
@@ -5405,7 +6577,8 @@ Begin
     End
     Else
     Begin
-      If (OrderBy.ColIndex < 0) Or (OrderBy.ColIndex > FColumnList.Count - 1) Then
+      If (OrderBy.ColIndex < 0) Or
+        (OrderBy.ColIndex > FColumnList.Count - 1) Then
         Raise ExQueryError.Create(SWrongIndexField);
     End;
   End;
@@ -5415,20 +6588,20 @@ Begin
   If Length(FPivotStr) > 0 Then
   Begin
 
-    If Not (FColumnList.Count >= FGroupByList.Count) Then
+    If Not(FColumnList.Count >= FGroupByList.Count) Then
       Raise ExQueryError.Create(STransfColumnsMismatch);
-    { check that column expressions in SELECT be the same as in GROUP BY}
+    { check that column expressions in SELECT be the same as in GROUP BY }
     For I := 0 To FGroupByList.Count - 1 Do
-      If Not (FGroupByList[I].ColIndex = I) Then
+      If Not(FGroupByList[I].ColIndex = I) Then
         Raise ExQueryError.Create(STransfWrongColumnGroup);
 
     If FOrderByList.Count > 0 Then
     Begin
-      If Not (FColumnList.Count >= FOrderByList.Count) Then
+      If Not(FColumnList.Count >= FOrderByList.Count) Then
         Raise ExQueryError.Create(STransfOrderByMismatch);
-      { check that column expressions in SELECT be the same as in ORDER BY}
+      { check that column expressions in SELECT be the same as in ORDER BY }
       For I := 0 To FOrderByList.Count - 1 Do
-        If Not (FOrderByList[I].ColIndex = I) Then
+        If Not(FOrderByList[I].ColIndex = I) Then
           Raise ExQueryError.Create(STransfWrongColumnOrder);
     End;
     FTransfBaseColumns := FColumnList.Count;
@@ -5443,14 +6616,15 @@ Begin
       IsAsExplicit := False;
     End;
     { also, add this column as the GROUP BY column }
-    If Not HasAggregates Then   // tiene Agregates adicionales en clausual SELECT ?
+    If Not HasAggregates Then
+    // tiene Agregates adicionales en clausual SELECT ?
     Begin
       GroupOrder := FGroupByList.Add;
       GroupOrder.Alias := '';
       GroupOrder.ColIndex := FColumnList.Count - 1;
     End;
 
-    { ... and also add this column as the ORDER BY column}
+    { ... and also add this column as the ORDER BY column }
     If Not HasAggregates And (FOrderByList.Count > 0) Then
     Begin
       GroupOrder := FOrderByList.Add;
@@ -5458,7 +6632,7 @@ Begin
       GroupOrder.ColIndex := FColumnList.Count - 1;
     End;
 
-    { now add the aggregate functions defined in TRANSFORM clause as the last column}
+    { now add the aggregate functions defined in TRANSFORM clause as the last column }
     For I := 0 To FTransformColumnList.Count - 1 Do
     Begin
       Column := FTransformColumnList[I];
@@ -5471,7 +6645,8 @@ Begin
         IsAsExplicit := Column.IsAsExplicit;
         AggregateList.Assign(Column.AggregateList);
         For J := 0 To AggregateList.Count - 1 Do
-          AggregateList[J].AggregateStr := QualifiedField(AggregateList[J].AggregateStr, False);
+          AggregateList[J].AggregateStr :=
+            QualifiedField(AggregateList[J].AggregateStr, False);
         IsTemporaryCol := Column.IsTemporaryCol;
         CastType := Column.CastType;
         CastLen := Column.CastLen;
@@ -5490,8 +6665,10 @@ Begin
   Result := Nil;
   For vI := 0 To FTableList.Count - 1 Do
     With FTableList[vI] Do
-      If (AnsiCompareText(TrimSquareBrackets(TableName), TrimSquareBrackets(Name)) = 0) Or
-        (AnsiCompareText(TrimSquareBrackets(Alias), TrimSquareBrackets(Name)) = 0) Then
+      If (AnsiCompareText(TrimSquareBrackets(TableName), TrimSquareBrackets(Name))
+        = 0) Or { patched by fduenas: Changed AnsiCompareText to CompareText }
+        (AnsiCompareText(TrimSquareBrackets(Alias), TrimSquareBrackets(Name)) = 0)
+      Then { patched by fduenas: Changed AnsiCompareText to CompareText }
       Begin
         Result := DataSet;
         Exit;
@@ -5500,18 +6677,20 @@ End;
 
 Procedure TSqlAnalizer.DoIntoTableOperation;
 Var
-  DestTable, SourceTable: TDataset;
+  DestTable, SourceTable: TDataSet;
   SourceField, DestField: TField;
   I, J: Integer;
 Begin
-  If Length(FIntoTable) = 0 Then Exit;
+  If Length(FIntoTable) = 0 Then
+    Exit;
   // find the referenced dataset
   DestTable := Nil;
   With FxQuery Do
-    For I := 0 To Datasets.Count - 1 Do
-      If AnsiCompareText(Datasets[I].Alias, FIntoTable) = 0 Then
+    For I := 0 To DataSets.Count - 1 Do
+      If AnsiCompareText(DataSets[I].Alias, FIntoTable)
+        = 0 Then { patched by fduenas: Changed AnsiCompareText to CompareText }
       Begin
-        DestTable := Datasets[I].Dataset;
+        DestTable := DataSets[I].DataSet;
         Break;
       End;
   If DestTable = Nil Then
@@ -5522,10 +6701,11 @@ Begin
   Begin
     SourceField := ResultSet.Fields[J].SourceField;
     If SourceField <> Nil Then
-      break;
+      Break;
   End;
-  If SourceField = Nil Then Exit;
-  SourceTable := SourceField.Dataset;
+  If SourceField = Nil Then
+    Exit;
+  SourceTable := SourceField.DataSet;
   For I := 1 To ResultSet.RecordCount Do
   Begin
     ResultSet.Recno := I;
@@ -5534,14 +6714,16 @@ Begin
     { case fIntoAction of
       iaForAppend: DestTable.Insert;
       iaForCopy: DestTable.Edit;
-    end; }
+      end; }
     DestTable.Insert;
     For J := 0 To ResultSet.Fields.Count - 1 Do
     Begin
       SourceField := ResultSet.Fields[J].SourceField;
-      If SourceField = Nil Then Continue;
-      DestField := DestTable.FindField(SourceField.FieldName);
-      If DestField = Nil Then Continue;
+      If SourceField = Nil Then
+        Continue;
+      DestField := DestTable.FindField(SourceField.FieldName); {modified by fduenas: use Field name instead of Field Index}
+      If DestField = Nil Then
+        Continue;
       DestField.Assign(SourceField);
     End;
     DestTable.Post;
@@ -5576,6 +6758,7 @@ Type
     // FOnDeleteError: TDataSetErrorEvent;
     // FOnFilterRecord: TFilterRecordEvent;
   End;
+
   TFieldEventRec = Record
     OnChange: TFieldNotifyEvent;
     OnGetText: TFieldGetTextEvent;
@@ -5583,145 +6766,143 @@ Type
     OnValidate: TFieldNotifyEvent;
   End;
 Var
-  BookmarkList: {$if RTLVersion >= 20}TList<TBookmark>{$else}TList{$ifend};
+  BookmarkList: TList;
   bm: TBookmark;
   I: Integer;
-  DisabledState: array of boolean;
-  DataSetState: array of TDataSetState;         // Nonn ...
+  DisabledState: array of Boolean;
+  DataSetState: array of TDataSetState; // Nonn ...
   DataSetFields: array of array of Variant;
   DataSetEvents: array of TDataSetEventRec;
   FieldEvents: array of array of TFieldEventRec;
   J: Integer;
   MaxNumFields: Integer;
-  SFS: TSaveFormatSettings;
 
   Procedure SaveFieldEvents(ADsIndex, AFldIndex: Integer; AField: TField);
   Begin
-    FieldEvents[ADSIndex][AFldIndex].OnChange := AField.OnChange;
-    FieldEvents[ADSIndex][AFldIndex].OnGetText := AField.OnGetText;
-    FieldEvents[ADSIndex][AFldIndex].OnSetText := AField.OnSetText;
-    FieldEvents[ADSIndex][AFldIndex].OnValidate := AField.OnValidate;
+    FieldEvents[ADsIndex][AFldIndex].OnChange := AField.OnChange;
+    FieldEvents[ADsIndex][AFldIndex].OnGetText := AField.OnGetText;
+    FieldEvents[ADsIndex][AFldIndex].OnSetText := AField.OnSetText;
+    FieldEvents[ADsIndex][AFldIndex].OnValidate := AField.OnValidate;
     AField.OnChange := nil;
     AField.OnGetText := nil;
     AField.OnSetText := nil;
     AField.OnValidate := nil;
   End;
 
-  Procedure RestoreFieldEvents(ADSIndex, AFldIndex: Integer; AField: TField);
+  Procedure RestoreFieldEvents(ADsIndex, AFldIndex: Integer; AField: TField);
   Begin
-    AField.OnChange := FieldEvents[ADSIndex][AFldIndex].OnChange;
-    AField.OnGetText := FieldEvents[ADSIndex][AFldIndex].OnGetText;
-    AField.OnSetText := FieldEvents[ADSIndex][AFldIndex].OnSetText;
-    AField.OnValidate := FieldEvents[ADSIndex][AFldIndex].OnValidate;
+    AField.OnChange := FieldEvents[ADsIndex][AFldIndex].OnChange;
+    AField.OnGetText := FieldEvents[ADsIndex][AFldIndex].OnGetText;
+    AField.OnSetText := FieldEvents[ADsIndex][AFldIndex].OnSetText;
+    AField.OnValidate := FieldEvents[ADsIndex][AFldIndex].OnValidate;
   End;
 
-  Procedure SaveDataSetEvents(AIndex: Integer; ADataSet: TDataSet);
+  Procedure SaveDataSetEvents(AIndex: Integer; ADataset: TDataSet);
   Var
     J: Integer;
   Begin
-    If Assigned(ADataSet) Then
+    If Assigned(ADataset) Then
     Begin
-      For J := 0 To ADataSet.FieldCount - 1 Do
-        SaveFieldEvents(AIndex, J, ADataSet.Fields[J]);
+      For J := 0 To ADataset.FieldCount - 1 Do
+        SaveFieldEvents(AIndex, J, ADataset.Fields[J]);
 
-      DataSetEvents[AIndex].BeforeOpen := ADataSet.BeforeOpen;
-      ADataSet.BeforeOpen := nil;
-      DataSetEvents[AIndex].AfterOpen := ADataSet.AfterOpen;
-      ADataSet.AfterOpen := nil;
+      DataSetEvents[AIndex].BeforeOpen := ADataset.BeforeOpen;
+      ADataset.BeforeOpen := nil;
+      DataSetEvents[AIndex].AfterOpen := ADataset.AfterOpen;
+      ADataset.AfterOpen := nil;
 
-      DataSetEvents[AIndex].BeforeClose := ADataSet.BeforeClose;
-      ADataSet.BeforeClose := nil;
-      DataSetEvents[AIndex].AfterClose := ADataSet.AfterClose;
-      ADataSet.AfterClose := nil;
+      DataSetEvents[AIndex].BeforeClose := ADataset.BeforeClose;
+      ADataset.BeforeClose := nil;
+      DataSetEvents[AIndex].AfterClose := ADataset.AfterClose;
+      ADataset.AfterClose := nil;
 
-      DataSetEvents[AIndex].BeforeInsert := ADataSet.BeforeInsert;
-      ADataSet.BeforeInsert := nil;
-      DataSetEvents[AIndex].AfterInsert := ADataSet.AfterInsert;
-      ADataSet.AfterInsert := nil;
+      DataSetEvents[AIndex].BeforeInsert := ADataset.BeforeInsert;
+      ADataset.BeforeInsert := nil;
+      DataSetEvents[AIndex].AfterInsert := ADataset.AfterInsert;
+      ADataset.AfterInsert := nil;
 
-      DataSetEvents[AIndex].BeforeEdit := ADataSet.BeforeEdit;
-      ADataSet.BeforeEdit := nil;
-      DataSetEvents[AIndex].AfterEdit := ADataSet.AfterEdit;
-      ADataSet.AfterEdit := nil;
+      DataSetEvents[AIndex].BeforeEdit := ADataset.BeforeEdit;
+      ADataset.BeforeEdit := nil;
+      DataSetEvents[AIndex].AfterEdit := ADataset.AfterEdit;
+      ADataset.AfterEdit := nil;
 
-      DataSetEvents[AIndex].BeforePost := ADataSet.BeforePost;
-      ADataSet.BeforePost := nil;
-      DataSetEvents[AIndex].AfterPost := ADataSet.AfterPost;
-      ADataSet.AfterPost := nil;
+      DataSetEvents[AIndex].BeforePost := ADataset.BeforePost;
+      ADataset.BeforePost := nil;
+      DataSetEvents[AIndex].AfterPost := ADataset.AfterPost;
+      ADataset.AfterPost := nil;
 
-      DataSetEvents[AIndex].BeforeCancel := ADataSet.BeforeCancel;
-      ADataSet.BeforeCancel := nil;
-      DataSetEvents[AIndex].AfterCancel := ADataSet.AfterCancel;
-      ADataSet.AfterCancel := nil;
+      DataSetEvents[AIndex].BeforeCancel := ADataset.BeforeCancel;
+      ADataset.BeforeCancel := nil;
+      DataSetEvents[AIndex].AfterCancel := ADataset.AfterCancel;
+      ADataset.AfterCancel := nil;
 
-      DataSetEvents[AIndex].BeforeDelete := ADataSet.BeforeDelete;
-      ADataSet.BeforeDelete := nil;
-      DataSetEvents[AIndex].AfterDelete := ADataSet.AfterDelete;
-      ADataSet.AfterDelete := nil;
+      DataSetEvents[AIndex].BeforeDelete := ADataset.BeforeDelete;
+      ADataset.BeforeDelete := nil;
+      DataSetEvents[AIndex].AfterDelete := ADataset.AfterDelete;
+      ADataset.AfterDelete := nil;
 
-      DataSetEvents[AIndex].BeforeRefresh := ADataSet.BeforeRefresh;
-      ADataSet.BeforeRefresh := nil;
-      DataSetEvents[AIndex].AfterRefresh := ADataSet.AfterRefresh;
-      ADataSet.AfterRefresh := nil;
+      DataSetEvents[AIndex].BeforeRefresh := ADataset.BeforeRefresh;
+      ADataset.BeforeRefresh := nil;
+      DataSetEvents[AIndex].AfterRefresh := ADataset.AfterRefresh;
+      ADataset.AfterRefresh := nil;
 
-      DataSetEvents[AIndex].BeforeScroll := ADataSet.BeforeScroll;
-      ADataSet.BeforeScroll := nil;
-      DataSetEvents[AIndex].AfterScroll := ADataSet.AfterScroll;
-      ADataSet.AfterScroll := nil;
+      DataSetEvents[AIndex].BeforeScroll := ADataset.BeforeScroll;
+      ADataset.BeforeScroll := nil;
+      DataSetEvents[AIndex].AfterScroll := ADataset.AfterScroll;
+      ADataset.AfterScroll := nil;
 
-      DataSetEvents[AIndex].OnNewRecord := ADataSet.OnNewRecord;
-      ADataSet.OnNewRecord := nil;
+      DataSetEvents[AIndex].OnNewRecord := ADataset.OnNewRecord;
+      ADataset.OnNewRecord := nil;
     End;
   End;
 
-  Procedure RestoreDataSetEvents(AIndex: Integer; ADataSet: TDataSet);
+  Procedure RestoreDataSetEvents(AIndex: Integer; ADataset: TDataSet);
   Var
     J: Integer;
   Begin
-    If Assigned(ADataSet) Then
+    If Assigned(ADataset) Then
     Begin
-      For J := 0 To ADataSet.FieldCount - 1 Do
-        RestoreFieldEvents(AIndex, J, ADataSet.Fields[J]);
+      For J := 0 To ADataset.FieldCount - 1 Do
+        RestoreFieldEvents(AIndex, J, ADataset.Fields[J]);
 
-      ADataSet.BeforeOpen := DataSetEvents[AIndex].BeforeOpen;
-      ADataSet.AfterOpen := DataSetEvents[AIndex].AfterOpen;
+      ADataset.BeforeOpen := DataSetEvents[AIndex].BeforeOpen;
+      ADataset.AfterOpen := DataSetEvents[AIndex].AfterOpen;
 
-      ADataSet.BeforeClose := DataSetEvents[AIndex].BeforeClose;
-      ADataSet.AfterClose := DataSetEvents[AIndex].AfterClose;
+      ADataset.BeforeClose := DataSetEvents[AIndex].BeforeClose;
+      ADataset.AfterClose := DataSetEvents[AIndex].AfterClose;
 
-      ADataSet.BeforeInsert := DataSetEvents[AIndex].BeforeInsert;
-      ADataSet.AfterInsert := DataSetEvents[AIndex].AfterInsert;
+      ADataset.BeforeInsert := DataSetEvents[AIndex].BeforeInsert;
+      ADataset.AfterInsert := DataSetEvents[AIndex].AfterInsert;
 
-      ADataSet.BeforeEdit := DataSetEvents[AIndex].BeforeEdit;
-      ADataSet.AfterEdit := DataSetEvents[AIndex].AfterEdit;
+      ADataset.BeforeEdit := DataSetEvents[AIndex].BeforeEdit;
+      ADataset.AfterEdit := DataSetEvents[AIndex].AfterEdit;
 
-      ADataSet.BeforePost := DataSetEvents[AIndex].BeforePost;
-      ADataSet.AfterPost := DataSetEvents[AIndex].AfterPost;
+      ADataset.BeforePost := DataSetEvents[AIndex].BeforePost;
+      ADataset.AfterPost := DataSetEvents[AIndex].AfterPost;
 
-      ADataSet.BeforeCancel := DataSetEvents[AIndex].BeforeCancel;
-      ADataSet.AfterCancel := DataSetEvents[AIndex].AfterCancel;
+      ADataset.BeforeCancel := DataSetEvents[AIndex].BeforeCancel;
+      ADataset.AfterCancel := DataSetEvents[AIndex].AfterCancel;
 
-      ADataSet.BeforeDelete := DataSetEvents[AIndex].BeforeDelete;
-      ADataSet.AfterDelete := DataSetEvents[AIndex].AfterDelete;
+      ADataset.BeforeDelete := DataSetEvents[AIndex].BeforeDelete;
+      ADataset.AfterDelete := DataSetEvents[AIndex].AfterDelete;
 
-      ADataSet.BeforeRefresh := DataSetEvents[AIndex].BeforeRefresh;
-      ADataSet.AfterRefresh := DataSetEvents[AIndex].AfterRefresh;
+      ADataset.BeforeRefresh := DataSetEvents[AIndex].BeforeRefresh;
+      ADataset.AfterRefresh := DataSetEvents[AIndex].AfterRefresh;
 
-      ADataSet.BeforeScroll := DataSetEvents[AIndex].BeforeScroll;
-      ADataSet.AfterScroll := DataSetEvents[AIndex].AfterScroll;
+      ADataset.BeforeScroll := DataSetEvents[AIndex].BeforeScroll;
+      ADataset.AfterScroll := DataSetEvents[AIndex].AfterScroll;
 
-      ADataSet.OnNewRecord := DataSetEvents[AIndex].OnNewRecord;
+      ADataset.OnNewRecord := DataSetEvents[AIndex].OnNewRecord;
     End;
-  End;                                                             // ... Nonn
+  End; // ... Nonn
 
 Begin
   If Assigned(FxQuery.FOnBeforeQuery) Then
     FxQuery.FOnBeforeQuery(Self);
-  SFS := SaveFormatSettings;                                       // Nonn
-  BookmarkList := {$if RTLVersion >= 20}TList<TBookmark>{$else}TList{$ifend}.Create;
-  SetLength( DisabledState, FxQuery.DataSets.Count );
-  SetLength( DataSetState, FxQuery.DataSets.Count );
-  SetLength( DataSetEvents, FxQuery.DataSets.Count );
+  BookmarkList := TList.Create;
+  SetLength(DisabledState, FxQuery.DataSets.Count);
+  SetLength(DataSetState, FxQuery.DataSets.Count);
+  SetLength(DataSetEvents, FxQuery.DataSets.Count);
   MaxNumFields := 0;
   For I := 0 To FxQuery.DataSets.Count - 1 Do
     With FxQuery.DataSets[I] Do
@@ -5732,59 +6913,61 @@ Begin
       end;
   If MaxNumFields > 0 then
   Begin
-    SetLength( DataSetFields, FxQuery.DataSets.Count, MaxNumFields );
-    SetLength( FieldEvents, FxQuery.DataSets.Count, MaxNumFields );
+    SetLength(DataSetFields, FxQuery.DataSets.Count, MaxNumFields);
+    SetLength(FieldEvents, FxQuery.DataSets.Count, MaxNumFields);
   End;
   Try
-    //If FxQuery.FAutoDisableControls Then
-      { Save position of the datasets.
-        We must always do the following because the dataset need to be repositioned
-        to first record before querying, otherwise incorrect results must arise,
-        so AutoDisableControls property must not exist
-      }
-      For I := 0 To FxQuery.DataSets.Count - 1 Do
-        With FxQuery.DataSets[I] Do
+    // If FxQuery.FAutoDisableControls Then
+    { Save position of the datasets.
+      We must always do the following because the dataset need to be repositioned
+      to first record before querying, otherwise incorrect results must arise,
+      so AutoDisableControls property must not exist
+    }
+    For I := 0 To FxQuery.DataSets.Count - 1 Do
+      With FxQuery.DataSets[I] Do
+      Begin
+
+        If Not FxQuery.ActiveDataSetEvents Then // Nonn
+          SaveDataSetEvents(I, DataSet);
+
+        If Assigned(DataSet) And (DataSet.Active) Then
         Begin
-
-          If Not FxQuery.ActiveDataSetEvents Then                  // Nonn
-            SaveDataSetEvents(I, DataSet);
-
-          If Assigned(DataSet) And (DataSet.Active) Then
+          DisabledState[I] := DataSet.ControlsDisabled;
+          If Not DisabledState[I] Then
+            DataSet.DisableControls;
+          // save bookmark
+          BookmarkList.Add(DataSet.GetBookmark);
+          // save state
+          DataSetState[I] := DataSet.State; // Nonn ...
+          If DataSet.State In [dsEdit, dsInsert] Then
           Begin
-            DisabledState[I]:= DataSet.ControlsDisabled;
-            If Not DisabledState[I] Then
-              DataSet.DisableControls;
-            // save bookmark
-            BookmarkList.Add(DataSet.GetBookmark);
-            // save state
-            DataSetState[I] := DataSet.State;                       // Nonn ...
-            If DataSet.State In [dsEdit, dsInsert] Then
-            Begin
-              // save field values
-              For J := 0 To DataSet.FieldCount - 1 Do
-                DataSetFields[I][J] := DataSet.Fields[J].AsVariant;
+            // save field values
+            For J := 0 To DataSet.FieldCount - 1 Do
+              DataSetFields[I][J] := DataSet.Fields[J].AsVariant;
 
-              DataSet.Cancel;
-            End;                                                   // ... Nonn
+            DataSet.Cancel;
+          End; // ... Nonn
 
-            DataSet.First;    // must be set to first record for querying correctly
-          End
-          Else
-          Begin
-            BookmarkList.Add(Nil);
-            DataSetState[I] := dsInactive;                        // Nonn
-            DisabledState[I]:= False;
-          End;
+          DataSet.First; // must be set to first record for querying correctly
+        End
+        Else
+        Begin
+          BookmarkList.Add(Nil);
+          DataSetState[I] := dsInactive; // Nonn
+          DisabledState[I] := False;
         End;
-
+      End;
+   try
     CreateResultSet;
-
     DoIntoTableOperation;
-
-    If {FxQuery.FAutoDisableControls And} (BookmarkList.Count > 0) Then
+   finally
+    If { FxQuery.FAutoDisableControls And } (BookmarkList.Count > 0) Then
     Begin { LAS : 05-30-2000 }
       { restore position of the datasets }
-      SysUtils.GetFormatSettings; {Dirk Orlet 2000-09 Reset to windows settings}
+      {$IFNDEF Delphi7Up}
+       RefreshSystemFormatSettings;
+      {$ENDIF}
+      { Dirk Orlet 2000-09 Reset to windows settings }
       For I := 0 To FxQuery.DataSets.Count - 1 Do
         With FxQuery.DataSets[I] Do
         Begin
@@ -5798,7 +6981,8 @@ Begin
                 DataSet.GotoBookmark(bm);
               except
                 // Workaround for bookmark not found error
-                on EDatabaseError do { } // Ignore errors if failed going to bookmarked record
+                on EDatabaseError do { }
+                  // Ignore errors if failed going to bookmarked record
               end;
 
             // restore state                              // Nonn ...
@@ -5814,7 +6998,7 @@ Begin
               // restore field values
               For J := 0 To DataSet.FieldCount - 1 Do
                 DataSet.Fields[J].AsVariant := DataSetFields[I][J];
-            End;                                          // ... Nonn
+            End; // ... Nonn
 
             If Assigned(bm) Then
               DataSet.FreeBookmark(bm);
@@ -5822,14 +7006,14 @@ Begin
               DataSet.EnableControls;
           End;
 
-          If Not FxQuery.ActiveDataSetEvents Then        // Nonn
+          If Not FxQuery.ActiveDataSetEvents Then // Nonn
             RestoreDataSetEvents(I, DataSet);
 
         End;
     End;
+   End;
   Finally
-    BookmarkList.Free;
-    RestoreFormatSettings(SFS);                          // Nonn
+    BookmarkList.free;
     If Assigned(FxQuery.FOnAfterQuery) Then
       FxQuery.FOnAfterQuery(Self);
 
@@ -5844,24 +7028,22 @@ Begin
   End;
 End;
 
-Procedure TSqlAnalizer.DoSelect;
+Procedure TSqlAnalizer.doSelect;
 Begin
-  If Not (FStatement in [ssSelect, ssUnion]) Then
+  If Not(FStatement in [ssSelect, ssUnion]) Then
     Raise ExQueryError.Create(SIsNotValidInSelect);
   SafeCreateResultSet;
 End;
 
-Procedure TSqlAnalizer.AddFieldIfNot(Const fieldName: String);
+Procedure TSqlAnalizer.AddFieldIfNot(Const FieldName: String);
 Begin
-  If FxQuery.RefFields.IndexOf(fieldName) < 0 Then
-    FxQuery.RefFields.Add(fieldName);
+  If FxQuery.RefFields.IndexOf(FieldName) < 0 Then
+     FxQuery.RefFields.Add(FieldName);
 End;
 
-Procedure TSqlAnalizer.DoExecSQL;
+Procedure TSqlAnalizer.doExecSQL;
 Var
   I: Integer;
-  TmpThousandSeparator: Char; { LAS : 05-30-2000 }
-  TmpDecimalSeparator: Char; { LAS : 05-30-2000 }
 Begin
 
   If FStatement = ssSelect Then
@@ -5894,8 +7076,7 @@ Begin
 
     If Assigned(FxQuery.OnCreateIndex) Then
       FxQuery.OnCreateIndex(FxQuery, IndexUnique, IndexDescending, IndexTable,
-        IndexName,
-        IndexColumnList);
+        IndexName, IndexColumnList);
     Exit;
 
   End
@@ -5930,16 +7111,16 @@ Begin
     FxQuery.ReindexTable(FTableList);
     Exit;
   End;
-  TmpThousandSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator; { LAS : 05-30-2000 }
-  TmpDecimalSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator; { LAS : 05-30-2000 }
-  {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := ','; { LAS : 05-30-2000 }
-  {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := '.'; { LAS : 05-30-2000 }
+  {$IFNDEF Delphi7Up}
+  RestoreFormatSettings( fRuntimeFormatSettings );
+ {$ENDIF}
   FxQuery.FRowsAffected := 0;
   Try
     SafeCreateResultSet;
   Finally
-    {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
-    {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
+   {$IFNDEF Delphi7Up}
+    RestoreFormatSettings( fRuntimeFormatSettings );
+   {$ENDIF}
   End;
 End;
 
@@ -5983,27 +7164,28 @@ Begin
 End;
 
 Procedure TSqlAnalizer.InitializeResultSet;
-//var
-  //I: Integer;
-  //Accept: Boolean;
+// var
+// I: Integer;
+// Accept: Boolean;
 Begin
-  If Assigned(FResultSet) Then
-    FResultSet.Free;
+  FreeObject(FResultSet);
 {$IFDEF False}
   Accept := False;
   If Accept { next release }
-  And (FStatement = ssSelect) { select statement }
-  And FxQuery.FAllSequenced { all sequenced property}
-  And (TableList.Count = 1) { no JOINing }
-  And (FSubQueryList.Count = 0) { no subqueries }
-  And (Length(FPivotStr) = 0) { the command is not TRANSFORM...PIVOT }
-  And (FParentAnalizer = Nil) { don't have parent analizer }
-  And Not HasAggregates { not aggregates }
-  And Not HasDistinctAggregates { not COUNT(DISTINCT country) }
-  And (Length(FWhereStr) = 0) { no where clause }
-  And (FWhereOptimizeList.Count = 0) { no optimizations } Then
+    And (FStatement = ssSelect) { select statement }
+    And FxQuery.FAllSequenced { all sequenced property }
+    And (TableList.Count = 1) { no JOINing }
+    And (FSubQueryList.Count = 0) { no subqueries }
+    And (Length(FPivotStr) = 0) { the command is not TRANSFORM...PIVOT }
+    And (FParentAnalizer = Nil) { don't have parent analizer }
+    And Not HasAggregates { not aggregates }
+    And Not HasDistinctAggregates { not COUNT(DISTINCT country) }
+    And (Length(FWhereStr) = 0) { no where clause }
+    And (FWhereOptimizeList.Count = 0) { no optimizations } Then
   Begin
     FResultSet := TSeqResultSet.Create;
+    FResultSet.fRuntimeFormatSettings := fRuntimeFormatSettings;
+    FResultSet.fSystemFormatSettings := fSystemFormatSettings;
     With TSeqResultSet(FResultSet) Do
     Begin
       For I := 0 To ColumnList.Count - 1 Do
@@ -6020,6 +7202,9 @@ Begin
       FResultSet := TMemResultSet.Create
     Else
       FResultSet := TFileResultSet.Create(FxQuery.FMapFileSize);
+
+    FResultSet.fRuntimeFormatSettings := fRuntimeFormatSettings;
+    FResultSet.fSystemFormatSettings := fSystemFormatSettings;
   End;
 End;
 
@@ -6033,9 +7218,9 @@ Begin
   FResultSet := Value;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxDataSetItem                                     }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TxDataSetItem }
+{ ------------------------------------------------------------------------------- }
 
 Procedure TxDataSetItem.Assign(Source: TPersistent);
 Begin
@@ -6066,10 +7251,10 @@ End;
 Procedure TxDataSetItem.SetDataSet(Value: TDataSet);
 Begin
   If Value = TxDataSets(Collection).FxQuery Then
-    Raise exception.Create(SCircularReference);
+    Raise Exception.Create(SCircularReference);
 
-  If Not (Value Is TxDataSets(Collection).DataSetClass) Then
-    Raise exception.CreateFmt(SDataSetUnexpected,
+  If Not(Value Is TxDataSets(Collection).DataSetClass) Then
+    Raise Exception.CreateFmt(SDataSetUnexpected,
       [TxDataSets(Collection).DataSetClass.ClassName]);
 
   FDataSet := Value;
@@ -6083,14 +7268,14 @@ End;
 
 Procedure TxDataSetItem.SetAlias(Const Value: String);
 Begin
-  If TxDataSets(Collection).IndexOfAlias(Value) >= 0 Then
+  If TxDataSets(Collection).IndexOFAlias(Value) >= 0 Then
     Raise ExQueryError.Create(SDuplicateAlias);
   FAlias := Value;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TxDataSets                                        }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TxDataSets }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TxDataSets.Create(AOwner: TPersistent);
 Begin
@@ -6101,7 +7286,7 @@ End;
 
 Function TxDataSets.GetItem(Index: Integer): TxDataSetItem;
 Begin
-  Result := TxDataSetItem(Inherited GetItem(Index));
+  Result := TxDataSetItem( Inherited GetItem(Index));
 End;
 
 Procedure TxDataSets.SetItem(Index: Integer; Value: TxDataSetItem);
@@ -6115,27 +7300,27 @@ Var
 Begin
   Result := -1;
   For I := 0 To Count - 1 Do
-    If AnsiCompareText(TxDataSetItem(Inherited GetItem(I)).Alias, Alias) = 0 Then
+    If AnsiCompareText(TxDataSetItem( Inherited GetItem(I)).Alias, Alias)
+      = 0 Then { patched by fduenas: Changed AnsiCompareText to CompareText }
     Begin
       Result := I;
       Exit;
     End;
 End;
 
-{function TxDataSets.GetOwner: TPersistent;
-begin
+{ function TxDataSets.GetOwner: TPersistent;
+  begin
   Result:= FxQuery;
-end;}
+  end; }
 
 Function TxDataSets.Add: TxDataSetItem;
 Begin
-  Result := TxDataSetItem(Inherited Add);
+  Result := TxDataSetItem( Inherited Add);
 End;
 
-
-{-------------------------------------------------------------------------------}
-{          Define and implements TxqBlobStream                                  }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Define and implements TxqBlobStream }
+{ ------------------------------------------------------------------------------- }
 
 Type
 
@@ -6160,7 +7345,7 @@ Begin
     ReadBlobData;
 End;
 
-{MED: 09-07-00, added- caused memory leak big time!}
+{ MED: 09-07-00, added- caused memory leak big time! }
 
 Destructor TxqBlobStream.Destroy;
 Begin
@@ -6170,17 +7355,18 @@ End;
 Procedure TxqBlobStream.ReadBlobData;
 Var
 {$IFDEF False}
-  RecNo: Integer;
+  Recno: Integer;
   Accepted: Boolean;
 {$ENDIF}
   Field: TxqField;
 Begin
-  If (FDataSet.ResultSet.RecordCount=0) or (FDataSet.RecNo < 1) Then Exit;
-  FDataSet.ResultSet.RecNo := FDataSet.RecNo;
-  Field := FDataSet.ResultSet.Fields[FIndex];
+  If (FDataSet.ResultSet.RecordCount = 0) or (FDataSet.Recno < 1) Then
+    Exit;
+  FDataSet.ResultSet.Recno := FDataSet.Recno;
+  Field := FDataSet.ResultSet.FindFieldByDataSetFieldName(FField.FieldName) { Fields[FIndex]};
 {$IFDEF False}
-  RecNo := FDataSet.ResultSet.Fields[FIndex].AsInteger;
-  If RecNo < 1 Then
+  Recno := FDataSet.ResultSet.Fields[FIndex].AsInteger;
+  If Recno < 1 Then
   Begin
     If Assigned(FDataSet.OnBlobNeeded) Then
     Begin
@@ -6200,26 +7386,28 @@ Begin
 {$ENDIF}
   Begin
     { position in the original record }
-    Field.SourceField.Dataset.GotoBookmark(FDataSet.ResultSet.GetSourceBookmark);
-    //SetRecordNumber(Field.SourceField.DataSet, RecNo);
+    Field.SourceField.DataSet.GotoBookmark
+      (FDataSet.ResultSet.GetSourceBookmark);
+    // SetRecordNumber(Field.SourceField.DataSet, RecNo);
   End;
 
   (Field.SourceField As TBlobField).SaveToStream(Self);
   Self.Position := 0;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Defines and implements TxQueryDataLink                       }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Defines and implements TxQueryDataLink }
+{ ------------------------------------------------------------------------------- }
 
 Type
-  TxQueryDataLink = Class({$IFDEF level3}TDataLink{$ELSE}TDetailDataLink{$ENDIF})
+  TxQueryDataLink = Class
+    ({$IFDEF level3}TDataLink{$ELSE}TDetailDataLink{$ENDIF})
   Private
     FxQuery: TCustomxQuery;
   Protected
     Procedure ActiveChanged; Override;
     Procedure RecordChanged(Field: TField); Override;
-{$IFNDEF LEVEL3}
+{$IFDEF LEVEL4}
     Function GetDetailDataSet: TDataSet; Override;
 {$ENDIF}
     Procedure CheckBrowseMode; Override;
@@ -6239,7 +7427,7 @@ Begin
     FxQuery.RefreshParams;
 End;
 
-{$IFNDEF LEVEL3}
+{$IFDEF LEVEL4}
 Function TxQueryDataLink.GetDetailDataSet: TDataSet;
 Begin
   Result := FxQuery;
@@ -6258,65 +7446,107 @@ Begin
     FxQuery.CheckBrowseMode;
 End;
 
-{-------------------------------------------------------------------------------}
-{                  Implements TCustomxQuery                                     }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ Implements TCustomxQuery }
+{ ------------------------------------------------------------------------------- }
 
 Constructor TCustomxQuery.Create(AOwner: TComponent);
 Begin
   Inherited Create(AOwner);
+  FLock := TCriticalSection.Create;
+  fFormatSettings := TxFormatSettings.Create(self, true);
+  fGlobalFormatSettings := fFormatSettings.System;
+  RefreshCurrentFormatSettings(false);
   FReadOnly := False; // editing
   FDataSets := TxDataSets.Create(Self);
   FSQL := TStringList.Create;
   FSQLScript := TStringList.Create;
   TStringList(SQL).OnChange := QueryChanged;
   FDataLink := TxQueryDataLink.Create(Self);
-  FParams := TParams.Create{$IFNDEF LEVEL3}(Self){$ENDIF};
+  FParams := TParams.Create{$IFDEF LEVEL4}(Self){$ENDIF};
   FParamCheck := True;
   FAutoDisableControls := True;
+  FActiveStoredUsage := [asDesignTime, asRunTime];
   FInMemResultSet := True;
-  FDateFormat := ''; //ShortDateFormat;   { empty string means to use ShortDateFormat global var }
+
+  if (Trim(SFmtDefaultShortDateFormat)<>'') then
+      fDateFormat := Trim(SFmtDefaultShortDateFormat)
+  else
+      fDateFormat := fGlobalFormatSettings.ShortDateFormat;
+
+  fFormatSettings.Parser.fInnerFormatSettings.ShortDateFormat := FDateFormat;
+  fFormatSettings.System.fInnerFormatSettings.ShortDateFormat := FDateFormat;
+
+  if (SFmtDefaultDateSeparator<>'') then
+      FDateSeparator := SFmtDefaultDateSeparator[1]
+  else
+      FDateSeparator := fGlobalFormatSettings.DateSeparator;
+
+  fFormatSettings.Parser.fInnerFormatSettings.DateSeparator := FDateSeparator;
+  fFormatSettings.System.fInnerFormatSettings.DateSeparator := FDateSeparator;
+
+  if (SFmtDefaultThousandSeparator<>'') then
+  begin
+    fFormatSettings.Parser.fInnerFormatSettings.ThousandSeparator := SFmtDefaultThousandSeparator[1];
+    fFormatSettings.System.fInnerFormatSettings.ThousandSeparator := SFmtDefaultThousandSeparator[1];
+  end;
+
+  RefreshRuntimeFormatSettings( fFormatSettings.System.fInnerFormatSettings );
+
+  // ShortDateFormat;   { empty string means to use ShortDateFormat global var }
   FDisabledDataSets := TList.Create;
   FMapFileSize := 2000000;
   FShowWaitCursor := True;
   FWhereOptimizeMethod := omSetFilter;
-  FRefFields := TStringList.create;
-  FParamsAsFields:= TParamsAsFields.Create(Self);
-  FActiveDataSetEvents := True;           // Nonn
+  FRefFields := TStringList.Create;
+  FParamsAsFields := TParamsAsFields.Create(Self);
+  FActiveDataSetEvents := True; // Nonn
 End;
 
 Destructor TCustomxQuery.Destroy;
 Begin
+  FreeAndNil( FLock );
   Disconnect;
-  FSQL.Free;
-  FSQLScript.Free;
-  FFilterExpr.Free;
-  FParams.Free;
-  FDataLink.Free;
-  FDisabledDataSets.Free;
+  FSQL.free;
+  FSQLScript.free;
+  FFilterExpr.free;
+  FParams.free;
+  FDataLink.free;
+  FDisabledDataSets.free;
   { I am not sure if I must move up because some customer reported memory leak
     when its placed above }
   ClearTempDatasets;
-  FDataSets.Free;
-  FRefFields.Free;
-  FParamsAsFields.Free;
+  FDataSets.free;
+  FRefFields.free;
+  FParamsAsFields.free;
+  FreeAndNil(fFormatSettings);
   Inherited Destroy;
 End;
 
-Function TCustomxQuery.CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream;
+Function TCustomxQuery.CreateBlobStream(Field: TField;
+  Mode: TBlobStreamMode): TStream;
 Begin
   Result := TxqBlobStream.Create(Field As TBlobField, Mode);
 End;
 
 procedure TCustomxQuery._ReadRecord(Buffer: TRecordBuffer; IntRecNum: Integer);
 Var
-  I: Integer;
+  _idx, _fieldCount: Integer;
   vField: TxqField;
-  vs: String;
-  Avs: AnsiString; { patched by ccy }
-  Wvs: WideString; { patched by ccy }
+//  vDataSetField: TField; {modified by fduenas: use Field name instead of Field Index}
+  vS: String;
+  vAs: AnsiString; { patched by ccy }
+{$IFDEF LEVEL4}
+  vWS: WideString;
+{$ENDIF}
   vf: double;
-  vn: Integer;
+{$IFDEF LEVEL4} { changed by fduenas: fix for ftLargeInt Issue }
+  vn: Int64;
+{$ELSE}
+  vn: Integer; {added by fduenas: added LargeInt (Int64) support}
+{$ENDIF}
+  vln: Int64;
+  vFieldBufferOffset: Integer;
   vb: WordBool;
   vTimeStamp: TTimeStamp;
   vData: TDateTimeRec;
@@ -6325,27 +7555,62 @@ Var
   b: Byte;
   si: SmallInt;
 Begin
-  FResultSet.RecNo := IntRecNum + 1;
+  FResultSet.Recno := IntRecNum + 1;
   FillChar(Buffer^, FRecordSize, #0);
-  For I := 0 To FResultSet.Fields.Count - 1 Do
+  _fieldCount := FResultSet.Fields.Count-1;
+  For _idx := 0 To _fieldCount Do
   Begin
-    vField := FResultSet.Fields[I];
+    vField := FResultSet.Fields[_idx];
+    //vDataSetField := FindField( vField.DataSetFieldName );
+    vFieldBufferOffset := vField.FFieldOffset;
     Case vField.DataType Of
-      ttstring: { patched by ccy }
+      ttstring:
         Begin
-          vs := vField.Asstring;
-          If Length(vs) > 0 Then begin
-            FldDef := FieldDefs[I];
-            if (FieldDefs[I].DataType = ftString) or (FieldDefs[I].DataType = ftMemo) then begin
-              Avs := AnsiString(vs);
-              Move(Avs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(Avs)));
-            end else if (FieldDefs[I].DataType = ftWideString) or (FieldDefs[I].DataType = ftWideMemo) then begin
-              Wvs := vs;
-              Move(Wvs[1], (Buffer + vField.FFieldOffset)^, IMin(FldDef.Size, Length(Wvs)) * SizeOf(WideChar));
-            end else
-              Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring');
-          end;
+          vS := vField.AsString;
+          If Length(vS) > 0 Then
+          Begin
+            FldDef := FieldDefs[_idx];
+            if FieldDefs[_idx].DataType in [ftString, ftFixedChar, ftMemo, ftFmtMemo] then
+            begin
+             vAs := AnsiString(vS);
+             Move(vAS[1], (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+              IMin(FldDef.Size * SizeOfExprType(ttString), Length(vAS) * SizeOfExprType(ttString)));
+            { patched by ccy } { patched by fduenas added FldDef.Size*SizeOf(Char) }
+            end
+           {$IFDEF LEVEL4}
+            else
+            begin
+             vWS := WideString(vS);
+             Move(vWS[1], (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+              IMin(FldDef.Size * SizeOfExprType(ttWideString), Length(vWS) * SizeOfExprType(ttWideString)));
+            { patched by ccy } { patched by fduenas added FldDef.Size*SizeOf(Char) }
+            end;
+           {$ENDIF}
+          End;
         End;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        Begin
+          vWS := vField.AsWideString;
+          If Length(vWS) > 0 Then
+          Begin
+            FldDef := FieldDefs[_idx];
+            if FieldDefs[_idx].DataType in [ftString, ftFixedChar, ftMemo, ftFmtMemo] then
+            begin
+             vAs := AnsiString(vWS);
+             Move(vAS[1], (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+              IMin(FldDef.Size * SizeOfExprType(ttString), Length(vAS) * SizeOfExprType(ttString)));
+            { patched by ccy } { patched by fduenas added FldDef.Size*SizeOf(Char) }
+            end
+            else
+            begin
+             Move(vWS[1], (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+              IMin(FldDef.Size * SizeOfExprType(ttWideString), Length(vWS) * SizeOfExprType(ttWideString)));
+            { patched by ccy } { patched by fduenas added FldDef.Size*SizeOf(Char) }
+            end;
+          End;
+        End;
+     {$ENDIF}
       ttFloat:
         Begin
           vf := vField.AsFloat;
@@ -6353,37 +7618,40 @@ Begin
           If Assigned(vField.SourceField) Then
           Begin
             vFieldType := vField.SourceField.DataType;
-            {$IFDEF LEVEL6}
-            If vFieldType=ftTimeStamp then
-              vFieldType:= ftDateTime;
-            {$ENDIF}
+{$IFDEF LEVEL6}
+            If vFieldType = ftTimeStamp then
+               vFieldType := ftDateTime;
+{$ENDIF}
           End
           Else If vField.CastType > 0 Then
           Begin
             Case vField.CastType Of
-              RW_DATE: vFieldType := ftDate;
-              RW_TIME: vFieldType := ftTime;
-              RW_DATETIME: vFieldType := ftDateTime;
+              RW_DATE:
+                vFieldType := ftDate;
+              RW_TIME:
+                vFieldType := ftTime;
+              RW_DATETIME:
+                vFieldType := ftDateTime;
             End;
           End;
-          If vFieldType In [{ftDate, ftTime,} ftDateTime] Then
+          If vFieldType In [ { ftDate, ftTime, } ftDateTime] Then
           Begin
             If vf <> 0 Then
             Begin
               vTimeStamp := DateTimeToTimeStamp(vf);
-              {Case vFieldType Of
+              { Case vFieldType Of
                 ftDate: vData.Date := vTimeStamp.Date;
                 ftTime: vData.Time := vTimeStamp.Time;
-              Else }
-                vData.DateTime := TimeStampToMSecs(vTimeStamp);
-              //End;
-              Move(vData, (Buffer + vField.FFieldOffset)^, SizeOf(TDateTimeRec))
+                Else }
+              vData.DateTime := TimeStampToMSecs(vTimeStamp);
+              // End;
+              Move(vData, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(TDateTimeRec))
             End
             Else
-              Move(vf, (Buffer + vField.FFieldOffset)^, SizeOf(vf))
+              Move(vf, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(vf))
           End
           Else
-            Move(vf, (Buffer + vField.FFieldOffset)^, SizeOf(Double));
+            Move(vf, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(double));
         End;
       ttInteger:
         Begin
@@ -6392,27 +7660,53 @@ Begin
           begin
             if vField.SourceField.DataSize = 1 then
             begin
-              b:= vn;
-              Move(b, (Buffer + vField.FFieldOffset)^, 1);
-            end else if vField.SourceField.DataSize = 2 then
+              b := vn;
+              Move(b, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, 1);
+            end
+            else if vField.SourceField.DataSize = 2 then
             begin
-              si:= vn;
-              Move(si, (Buffer + vField.FFieldOffset)^, 2);
-            end else
-              Move(vn, (Buffer + vField.FFieldOffset)^, vField.SourceField.DataSize);
-          end else
-            Move(vn, (Buffer + vField.FFieldOffset)^, SizeOf(Integer));
+              si := vn;
+              Move(si, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, 2);
+            end
+            else
+              Move(vn, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+                vField.SourceField.DataSize);
+          end
+          else
+            Move(vn, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(LongInt));
+        End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+          vln := vField.AsLargeInt;
+          if Assigned(vField.SourceField) then
+          begin
+            if vField.SourceField.DataSize = 1 then
+            begin
+              b := vln;
+              Move(b, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, 1);
+            end
+            else if vField.SourceField.DataSize = 2 then
+            begin
+              si := vln;
+              Move(si, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, 2);
+            end
+            else
+              Move(vln, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+                vField.SourceField.DataSize);
+          end
+          else
+            Move(vln, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(Int64));
         End;
       ttBoolean:
         Begin
           vb := vField.AsBoolean;
-          Move(vb, (Buffer + vField.FFieldOffset)^, SizeOf(WordBool));
+          Move(vb, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(WordBool));
         End;
     End;
   End;
 End;
 
-Procedure TCustomxQuery.SetQuery(Value: Tstrings);
+Procedure TCustomxQuery.SetQuery(Value: TStrings);
 Begin
   If SQL.Text <> Value.Text Then
   Begin
@@ -6426,7 +7720,7 @@ Begin
   End;
 End;
 
-Procedure TCustomxQuery.SetSQLScript(Value: Tstrings);
+Procedure TCustomxQuery.SetSQLScript(Value: TStrings);
 Begin
   If SQLScript.Text <> Value.Text Then
   Begin
@@ -6442,19 +7736,19 @@ End;
 Procedure TCustomxQuery.AddDataSet(DataSet: TDataSet; Const Alias: String);
 Var
   Item: TxDataSetItem;
-  s: String;
+  S: String;
 Begin
   If Not Assigned(DataSet) Then
     Exit;
-  If Not (DataSet Is TDataSetClass) Then
+  If Not(DataSet Is TDataSetClass) Then
     Raise ExQueryError.CreateFmt(SDataSetUnexpected, [TDataSetClass.ClassName]);
   If FDataSets.IndexOFAlias(Alias) >= 0 Then
     Raise ExQueryError.Create(SDuplicateAlias);
   Item := FDataSets.Add;
-  s := Alias;
-  If Length(s) = 0 Then
-    s := DataSet.Name;
-  Item.Alias := s;
+  S := Alias;
+  If Length(S) = 0 Then
+    S := DataSet.Name;
+  Item.Alias := S;
   Item.DataSet := DataSet;
 End;
 
@@ -6479,67 +7773,65 @@ End;
 Procedure TCustomxQuery.ClearTempDatasets;
 Var
   I: Integer;
-  found: boolean;
+  Found: Boolean;
   Item: TxDataSetItem;
-  D: TDataset;
+  d: TDataSet;
 Begin
-  D:= Nil;
+  d := Nil;
   Repeat
-    found := False;
+    Found := False;
     For I := FDataSets.Count - 1 Downto 0 Do
     Begin
       Item := FDataSets[I];
-      If Item.Temporal And Assigned(Item.Dataset) Then
+      If Item.Temporal And Assigned(Item.DataSet) Then
       Begin
-        D := Item.Dataset;
-        D.Free;
-        found := true;
-        break;
+        d := Item.DataSet;
+        d.free;
+        Found := True;
+        Break;
       End;
     End;
-    If found Then
-      { confirm that the item was also deleted}
+    If Found Then
+      { confirm that the item was also deleted }
       For I := 0 To FDataSets.Count - 1 Do
       Begin
         Item := FDataSets[I];
-        If Item.Dataset = D Then
+        If Item.DataSet = d Then
         Begin
-          Item.Free;
+          Item.free;
           Break;
         End;
       End;
-  Until Not found;
+  Until Not Found;
 End;
 
 Procedure TCustomxQuery.InternalOpen;
 Var
   Analizer: TSqlAnalizer;
   Field: TxqField;
+  DbField: TField;
   ErrLine, ErrCol: Integer;
   ErrMsg, Errtxt: String;
   I, Offset: Integer;
-  TmpThousandSeparator: Char; { LAS : 05-30-2000 }
-  TmpDecimalSeparator: Char; { LAS : 05-30-2000 }
-  iSize: integer; { patched by ccy }
+  lAbort: Boolean;
 Begin
-
   ClearTempDatasets;
 
 {$IFDEF XQDEMO}
-  If IsFirstTime Or
-    (Not (csDesigning In ComponentState) And Not IsDelphiRunning) Then
+  If IsFirstTime Or (Not(csDesigning In ComponentState) And
+    Not IsDelphiRunning) Then
   Begin
     IsFirstTime := False;
-    If Not (csDesigning In ComponentState) Then
+    If Not(csDesigning In ComponentState) Then
       ShowAbout;
     If Not IsDelphiRunning Then
-      Raise exception.Create(SDelphiIsNotRunning);
+      Raise Exception.Create(SDelphiIsNotRunning);
   End;
 {$ENDIF}
-
   FRowsAffected := 0;
 
   ClearTempDatasets;
+
   If Not FResultSetIsDefined Then
   Begin
     If Length(Trim(FSQL.Text)) = 0 Then
@@ -6548,45 +7840,57 @@ Begin
     If Assigned(FResultSet) Then
       FreeObject(FResultSet);
 
+    fOldRunTimeFormatSettings := DoPrepareFormatSettings( fFormatSettings.Parser.fInnerFormatSettings );
+
     { Clear the list of referenced fields on the SQL }
-    TmpThousandSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator;
-    TmpDecimalSeparator := {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator;
-    {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := ',';
-    {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := '.';
 
     If FDataLink.DataSource <> Nil Then
-      SetParamsFromDataSet;
+       SetParamsFromDataSet;
 
     Analizer := TSqlAnalizer.Create(Nil, Self);
+    lAbort := false;
     Try
-      If Analizer.parser.yyparse = 1 Then
+      If (Analizer.Parser.yyparse = 1) Then
       Begin
-        ErrLine := Analizer.lexer.yylineno;
-        ErrCol := Analizer.lexer.yycolno - Analizer.Lexer.yyTextLen - 1;
-        ErrMsg := Analizer.parser.yyerrormsg;
-        Analizer.lexer.getyytext(ErrTxt);
+        ErrLine := Analizer.Lexer.yylineno;
+        ErrCol := Analizer.Lexer.yycolno - Analizer.Lexer.yyTextLen - 1;
+        ErrMsg := Analizer.Parser.yyerrormsg;
+        Analizer.Lexer.getyytext(Errtxt);
+        lAbort := true;
         If Assigned(FOnSyntaxError) Then
         Begin
-          FOnSyntaxError(Self, ErrMsg, ErrTxt, ErrLine, ErrCol, Length(ErrTxt));
-          Abort;
+          FOnSyntaxError(Self, ErrMsg, Errtxt, ErrLine, ErrCol, Length(Errtxt));
         End
         Else
           { if not raised an error, will raise here }
-          Raise ExQueryError.CreateFmt(SSyntaxErrorMsg, [ErrMsg, ErrLine, ErrCol, ErrTxt]);
-      End;
-      Analizer.DoSelect; { normal SELECT statement }
-      FResultSet := Analizer.ResultSet;
-      Analizer.ResultSet := Nil;
+          Raise ExQueryError.CreateFmt(SSyntaxErrorMsg,
+            [ErrMsg, ErrLine, ErrCol, Errtxt]);
+      End
+      else
+      begin
+       FResultSet := nil;
+       try
+        Analizer.doSelect; { normal SELECT statement }
+        FResultSet := Analizer.ResultSet;
+        Analizer.ResultSet := Nil;
+       finally
+       end;
+      end;
     Finally
       FreeObject(Analizer);
-      (*if Found then
+      (* if Found then
         FSQL.Text:= SavedSQLText; *)
-
-      {$if RTLVersion >= 24}FormatSettings.{$ifend}ThousandSeparator := TmpThousandSeparator; { LAS : 05-30-2000 }
-      {$if RTLVersion >= 24}FormatSettings.{$ifend}DecimalSeparator := TmpDecimalSeparator; { LAS : 05-30-2000 }
+      DoRestoreFormatSettings(fOldRunTimeFormatSettings);
     End;
+    if lAbort then
+       Abort;
   End;
 
+  if not assigned(FResultSet) then
+  begin
+   FIsOpen := false;
+   exit;
+  end;
   { calculate the offset for every field }
   Offset := 0;
   For I := 0 To FResultSet.FFields.Count - 1 Do
@@ -6595,43 +7899,65 @@ Begin
     With Field Do
     Begin
       Case DataType Of
-        ttstring: begin { patched by ccy }
-                    iSize := SizeOf(AnsiChar);
-                    if Assigned(SourceField) and (SourceField.DataType = ftWideString) then
-                      iSize := SizeOf(WideChar);
-                    DataSize := (ColWidth + 1) * iSize;
-                  end;
-        ttFloat: DataSize := SizeOf(Double);
+        ttString:
+          begin
+            if Assigned(Field.SourceField) then
+               DataSize := (ColWidth * SizeOfFieldType(SourceField.DataType)) + SizeOf(WordBool);
+            { patched by ccy } { fduenas }{ ++1 }
+          end;
+       {$IFDEF LEVEL4}
+        ttWideString:
+          begin
+            if Assigned(Field.SourceField) then
+              DataSize := (ColWidth * SizeOfFieldType( SourceField.DataType)) + SizeOf(WordBool);
+            { patched by ccy } { fduenas }{ ++1 }
+          end;
+       {$ENDIF}
+        ttFloat:
+          DataSize := SizeOf(double);
         ttInteger:
           begin
-          if Assigned(Field.SourceField) then
-            DataSize := Field.SourceField.DataSize
-          else
-            DataSize := SizeOf(Integer);
+            if Assigned(Field.SourceField) then
+              DataSize := IMax(Field.SourceField.DataSize, SizeOf(Integer))
+              { changed by fduenas: fix for ftLargeInt issue }
+            else
+              DataSize := SizeOf(Integer);
           end;
-        ttBoolean: DataSize := SizeOf(WordBool);
+        ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+          begin
+            if Assigned(Field.SourceField) then
+               DataSize := IMax(Field.SourceField.DataSize, SizeOf(Int64))
+              { changed by fduenas: fix for ftLargeInt issue }
+            else
+              DataSize := SizeOf(Int64);
+          end;
+        ttBoolean:
+          DataSize := SizeOf(WordBool);
       End;
       FFieldOffset := Offset;
       Inc(Offset, DataSize);
     End;
   End;
 
-
   InternalInitFieldDefs;
 
   If DefaultFields Then
-    CreateFields;
+     CreateFields;
 
   { Assign the display labels as column names }
   For I := 0 To FResultSet.Fields.Count - 1 Do
   Begin
     Field := FResultSet.Fields[I];
+    DbField := FindField(Field.DataSetFieldName); {changed by fduenas: uses FieldName instead of Index}
     If Assigned(Field.SourceField) And Field.UseDisplayLabel Then
-      Fields[I].DisplayLabel := Field.SourceField.DisplayLabel;
+      DbField.DisplayLabel := Field.SourceField.DisplayLabel;
     If Assigned(Field.SourceField) And (Field.SourceField Is TNumericField) Then
-      (Fields[I] as TNumericField).DisplayFormat := (Field.SourceField As TNumericField).DisplayFormat;
-    If Assigned(Field.SourceField) And (Field.SourceField Is TDateTimeField) Then
-      (Fields[I] as TDateTimeField).DisplayFormat := (Field.SourceField As TDateTimeField).DisplayFormat;
+      (DbField as TNumericField).DisplayFormat :=
+        (Field.SourceField As TNumericField).DisplayFormat;
+    If Assigned(Field.SourceField) And
+      (Field.SourceField Is TDateTimeField) Then
+      (DbField as TDateTimeField).DisplayFormat :=
+        (Field.SourceField As TDateTimeField).DisplayFormat;
   End;
 
   BindFields(True);
@@ -6652,7 +7978,7 @@ Begin
     FreeObject(FFilterExpr);
   If Filtered And (Length(Filter) > 0) Then
   Begin
-    FFilterExpr := TExprParser.Create(Nil, Self);
+    FFilterExpr := TExprParser.Create(Nil, Self, fRuntimeFormatSettings, fSystemFormatSettings);
     Try
       FFilterExpr.ParseExpression(Filter);
     Except
@@ -6665,29 +7991,53 @@ Begin
 
 End;
 
-Function TCustomxQuery.GetFieldSize(FieldType: TFieldType; Size: longint): longint;
+Function TCustomxQuery.GetFieldSize(FieldType: TFieldType;
+  Size: Longint): Longint;
 Begin
   Case FieldType Of
-{$IFNDEF LEVEL3}
-    ftFixedChar, ftWideString,
+{$IFDEF LEVEL4}
+    ftFixedChar,
 {$ENDIF}
-    ftString: Result := Size + 1;
-    ftSmallInt: Result := SizeOf(SmallInt);
-    ftInteger: Result := SizeOf(Integer);
-{$IFNDEF LEVEL3}
-    ftLargeInt: Result := SizeOf(Int64);
+    ftString:
+      Result := (Size * SizeOfFieldType(FieldType) ) + SizeOf(WordBool); { patched by fduenas }
+    // this fixes some Float field values displayed wrongly
+   {$IFDEF LEVEL4}
+    ftWidestring, ftFixedWideChar:
+        Result := (Size * SizeOfFieldType(FieldType)) + SizeOf(WordBool); { patched by fduenas }
+   {$ENDIF}
+    ftSmallInt:
+      Result := SizeOf(SmallInt);
+   {$IFDEF Delphi2009Up}
+    ftShortInt:
+      Result := SizeOf(ShortInt);
+   {$ENDIF}
+    ftInteger:
+      Result := SizeOf(Integer);
+{$IFDEF LEVEL4}
+    ftLargeint:
+      Result := SizeOf(Int64);
 {$ENDIF}
-    ftWord: Result := SizeOf(Word);
-    ftBoolean: Result := SizeOf(WordBool);
-    ftFloat: Result := SizeOf(Double);
-    ftCurrency: Result := SizeOf(Double);
-    ftDate: Result := SizeOf(TDateTimeRec);
-    ftTime: Result := SizeOf(TDateTimeRec);
-    ftDateTime: Result := SizeOf(TDateTimeRec);
-    ftAutoInc: Result := SizeOf(Integer);
-    ftBlob, ftMemo, ftGraphic, ftFmtMemo, ftParadoxOle, ftDBaseOle, ftTypedBinary,
-      ftBytes, ftVarBytes: Result := SizeOf(Pointer);
-    ftBCD: Result := 34;
+    ftWord:
+      Result := SizeOf(Word);
+    ftBoolean:
+      Result := SizeOf(WordBool);
+    ftFloat:
+      Result := SizeOf(double);
+    ftCurrency:
+      Result := SizeOf(double);
+    ftDate:
+      Result := SizeOf(TDateTimeRec);
+    ftTime:
+      Result := SizeOf(TDateTimeRec);
+    ftDateTime:
+      Result := SizeOf(TDateTimeRec);
+    ftAutoInc:
+      Result := SizeOf(Integer);
+    ftBlob, ftMemo, ftGraphic, ftFmtMemo, ftParadoxOle, ftDBaseOle,
+      ftTypedBinary, ftBytes, ftVarBytes {$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}:
+      Result := SizeOf(Pointer);
+    ftBCD, {$IFDEF LEVEL6}ftFMTBcd {$ENDIF}:
+      Result := 34;
   Else
     Result := 0;
   End;
@@ -6695,29 +8045,32 @@ End;
 
 Procedure TCustomxQuery.InternalInitFieldDefs;
 Var
-  I, J, Numtry: Integer;
+  I{, J, Numtry}: Integer;
   Field: TxqField;
   DataType: TFieldType;
   Size: Word;
-  FieldName, Test: String;
-  Found: Boolean;
+  FieldName{, Test}: String;
+  {Found: Boolean;}
   FldDef: TFieldDef;
 Begin
   FRecordSize := 0;
   FieldDefs.Clear;
-  If Not Assigned(FResultSet) Then Exit;
+  If Not Assigned(FResultSet) Then
+    Exit;
+  FResultSet.Fields.PrepareDataSetFieldNames( FOnQueryFieldName ); {prepare field names for the resulting dataset}
   If DefaultFields Then
   Begin
     For I := 0 To FResultSet.Fields.Count - 1 Do
     Begin
       Field := FResultSet.FFields[I];
+      (* field names already prepared above, the below code is not nedded anymore
       FieldName := TrimSquareBrackets(Field.FieldName);
       If Length(FieldName) = 0 Then
         FieldName := 'NULL';
       If Assigned(FOnQueryFieldName) Then
         FOnQueryFieldName(Self, I, FieldName);
       Test := FieldName;
-      J := AnsiPos('.', Test);
+      J := AnsiPos('.', Test); { patched by fduenas: Changed AnsiPos to Pos }
       If J > 0 Then
       begin
         Test := TrimSquareBrackets(Copy(Test, J + 1, Length(Test)));
@@ -6726,7 +8079,7 @@ Begin
       Repeat
         Found := False;
         For J := 0 To FieldDefs.Count - 1 Do
-          If AnsiCompareText(FieldDefs[J].Name, Test) = 0 Then
+          If AnsiCompareText(FieldDefs[J].Name, Test) = 0 Then { fduenas: change to from AnsiCompareText to CompareText }
           Begin
             Found := True;
             Break;
@@ -6735,25 +8088,67 @@ Begin
         Begin
           Inc(Numtry);
           Test := FieldName + '_' + IntToStr(Numtry);
-          J := AnsiPos('.', Test);
+          J := AnsiPos('.', Test); { fduenas: change from AnsiPos to Pos }
           If J > 0 Then
             Test := Copy(Test, J + 1, Length(Test));
         End;
       Until Not Found;
-      FieldName := Test;
+      FieldName := test;
+      Field.DataSetFieldName := test;
+      *)
+      FieldName := Field.DataSetFieldName;
       Size := 0;
       Case Field.DataType Of
         ttString:
           Begin
-            DataType := {$if RTLVersion <= 18.5}ftString{$else}ftString{$ifend}; { patched by ccy }; { this fixes bug with ftWidestring }
-            if Assigned(Field.SourceField) then
-              DataType := Field.SourceField.DataType; { patched by ccy }
-            Size := Field.DataSize;
+           {$IFDEF LEVEL4}
+            if Assigned(Field.SourceField) and
+               (Field.SourceField.DataType in [ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo {$ENDIF}]) Then
+               DataType := ftWideString
+            else
+           {$ENDIF}
+             DataType := ftString;
+            { patched by ccy }
+            If not Assigned(Field.SourceField) Then
+            begin
+              Size := Trunc((Field.DataSize - SizeOf(WordBool)) / SizeOfExprType(Field.DataType) ); {patched by fduenas }
+              if Size = 0 Then
+                Size := 1;
+            end;
           End;
+       {$IFDEF LEVEL4}
+        ttWideString:
+          Begin
+            (*if Assigned(Field.SourceField) and
+               (Field.SourceField.DataType in [ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo {$ENDIF}]) Then
+               DataType := ftWideString
+            else*)
+               DataType := ftWideString;
+            { patched by ccy }
+            If not Assigned(Field.SourceField) Then
+            begin
+              Size := Trunc((Field.DataSize - SizeOf(WordBool)) / SizeOfExprType(Field.DataType)); { patched by fduenas }
+              if Size = 0 Then
+                Size := 1;
+            end;
+          End;
+        {$ENDIF}
         ttFloat:
           DataType := ftFloat;
         ttInteger:
-          DataType := ftInteger;
+          if Assigned(Field.SourceField) and
+            (Field.SourceField.DataType = ftLargeint) then
+            DataType :=
+              Field.SourceField.DataType { changed by fduenas: Fit for ftLargeInt Fields }
+          else
+            DataType := ftInteger;
+        ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+          if Assigned(Field.SourceField) and
+            (Field.SourceField.DataType = ftLargeint) then
+            DataType :=
+              Field.SourceField.DataType { changed by fduenas: Fit for ftLargeInt Fields }
+          else
+            DataType := ftLargeInt;
         ttBoolean:
           DataType := ftBoolean;
       Else
@@ -6762,30 +8157,39 @@ Begin
       If Assigned(Field.SourceField) Then
       Begin
         DataType := Field.SourceField.DataType;
-        If ((DataType = ftFloat) And (TFloatField(Field.SourceField).Currency)) Or
-           (DataType = ftBCD) Then
+        If ((DataType = ftFloat) And (TFloatField(Field.SourceField).Currency))
+          Or (DataType = ftBCD) Then
           DataType := ftCurrency;
-        {$IFDEF LEVEL6}
-        If (DataType = ftFMTBcd) Then
+{$IFDEF LEVEL6}
+        If (DataType = ftFmtBcd) Then
         begin
           DataType := ftFloat;
-          Size:= 0;
+          Size := 0;
         end;
-        {$ENDIF}
-        If DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar, ftWidestring{$ENDIF}
-          {$IFDEF LEVEL5}, ftGUID{$ENDIF}] Then
+{$ENDIF}
+        If DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar,
+          ftWidestring, ftFixedWideChar{$ENDIF}
+{$IFDEF LEVEL5}, ftGUID{$ENDIF}] Then
         Begin
-          DataType := Field.SourceField.DataType; { patched by ccy }; { this fixes bug with ftWidestring }
-          Size := Field.SourceField.Size;  { patched by ccy }
+         {$IFDEF LEVEL4}
+          if (DataType in [{$IFDEF LEVEL4}ftWideString, ftFixedWideChar{$ENDIF}{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}]) Then
+               DataType := ftWideString
+            else
+         {$ENDIF}
+               DataType := {$IF RTLVersion <= 18.5}ftString{$ELSE}ftString{$IFEND};
+          { patched by ccy }; { this fixes bug with ftWidestring }
+          Size := (Field.SourceField.Size { * SizeOf(Char) } )
+          { + SizeOf(WordBool) };
+          { patched by ccy } { patched by fduenas, prevents the field size to be duplicated from original }
           If Size = 0 Then
-            Size := 1;
+             Size := 1;
         End;
-        {$IFDEF LEVEL6}
+{$IFDEF LEVEL6}
         If DataType = ftTimeStamp then
-          DataType:= ftDateTime;
-        {$ENDIF}
+          DataType := ftDateTime;
+{$ENDIF}
         (* if DataType in ftNonTextTypes then
-           Size := 0; *)
+          Size := 0; *)
         If DataType In [ftAutoInc] Then
           Size := 0;
       End
@@ -6794,7 +8198,9 @@ Begin
         Case Field.CastType Of
           RW_CHAR:
             Begin
-              DataType := ftstring;
+              DataType := //ftString;
+{$IF RTLVersion <= 18.5}ftString{$ELSE}ftString{$IFEND};
+              { patched by ccy }; { this fixes bug with ftWidestring }
               Size := Field.CastLen;
             End;
           RW_INTEGER:
@@ -6841,24 +8247,29 @@ Begin
         FldDef.Size := TBCDField(Field.SourceField).Size;
         FldDef.Precision := TBCDField(Field.SourceField).Precision;
       End;
+      Field.DataSetFieldName := FieldName;
       Inc(FRecordSize, Field.DataSize);
     End;
   End
   Else
   Begin
-    For i := 0 To FieldCount - 1 Do
+    For I := 0 To FieldCount - 1 Do
     Begin
-      If Fields[i].FieldKind = fkData Then
+      If (Fields[I].FieldKind = fkData) Then
       Begin
-        Field := FResultSet.FFields[I];
-        FieldDefs.Add(Fields[i].FieldName, Fields[i].DataType, Fields[i].Size, Fields[i].Required);
+        Field := FResultSet.FieldByDataSetFieldName(Fields[I].FieldName);  { FFields[I];}   {modified by fduenas: use Field Name instead of Field Index}
+        if not assigned(Field) then {mofieid by fduenas, Use Field Name Instead of index}
+           Continue;
+        { Field := FResultSet.FindField(Trim(Fields[i].FieldName)); }
+        FieldDefs.Add(Fields[I].FieldName, Fields[I].DataType, Fields[I].Size,
+          Fields[I].Required);
         FldDef := FieldDefs[FieldDefs.Count - 1];
-        If Fields[i].DataType = ftBCD Then
+        If Fields[I].DataType = ftBCD Then
         Begin
           FldDef.Size := TBCDField(Field.SourceField).Size;
           FldDef.Precision := TBCDField(Field.SourceField).Precision;
         End;
-        Inc(FRecordSize, GetFieldSize(Fields[i].DataType, Fields[i].Size));
+        Inc(FRecordSize, GetFieldSize(Fields[I].DataType, Fields[I].Size));
       End;
     End;
   End;
@@ -6901,13 +8312,13 @@ Begin
 End;
 
 procedure TCustomxQuery.InternalSetToRecord(Buffer: TRecordBuffer);
-(*var
-  ReqBookmark: Integer;*)
+(* var
+  ReqBookmark: Integer; *)
 Begin
   FRecNo := PRecInfo(Buffer + FRecordInfoOffset).RecordNo;
   FResultSet.Recno := FRecNo + 1;
-  (*ReqBookmark := PRecInfo(Buffer + FRecordInfoOffset).RecordNo;
-  InternalGotoBookmark(@ReqBookmark);*)
+  (* ReqBookmark := PRecInfo(Buffer + FRecordInfoOffset).RecordNo;
+    InternalGotoBookmark(@ReqBookmark); *)
 End;
 
 function TCustomxQuery.GetBookmarkFlag(Buffer: TRecordBuffer): TBookmarkFlag;
@@ -6915,25 +8326,27 @@ Begin
   Result := PRecInfo(Buffer + FRecordInfoOffset).BookmarkFlag;
 End;
 
-procedure TCustomxQuery.SetBookmarkFlag(Buffer: TRecordBuffer; Value:
-    TBookmarkFlag);
+procedure TCustomxQuery.SetBookmarkFlag(Buffer: TRecordBuffer;
+  Value: TBookmarkFlag);
 Begin
   PRecInfo(Buffer + FRecordInfoOffset).BookmarkFlag := Value;
 End;
 
-Function TCustomxQuery.BookmarkValid(Bookmark: TBookmark): boolean;
+Function TCustomxQuery.BookmarkValid(Bookmark: TBookmark): Boolean;
 Begin
   Result := InternalBookmarkValid(Bookmark);
 End;
 
-Function TCustomxQuery.InternalBookmarkValid(Bookmark: Pointer): boolean;
+Function TCustomxQuery.InternalBookmarkValid(Bookmark: Pointer): Boolean;
 Begin
-  Result := (PInteger(Bookmark)^ >= 0) And (PInteger(Bookmark)^ <= FRecordCount - 1);
+  Result := (PInteger(Bookmark)^ >= 0) And
+    (PInteger(Bookmark)^ <= FRecordCount - 1);
 End;
 
-Function TCustomxQuery.CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Integer;
+Function TCustomxQuery.CompareBookmarks(Bookmark1,
+  Bookmark2: TBookmark): Integer;
 Var
-  b1, b2: integer;
+  b1, b2: Integer;
 Begin
   If Bookmark1 = Nil Then
     b1 := 0
@@ -6973,13 +8386,13 @@ Begin
   EofCrack := FRecordCount;
   FRecNo := EofCrack;
   If FRecNo >= 0 Then
-    FResultSet.Recno := FRecNo;
+     FResultSet.Recno := FRecNo;
 End;
 
 Function TCustomxQuery.GetRecordCount: Longint;
 Var
   SaveState: TDataSetState;
-  SavePosition: integer;
+  SavePosition: Integer;
   TempBuffer: TRecordBuffer;
 Begin
   CheckActive;
@@ -7006,17 +8419,20 @@ End;
 Function TCustomxQuery.SourceBookmark: TBookmark;
 Begin
   Result := Nil;
-  If Not FResultSet.IsSequenced Then Exit;
+  If (not Assigned(FResultSet)) or
+  { patched by fduenas: prevent AV errors when working with JOINs }
+    (not FResultSet.IsSequenced) Then
+    Exit;
   CheckActive;
   UpdateCursorPos;
-  FResultSet.RecNo := FRecNo + 1;
+  FResultSet.Recno := FRecNo + 1;
   Result := FResultSet.GetSourceBookmark;
 End;
 
-Function TCustomxQuery.GetRecNo: Longint;
+Function TCustomxQuery.GetRecno: Longint;
 Var
   SaveState: TDataSetState;
-  SavePosition: integer;
+  SavePosition: Integer;
   TempBuffer: TRecordBuffer;
 Begin
   CheckActive;
@@ -7048,10 +8464,10 @@ Begin
   End;
 End;
 
-Procedure TCustomxQuery.SetRecNo(Value: Integer);
+Procedure TCustomxQuery.SetRecno(Value: Integer);
 Var
   SaveState: TDataSetState;
-  SavePosition: integer;
+  SavePosition: Integer;
   TempBuffer: TRecordBuffer;
 Begin
   CheckBrowseMode;
@@ -7073,15 +8489,15 @@ Begin
       TempBuffer := AllocRecordBuffer;
       InternalFirst;
       Repeat
+      Begin
+        If GetRecord(TempBuffer, gmNext, True) = grOk Then
+          Dec(Value)
+        Else
         Begin
-          If GetRecord(TempBuffer, gmNext, True) = grOk Then
-            Dec(Value)
-          Else
-          Begin
-            FRecNo := SavePosition;
-            break;
-          End;
+          FRecNo := SavePosition;
+          Break;
         End;
+      End;
       Until Value = 0;
       doAfterScroll;
     Finally
@@ -7112,7 +8528,7 @@ Begin
 End;
 
 function TCustomxQuery.GetRecord(Buffer: TRecordBuffer; GetMode: TGetMode;
-    doCheck: Boolean): TGetResult;
+  doCheck: Boolean): TGetResult;
 Var
   Acceptable: Boolean;
 Begin
@@ -7138,7 +8554,7 @@ Begin
           If FRecNo < FRecordCount - 1 Then
           Begin
             Inc(FRecNo);
-            Result := grOK;
+            Result := grOk;
           End
           Else
           Begin
@@ -7150,7 +8566,7 @@ Begin
           If FRecNo > 0 Then
           Begin
             Dec(FRecNo);
-            Result := grOK;
+            Result := grOk;
           End
           Else
           Begin
@@ -7159,7 +8575,7 @@ Begin
         End;
     End;
     { fill record data area of buffer }
-    If Result = grOK Then
+    If Result = grOk Then
     Begin
       _ReadRecord(Buffer, FRecNo);
       With PRecInfo(Buffer + FRecordInfoOffset)^ Do
@@ -7180,11 +8596,13 @@ End;
 
 function TCustomxQuery.FilterRecord(Buffer: TRecordBuffer): Boolean;
 Var
-  SaveState: TDatasetState;
+  SaveState: TDataSetState;
 Begin
   Result := True;
-  If Not Filtered Then Exit;
-  If Not (Assigned(FFilterExpr) Or Assigned(OnFilterRecord)) Then Exit;
+  If Not Filtered Then
+    Exit;
+  If Not(Assigned(FFilterExpr) Or Assigned(OnFilterRecord)) Then
+    Exit;
   SaveState := SetTempState(dsFilter);
   FFilterBuffer := Buffer;
   If Assigned(OnFilterRecord) Then
@@ -7196,79 +8614,120 @@ End;
 
 procedure TCustomxQuery.ClearCalcFields(Buffer: TRecordBuffer);
 Begin
-  If CalcFieldsSize > 0 Then
-    FillChar(Buffer[StartCalculated], CalcFieldsSize, 0);
+  If (CalcFieldsSize > 0) {and assigned(Buffer)} Then
+     FillChar(Buffer[StartCalculated], CalcFieldsSize, #0);
 End;
 
-{$if RtlVersion >= 24}
+{$ifdef DelphiXE3Up}
 function TCustomxQuery.GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean;
 Var
   vFieldOffset: Integer;
   vxqField: TxqField;
   RecBuffer: TRecordBuffer;
   c: Currency;
-  d: Double;
-  i: integer;
+  d: double;
+  I: Integer;
+  LI: Int64;
   IsBlank: Boolean;
+  HasValue: ByteBool;
+  _RecNo: Integer;
 Begin
   Result := False;
-  If Field.FieldNo < 1 Then Exit;
-
+  //Application.MessageBox( pchar( Field.fieldname),'',mb_ok);
+  IsBlank := false;
+  If (Field.FieldNo < 1) and (not (Field.FieldKind In [fkCalculated, fkLookup])) Then
+     Exit;
+  vFieldOffset := 0;
   { IMPORTANT:
     It's very important not to access Recno property inside this method because
     this causes stack overflow when this TDataset is filtered }
-  If Not Filtered And (Recno <> FResultSet.Recno) And (Recno > 0) And
-     (Recno < FResultSet.RecordCount) Then
-    FResultSet.Recno := Recno;
-  IsBlank := FResultSet.Fields[Field.FieldNo - 1].IsNull;
-  If Buffer = Nil Then
-  Begin
-    //Dataset checks if field is null by passing a nil buffer
-    //Return true if it is not null
-    Result := Not IsBlank;
-    Exit;
-  End;
+  If (Not (State in [dsCalcFields])) {and
+     (Not (Field.FieldKind In [fkCalculated, fkLookup]))} then
+  begin
+     if (Not Filtered) then
+     begin
+      _RecNo := Self.RecNo; {assign the value to a variable to prevent multiple calls to TxQuery.RecNo Method}
+      if (_Recno <> FResultSet.Recno) And (_Recno > 0) And
+         (_Recno < FResultSet.RecordCount) Then
+         FResultSet.Recno := _Recno;
+     end;
+  end;
+
   RecBuffer := GetActiveRecordBuffer;
-  If Not FIsOpen Or (RecBuffer = Nil) Then Exit;
+  If Not FIsOpen Or (RecBuffer = Nil) Then
+    Exit;
   If Field.FieldKind In [fkCalculated, fkLookup] Then
   Begin
-    inc(RecBuffer, StartCalculated + Field.Offset);
-    If Not ((Byte(RecBuffer[0]) = 0) Or (Buffer = Nil)) Then
-      CopyMemory(Buffer, @RecBuffer[1], Field.DataSize);
+    // Inc(RecBuffer, StartCalculated + Field.Offset);
+   {$IF RTLVersion <= 18.5}
+     Move((RecBuffer + (StartCalculated + Field.Offset))^, HasValue, SizeOf(ByteBool));
+    {$ELSE}
+     Move(RecBuffer[StartCalculated + Field.Offset], HasValue, SizeOf(ByteBool));
+     { patched by fduenas based on ccy }
+   {$IFEND}
+    // if Boolean(RecBuffer[0]) then
+   //StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
+   If HasValue and (Buffer<>Nil) Then
+   begin
+    if Field.DataType in [ftString, ftFixedChar] then
+    begin
+     CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size*SizeOf(Char) )
+    end
+    else if Field.DataType in [ftWideString{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}] then
+            CopyMemory( Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size* SizeOf(Char) )
+    else
+            CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)],  SizeOfFieldType(Field.DataType) ); {modified by fduenas: fixed Calculated field issues}
+   end;
   End
   Else
   Begin
-    vxqField := FResultSet.Fields[Field.FieldNo - 1];
-    vFieldOffset := vxqField.FFieldOffset;
-    If Assigned(Buffer) Then
+    vxqField := FResultSet.FindFieldByDataSetFieldName(Field.FieldName){FResultSet.Fields[Field.FieldNo - 1]}; {modified by fduenas: use Field name instead of Field Index}
+
+    IsBlank := (vxqField=nil) {or (Buffer = Nil)} or vxqField.IsNull;
+    If (vxqField=nil) {or (Buffer = Nil)} Then
+    Begin
+      // Dataset checks if field is null by passing a nil buffer
+      // Return true if it is not null
+     Result := Not IsBlank;
+     Exit;
+    End;
+    if Assigned( vxqField ) then
+       vFieldOffset := vxqField.FFieldOffset;
+    If Assigned( vxqField ) and Assigned(Buffer) Then
     Begin
       If (Field.DataType = ftBCD) And (vxqField.DataType = ttInteger) Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, i, SizeOf(integer));
-        c := i;
+        Move((RecBuffer + vFieldOffset)^, I, SizeOf(Integer));
+        c := I;
         TBitConverter.FromCurrency(c, Buffer);
+      End
+      Else  If (Field.DataType = ftBCD) And (vxqField.DataType = ttLargeInt) Then {added by fduenas: added LargeInt (Int64) support}
+      Begin
+        Move((RecBuffer + vFieldOffset)^, LI, SizeOf(Int64));
+        TBitConverter.FromLargeInt(LI, Buffer);
       End
       Else If (Field.DataType = ftBCD) Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, d, SizeOf(Double));
+        Move((RecBuffer + vFieldOffset)^, d, SizeOf(double));
         c := d;
         TBitConverter.FromCurrency(c, Buffer);
       End
       Else
       Begin
-         if Field.DataType in [ftDate, ftTime] Then
-         Begin
-           Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
-           if Field.DataType = ftDate then
-             TBitConverter.FromInteger(DateTimeToTimeStamp(d).Date, Buffer)
-           else
-             TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer);
-         End Else
-           Move((RecBuffer + vFieldOffset)^, Buffer[0], Field.DataSize);
+        if Field.DataType in [ftDate, ftTime] Then
+        Begin
+          Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
+          if Field.DataType = ftDate then
+            TBitConverter.FromInteger(DateTimeToTimeStamp(d).Date, Buffer)
+          else
+            TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer);
+        End
+        Else
+          Move((RecBuffer + vFieldOffset)^, Buffer[0], Field.DataSize);
       End;
       { empty date problem fixed by Stephan Trapp 05.01.2000 }
       If (vxqField.SourceField <> Nil) And
-         (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
+        (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
       Begin
         If TBitConverter.ToDouble(Buffer) = 0 Then { 693594 = Delphi1-Zero-Date }
         Begin
@@ -7281,13 +8740,13 @@ Begin
     Begin
       If Field.DataType = ftBoolean Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, Buffer[0], Field.DataSize);
+        Move((RecBuffer + vFieldOffset)^, Buffer, Field.DataSize);
       End;
     End;
   End;
   Result := Not IsBlank;
 End;
-{$ifend}
+{$endif}
 
 Function TCustomxQuery.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
 Var
@@ -7295,70 +8754,111 @@ Var
   vxqField: TxqField;
   RecBuffer: TRecordBuffer;
   c: Currency;
-  d: Double;
-  i: integer;
+  d: double;
+  I: Integer;
+  LI: Int64;
   IsBlank: Boolean;
+  HasValue: ByteBool;
+  _RecNo: Integer;
 Begin
   Result := False;
-  If Field.FieldNo < 1 Then Exit;
-
+  //Application.MessageBox( pchar( Field.fieldname),'',mb_ok);
+  IsBlank := false;
+  If (Field.FieldNo < 1) and (not (Field.FieldKind In [fkCalculated, fkLookup])) Then
+     Exit;
+  vFieldOffset := 0;
   { IMPORTANT:
     It's very important not to access Recno property inside this method because
     this causes stack overflow when this TDataset is filtered }
-  If Not Filtered And (Recno <> FResultSet.Recno) And (Recno > 0) And
-     (Recno < FResultSet.RecordCount) Then
-    FResultSet.Recno := Recno;
-  IsBlank := FResultSet.Fields[Field.FieldNo - 1].IsNull;
-  If Buffer = Nil Then
-  Begin
-    //Dataset checks if field is null by passing a nil buffer
-    //Return true if it is not null
-    Result := Not IsBlank;
-    Exit;
-  End;
+  If (Not (State in [dsCalcFields])) {and
+     (Not (Field.FieldKind In [fkCalculated, fkLookup]))} then
+  begin
+     if (Not Filtered) then
+     begin
+      _RecNo := Self.RecNo; {assign the value to a variable to prevent multiple calls to TxQuery.RecNo Method}
+      if (_Recno <> FResultSet.Recno) And (_Recno > 0) And
+         (_Recno < FResultSet.RecordCount) Then
+         FResultSet.Recno := _Recno;
+     end;
+  end;
+
   RecBuffer := GetActiveRecordBuffer;
-  If Not FIsOpen Or (RecBuffer = Nil) Then Exit;
+  If Not FIsOpen Or (RecBuffer = Nil) Then
+    Exit;
   If Field.FieldKind In [fkCalculated, fkLookup] Then
   Begin
-    inc(RecBuffer, StartCalculated + Field.Offset);
-    If Not ((Byte(RecBuffer[0]) = 0) Or (Buffer = Nil)) Then
-      CopyMemory(Buffer, @RecBuffer[1], Field.DataSize);
+    // Inc(RecBuffer, StartCalculated + Field.Offset);
+   {$IF RTLVersion <= 18.5}
+     Move((RecBuffer + (StartCalculated + Field.Offset))^, HasValue, SizeOf(ByteBool));
+    {$ELSE}
+     Move(RecBuffer[StartCalculated + Field.Offset], HasValue, SizeOf(ByteBool));
+     { patched by fduenas based on ccy }
+   {$IFEND}
+    // if Boolean(RecBuffer[0]) then
+   //StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
+   If HasValue and (Buffer<>Nil) Then
+   begin
+    if Field.DataType in [ftString, ftFixedChar] then
+    begin
+     CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size*SizeOf(Char) )
+    end
+    else if Field.DataType in [ftWideString{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}] then
+            CopyMemory( Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size* SizeOf(Char) )
+    else
+            CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)],  SizeOfFieldType(Field.DataType) ); {modified by fduenas: fixed Calculated field issues}
+   end;
   End
   Else
   Begin
-    vxqField := FResultSet.Fields[Field.FieldNo - 1];
-    vFieldOffset := vxqField.FFieldOffset;
-    If Assigned(Buffer) Then
+    vxqField := FResultSet.FindFieldByDataSetFieldName(Field.FieldName){FResultSet.Fields[Field.FieldNo - 1]}; {modified by fduenas: use Field name instead of Field Index}
+
+    IsBlank := (vxqField=nil) {or (Buffer = Nil)} or vxqField.IsNull;
+    If (vxqField=nil) {or (Buffer = Nil)} Then
+    Begin
+      // Dataset checks if field is null by passing a nil buffer
+      // Return true if it is not null
+     Result := Not IsBlank;
+     Exit;
+    End;
+    if Assigned( vxqField ) then
+       vFieldOffset := vxqField.FFieldOffset;
+    If Assigned( vxqField ) and Assigned(Buffer) Then
     Begin
       If (Field.DataType = ftBCD) And (vxqField.DataType = ttInteger) Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, i, SizeOf(integer));
-        c := i;
-        Move(c, Buffer^, SizeOf(double));
+        Move((RecBuffer + vFieldOffset)^, I, SizeOf(Integer));
+        c := I;
+        Move(c, Buffer^, SizeOf(Integer));
+      End
+      Else  If (Field.DataType = ftBCD) And (vxqField.DataType = ttLargeInt) Then {added by fduenas: added LargeInt (Int64) support}
+      Begin
+        Move((RecBuffer + vFieldOffset)^, LI, SizeOf(Int64));
+        Move(LI, Buffer^, SizeOf(Int64));
       End
       Else If (Field.DataType = ftBCD) Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, d, SizeOf(Double));
+        Move((RecBuffer + vFieldOffset)^, d, SizeOf(double));
         c := d;
         Move(c, Buffer^, SizeOf(double));
       End
       Else
       Begin
-         if Field.DataType in [ftDate, ftTime] Then
-         Begin
-           Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
-           if Field.DataType = ftDate then
-             Integer(Buffer^) := DateTimeToTimeStamp(d).Date
-           else
-             Integer(Buffer^) := DateTimeToTimeStamp(d).Time;
-         End Else
-           Move((RecBuffer + vFieldOffset)^, Buffer^, Field.DataSize);
+        if Field.DataType in [ftDate, ftTime] Then
+        Begin
+          Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
+          if Field.DataType = ftDate then
+            Integer(Buffer^) := DateTimeToTimeStamp(d).Date
+          else
+            Integer(Buffer^) := DateTimeToTimeStamp(d).Time;
+        End
+        Else
+          Move((RecBuffer + vFieldOffset)^, Buffer^, (Field.Size+SizeOf(ByteBool))* SizeOfExprType( vxqField.DataType) ); {field.DataSize}
       End;
       { empty date problem fixed by Stephan Trapp 05.01.2000 }
       If (vxqField.SourceField <> Nil) And
-         (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
+        (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
       Begin
-        If Double(Buffer^) = 0 Then { 693594 = Delphi1-Zero-Date }
+        If double(Buffer^) = 0 Then { 693594 = Delphi1-Zero-Date }
         Begin
           Result := False;
           Exit;
@@ -7387,7 +8887,7 @@ End;
 
 Procedure TCustomxQuery.InternalDelete;
 Begin
-  FResultSet.RecNo := Recno;
+  FResultSet.Recno := Recno;
   FResultSet.Delete;
   FRecordCount := FResultSet.RecordCount;
   UpdateCursorPos;
@@ -7419,7 +8919,8 @@ Begin
   Begin
     Item := FDataSets[Index];
     If Assigned(Item.DataSet) And
-      (AnsiCompareText(Item.Alias, TrimSquareBrackets(Name)) = 0) Then
+      (AnsiCompareText(Item.Alias, TrimSquareBrackets(Name)) = 0)
+    Then { patched by fduenas: Changed AnsiCompareText to CompareText }
     Begin
       Result := Item.DataSet;
       Exit;
@@ -7427,7 +8928,8 @@ Begin
   End;
 End;
 
-Procedure TCustomxQuery.Notification(AComponent: TComponent; Operation: TOperation);
+Procedure TCustomxQuery.Notification(AComponent: TComponent;
+  Operation: toperation);
 Var
   I: Integer;
   Item: TxDataSetItem;
@@ -7442,7 +8944,7 @@ Begin
         Item := FDataSets[I];
         If AComponent = Item.DataSet Then
         Begin
-          Item.Free;
+          Item.free;
           Found := True;
           Break;
         End;
@@ -7458,12 +8960,17 @@ Begin
         Result := Nil
       Else
         Result := ActiveBuffer;
-    dsCalcFields: Result := CalcBuffer;
-    dsFilter: Result := FFilterBuffer;
-    dsEdit, dsInsert: Result := ActiveBuffer;
-    dsNewValue, dsOldValue, dsCurValue: Result := ActiveBuffer;
+    dsCalcFields:
+      Result := CalcBuffer;
+    dsFilter:
+      Result := FFilterBuffer;
+    dsEdit, dsInsert:
+      Result := ActiveBuffer;
+    dsNewValue, dsOldValue, dsCurValue:
+      Result := ActiveBuffer;
 {$IFDEF level5}
-    dsBlockRead: Result := ActiveBuffer;
+    dsBlockRead:
+      Result := ActiveBuffer;
 {$ENDIF}
   Else
     Result := Nil;
@@ -7484,45 +8991,53 @@ Procedure TCustomxQuery.ExecSQL;
 Var
   Analizer: TSqlAnalizer;
   ErrLine, ErrCol: Integer;
-  ErrMsg, ErrTxt: String;
+  ErrMsg, Errtxt: String;
+  lAbort: Boolean;
 Begin
 
   ClearTempDatasets;
 
 {$IFDEF XQDEMO}
-  If Not (csDesigning In ComponentState) And Not IsDelphiRunning Then
-    Raise exception.Create(SDelphiIsNotRunning);
+  If Not(csDesigning In ComponentState) And Not IsDelphiRunning Then
+    Raise Exception.Create(SDelphiIsNotRunning);
 {$ENDIF}
-
   If Length(Trim(FSQL.Text)) = 0 Then
     Raise ExQueryError.Create(SSQLIsEmpty);
 
   If Assigned(FResultSet) Then
     FreeObject(FResultSet);
 
+  fOldRunTimeFormatSettings := DoPrepareFormatSettings(fFormatSettings.Parser.fInnerFormatSettings);
+
   { clear the list of referenced fields }
   FRowsAffected := 0;
   Analizer := TSqlAnalizer.Create(Nil, Self);
+  lAbort:= false;
   Try
-    If Analizer.parser.yyparse = 1 Then
+    If Analizer.Parser.yyparse = 1 Then
     Begin
-      ErrLine := Analizer.lexer.yylineno;
-      ErrCol := Analizer.lexer.yycolno - Analizer.lexer.yyTextLen - 1;
-      ErrMsg := Analizer.parser.yyerrormsg;
-      Analizer.lexer.getyytext(ErrTxt);
+      ErrLine := Analizer.Lexer.yylineno;
+      ErrCol := Analizer.Lexer.yycolno - Analizer.Lexer.yyTextLen - 1;
+      ErrMsg := Analizer.Parser.yyerrormsg;
+      Analizer.Lexer.getyytext(Errtxt);
       If Assigned(FOnSyntaxError) Then
       Begin
-        FOnSyntaxError(Self, ErrMsg, ErrTxt, ErrLine, ErrCol, Length(ErrTxt));
-        Abort;
+        FOnSyntaxError(Self, ErrMsg, Errtxt, ErrLine, ErrCol, Length(Errtxt));
+        lAbort := true;
       End
       Else
         { if not raised an error, will raise here }
-        Raise ExQueryError.CreateFmt(SSyntaxErrorMsg, [ErrMsg, ErrLine, ErrCol, ErrTxt]);
-    End;
-    Analizer.DoExecSQL;
+        Raise ExQueryError.CreateFmt(SSyntaxErrorMsg,
+          [ErrMsg, ErrLine, ErrCol, Errtxt]);
+    End
+    else
+     Analizer.doExecSQL;
   Finally
-    FreeObject(Analizer);
+    FreeObject(Analizer); { patched by fduenas: Pointer was no set to Nil }
+    DoRestoreFormatSettings(fOldRunTimeFormatSettings);
   End;
+  if lAbort then
+     Abort;
 End;
 
 Function TCustomxQuery.BCDToCurr(BCD: Pointer; Var Curr: Currency): Boolean;
@@ -7531,8 +9046,8 @@ Begin
   Result := True;
 End;
 
-Function TCustomxQuery.CurrToBCD(Const Curr: Currency; BCD: Pointer; Precision,
-  Decimals: Integer): Boolean;
+Function TCustomxQuery.CurrToBCD(Const Curr: Currency; BCD: Pointer;
+  Precision, Decimals: Integer): Boolean;
 Begin
   Move(Curr, BCD^, SizeOf(Currency));
   Result := True;
@@ -7556,13 +9071,13 @@ Begin
     Else
     Begin
 {$IFNDEF LEVEL5}
-      doNext := Value = -1;
+      DoNext := Value = -1;
 {$ENDIF}
       Value := 0;
       Inherited;
 
 {$IFNDEF LEVEL5}
-      If doNext Then
+      If DoNext Then
         Next
       Else
       Begin
@@ -7600,14 +9115,15 @@ Begin
   Begin
     CheckBrowseMode;
     If Assigned(FFilterExpr) Then
-      FreeObject(FFilterExpr);
+       FreeAndNil(FFilterExpr);
     If Length(Text) > 0 Then
     Begin
-      FFilterExpr := TExprParser.Create(Nil, Self);
+      FFilterExpr := TExprParser.Create(Nil, Self, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
         FFilterExpr.ParseExpression(Text);
       Except
         FreeObject(FFilterExpr);
+        { patched by fduenas: Pointer was no set to Nil }
         Raise;
       End;
     End;
@@ -7621,6 +9137,16 @@ Begin
   SetFilterData(Value);
 End;
 
+procedure TCustomxQuery.SetFormatSettings(const Value: TxFormatSettings);
+begin
+ fFormatSettings.Assign(Value);
+end;
+
+procedure TCustomxQuery.SetCustomFormatSettings(const Value: TxSystemFormatSettings);
+begin
+ fGlobalFormatSettings.fInnerFormatSettings := Value.fInnerFormatSettings;
+end;
+
 Function TCustomxQuery.IsSequenced: Boolean;
 Begin
   Result := Not Filtered;
@@ -7633,8 +9159,19 @@ End;
 
 Procedure TCustomxQuery.SetAbout(Const Value: String);
 Begin
-// nothing here
+  // nothing here
 End;
+
+procedure TCustomxQuery.SetActive(aValue: Boolean);
+begin
+ if (not (csLoading in ComponentState)) or (((csLoading in ComponentState) and
+      (asDesignTime in FActiveStoredUsage)) or
+    ((not (csDesigning in ComponentState)) and
+      (asRuntime in FActiveStoredUsage))) then
+ begin
+  inherited SetActive(aValue);
+ end;
+end;
 
 Function TCustomxQuery.Find(Const Expression: String): Boolean;
 Var
@@ -7643,19 +9180,20 @@ Var
 Begin
   Result := False;
   CheckActive;
-  If Length(Expression) = 0 Then Exit;
+  If Length(Expression) = 0 Then
+    Exit;
 
-  FindExpr := TExprParser.Create(Nil, Self);
+  FindExpr := TExprParser.Create(Nil, Self, fRuntimeFormatSettings, fSystemFormatSettings);
   Try
     FindExpr.ParseExpression(Expression);
   Except
-    On E: exception Do
+    On E: Exception Do
     Begin
-      FindExpr.Free;
+      FindExpr.free;
       Raise;
     End;
   End;
-  SavedRecNo := RecNo;
+  SavedRecno := Recno;
   DisableControls;
   Try
     First;
@@ -7670,18 +9208,18 @@ Begin
     End;
   Finally
     If Not Result Then
-      RecNo := SavedRecNo;
-    FindExpr.Free;
+      Recno := SavedRecno;
+    FindExpr.free;
     EnableControls;
   End;
 End;
 
 { LAS: 15/JUN/2003 : 1.80 }
-Procedure TCustomxQuery.QueryChanged(Sender: tobject);
+Procedure TCustomxQuery.QueryChanged(Sender: TObject);
 var
   List: TParams;
 Begin
-  If Not (csReading In ComponentState) Then
+  If Not(csReading In ComponentState) Then
   Begin
     Disconnect;
     If ParamCheck Or (csDesigning In ComponentState) Then
@@ -7693,11 +9231,12 @@ Begin
         FParams.Clear;
         FParams.Assign(List);
       finally
-        List.Free;
+        List.free;
       end;
     end;
     DataEvent(dePropertyChange, 0);
-  End Else
+  End
+  Else
     FParams.ParseSQL(SQL.Text, False);
 End;
 
@@ -7722,7 +9261,8 @@ End;
 Procedure TCustomxQuery.DefineProperties(Filer: TFiler);
 Begin
   Inherited DefineProperties(Filer);
-  Filer.Defineproperty('ParamData', ReadParamData, writeParamData, FParams.Count > 0);
+  Filer.Defineproperty('ParamData', ReadParamData, WriteParamData,
+    (FParams.Count > 0));
 End;
 
 Procedure TCustomxQuery.ReadParamData(Reader: TReader);
@@ -7733,7 +9273,7 @@ End;
 
 Procedure TCustomxQuery.WriteParamData(writer: Twriter);
 Begin
-  writer.writeCollection(FParams);
+  Writer.WriteCollection(FParams);
 End;
 {$ENDIF}
 
@@ -7780,6 +9320,20 @@ Begin
 End;
 
 { this method is called when the TxQuery is linked to a datasource }
+function TCustomxQuery.RefreshCurrentFormatSettings( aPrepareRuntimeSettings: Boolean ): TFormatSettings;
+begin
+ result := fRunTimeFormatSettings;;
+ InitializeFormatSettings(fSavedFormatSettings);
+ fOldRunTimeFormatSettings := fRunTimeFormatSettings;
+
+ fRunTimeFormatSettings    :=  fFormatSettings.Parser.fInnerFormatSettings;
+ fSystemFormatSettings     :=  fFormatSettings.System.fInnerFormatSettings;
+
+ if aPrepareRuntimeSettings then
+ begin
+  RefreshRuntimeFormatSettings( fFormatSettings.fSystem.fInnerFormatSettings );
+ end;
+end;
 
 Procedure TCustomxQuery.RefreshParams;
 Var
@@ -7802,6 +9356,19 @@ Begin
   End;
 End;
 
+function TCustomxQuery.RefreshRuntimeFormatSettings( aNewFormatSettings: TFormatSettings ): TFormatSettings;
+begin
+ result := fRunTimeFormatSettings;
+ fRunTimeFormatSettings := aNewFormatSettings;
+ if (FormatSettings.Parser.ShortDateFormat<>'') then
+     fRunTimeFormatSettings.ShortDateFormat := FormatSettings.Parser.ShortDateFormat;
+ fSystemFormatSettings := fRunTimeFormatSettings;
+ if (FormatSettings.Parser.DateSeparator<>#0) then
+     fRuntimeFormatSettings.DateSeparator := FormatSettings.Parser.DateSeparator;
+ fRuntimeFormatSettings.ThousandSeparator := FormatSettings.Parser.ThousandSeparator;
+ fRuntimeFormatSettings.DecimalSeparator := FormatSettings.Parser.DecimalSeparator;
+end;
+
 Procedure TCustomxQuery.SetDataSource(Value: TDataSource);
 Begin
   If IsLinkedTo(Value) Then
@@ -7809,10 +9376,43 @@ Begin
   FDataLink.DataSource := Value;
 End;
 
+procedure TCustomxQuery.SetDateFormat(const Value: String);
+begin
+ if Value='' then
+    FDateFormat:=SFmtDefaultShortDateFormat
+ else
+    FDateFormat := Value;
+ FormatSettings.Parser.ShortDateFormat := FDateFormat;
+ if FormatSettings.System.ShortDateFormat='' then
+    FormatSettings.System.ShortDateFormat := FDateFormat;
+end;
+
+procedure TCustomxQuery.SetDateSeparator(const Value: Char);
+begin
+ if Value=#0 then
+    FDateSeparator:=SFmtDefaultDateSeparator[1] {this is needed if we want mantain FDateSeparator as Empty}
+ else
+    FDateSeparator := Value;
+ FormatSettings.Parser.DateSeparator := FDateSeparator;
+ if FormatSettings.System.DateSeparator=#0 then
+    FormatSettings.System.DateSeparator := FDateSeparator;
+end;
+
 Function TCustomxQuery.GetDataSource: TDataSource;
 Begin
   Result := FDataLink.DataSource;
 End;
+
+function TCustomxQuery.GetDateFormat: String;
+begin
+ Result := FDateFormat;
+end;
+
+
+function TCustomxQuery.GetDateSeparator: Char;
+begin
+ Result := FDateSeparator;
+end;
 
 Function TCustomxQuery.IsDataSetDisabled(DataSet: TDataSet): Boolean;
 Begin
@@ -7824,32 +9424,35 @@ End;
 
 Procedure TCustomxQuery.FixDummiesForQuerying(Var Filter: String);
 Var
-  Ps: Integer;
+  ps: Integer;
   I: Integer;
 Begin
-  If Length(Filter) = 0 Then Exit;
+  If Length(Filter) = 0 Then
+    Exit;
   { this method called in the WHERE clause is a filter in
     order to fix some flags:
-    - Only working flag now is the date in the format: 'DummyDate(32445.6566)'}
-  Ps := AnsiPos('DummyDate(', Filter);
-  While Ps > 0 Do
+    - Only working flag now is the date in the format: 'DummyDate(32445.6566)' }
+  ps := Pos('DummyDate(', Filter);
+  { patched by fduenas: Changed AnsiPos to Pos }
+  While ps > 0 Do
   Begin
     { by default, the date is left as it is but in descendant classes
-      the date can be changed to meet the dataset filter implementation}
-    For I := Ps + 10 To Length(Filter) Do
+      the date can be changed to meet the dataset filter implementation }
+    For I := ps + 10 To Length(Filter) Do
       If Filter[I] = ')' Then
       Begin
         System.Delete(Filter, I, 1);
-        System.Delete(Filter, Ps, 10);
+        System.Delete(Filter, ps, 10);
         Break;
       End;
-    Ps := AnsiPos('DummyDate(', Filter);
+    ps := Pos('DummyDate(', Filter);
+    { patched by fduenas: Changed AnsiPos to Pos }
   End;
 End;
 
 Procedure TCustomxQuery.FixDummiesForFilter(Var Filter: String);
 Begin
-  FixDummiesForQuerying(Filter); { fix the dates}
+  FixDummiesForQuerying(Filter); { fix the dates }
   Replacestring(Filter, 'DummyBoolean(True)', 'True');
   Replacestring(Filter, 'DummyBoolean(False)', 'False');
 End;
@@ -7860,13 +9463,12 @@ Begin
   InternalOpen;
 End;
 
-{-------------------------------------------------------------------------------}
-{ This procedure writes a TDataSet to a text file                               }
-{-------------------------------------------------------------------------------}
+{ ------------------------------------------------------------------------------- }
+{ This procedure writes a TDataSet to a text file }
+{ ------------------------------------------------------------------------------- }
 
 Procedure TCustomxQuery.WriteToTextFile(Const FileName: String;
-  FieldDelimChar, TxtSeparator: Char; IsCSV: Boolean;
-  FieldNames: TStringList);
+  FieldDelimChar, TxtSeparator: Char; IsCSV: Boolean; FieldNames: TStringList);
 Const
   CSVquote = '"';
 
@@ -7876,8 +9478,8 @@ Var
 
   Function CSVquotedStr(Const Str: String): String;
   Var
-    Idx: integer;
-    Changed: boolean;
+    Idx: Integer;
+    Changed: Boolean;
   Begin
     Changed := False;
     Result := Str;
@@ -7885,7 +9487,7 @@ Var
       If (Result[Idx] = CSVquote) Then
       Begin
         System.Insert(CSVquote, Result, Idx);
-        Changed := true;
+        Changed := True;
       End;
 
     If Changed Then
@@ -7894,14 +9496,14 @@ Var
 
   Procedure WritefieldNames;
   Var
-    Idx: integer;
+    Idx: Integer;
     Fld: String;
     F: TField;
   Begin
     For Idx := 0 To FieldNames.Count - 1 Do
     Begin
-      F := Self.FindField(FieldNames[idx]);
-      If Not (F.DataType In ftNonTextTypes) Then
+      F := Self.FindField(FieldNames[Idx]);
+      If Not(F.DataType In ftNonTextTypes) Then
       Begin
         Fld := FieldNames[Idx];
 
@@ -7923,15 +9525,15 @@ Var
     System.WriteLn(FTarget);
   End;
 
-  Procedure WriteField(FieldNum: integer);
+  Procedure WriteField(FieldNum: Integer);
   Var
     Data: String;
     F: TField;
   Begin
     F := Self.FindField(FieldNames[FieldNum]);
-    If Not (F.DataType In ftNonTextTypes) Then
+    If Not(F.DataType In ftNonTextTypes) Then
     Begin
-      Data := Trim(F.Asstring);
+      Data := Trim(F.AsString);
 
       If FieldDelimChar <> #0 Then
         Data := FieldDelimChar + Data + FieldDelimChar
@@ -7950,11 +9552,11 @@ Var
 
   Procedure WriteRecords;
   Var
-    Idx: integer;
+    Idx: Integer;
   Begin
     Self.DisableControls;
     Self.First;
-    While Not Self.Eof Do
+    While Not Self.EOF Do
     Begin
       For Idx := 0 To FieldNames.Count - 1 Do
         WriteField(Idx);
@@ -7973,16 +9575,17 @@ Begin
     { fill with all fields }
     Self.FieldDefs.Update;
     For Idx := 0 To Self.FieldCount - 1 Do
-      If Not (Self.Fields[Idx].dataType In ftNonTextTypes) Then
+      If Not(Self.Fields[Idx].DataType In ftNonTextTypes) Then
         FieldNames.Add(Self.Fields[Idx].FieldName);
   End;
   WritefieldNames;
-  Writerecords;
+  WriteRecords;
 
   CloseFile(FTarget);
 End;
 
-Procedure TCustomxQuery.PopulateDatasets(TableList: TTableList); { LAS : 05-30-2000 }
+Procedure TCustomxQuery.PopulateDatasets(TableList: TTableList);
+{ LAS : 05-30-2000 }
 Begin
   // nothing to do here (this is for descendants only)
 End;
@@ -7992,27 +9595,70 @@ Begin
   // nothing to do here (this is for descendants only)
 End;
 
+function TCustomxQuery.DoPrepareFormatSettings(
+  var aNewRuntimeFormatSettings: TFormatSettings; aRefreshCurrentFormatSettings:Boolean): TFormatSettings;
+begin
+
+ if aRefreshCurrentFormatSettings then
+    InitializeFormatSettings(fSavedFormatSettings);
+
+ Result := fRunTimeFormatSettings;
+ fRunTimeFormatSettings :=  aNewRuntimeFormatSettings;
+
+ if (FormatSettings.Parser.ShortDateFormat<>'') then
+     fRunTimeFormatSettings.ShortDateFormat := FormatSettings.Parser.ShortDateFormat;
+ fSystemFormatSettings := fRunTimeFormatSettings;
+ if (FormatSettings.Parser.DateSeparator<>#0) then
+     fRuntimeFormatSettings.DateSeparator := FormatSettings.Parser.DateSeparator;
+ fRuntimeFormatSettings.ThousandSeparator := FormatSettings.Parser.ThousandSeparator;
+ fRuntimeFormatSettings.DecimalSeparator := FormatSettings.Parser.DecimalSeparator;
+
+ If Assigned(fOnPrepareParserFormatSettings)  then
+    fOnPrepareParserFormatSettings( Self, fRunTimeFormatSettings );
+
+    fSystemFormatSettings := FormatSettings.System.fInnerFormatSettings;
+
+ If Assigned(fOnPrepareSystemFormatSettings)  then
+    fOnPrepareSystemFormatSettings( Self, fSystemFormatSettings );
+
+{$IFNDEF Delphi7Up}
+ RestoreFormatSettings( fRunTimeFormatSettings );
+{$ENDIF}
+end;
+
+function TCustomxQuery.DoRestoreFormatSettings(
+  var aOldRuntimeFormatSettings: TFormatSettings): TFormatSettings;
+begin
+ Result := fRunTimeFormatSettings;
+ if Assigned(fOnRestoreFormatSettings)  then
+    fOnRestoreFormatSettings( Self, fSavedFormatSettings );
+ fRunTimeFormatSettings := aOldRuntimeFormatSettings;
+ fSystemFormatSettings  := fSavedFormatSettings;
+{$IFNDEF Delphi7Up}
+ RestoreFormatSettings(fSavedFormatSettings);
+{$ENDIF}
+end;
+
 Procedure TCustomxQuery.ExecSQLScript;
 Var
   Analizer: TSqlAnalizer;
   P, ErrLine, ErrCol: Integer;
-  ErrMsg, ErrTxt: String;
-  AbortScript: boolean;
-  s, ns: String;
+  ErrMsg, Errtxt: String;
+  AbortScript: Boolean;
+  S, ns: String;
   SaveState: Boolean;
   SaveCursor: TCursor;
 Begin
   SaveCursor := crDefault;
 
-  s := Trim(FSQLScript.Text);
-  If Length(s) = 0 Then
+  S := Trim(FSQLScript.Text);
+  If Length(S) = 0 Then
     Raise ExQueryError.Create(SSQLIsEmpty);
 
 {$IFDEF XQDEMO}
-  If Not (csDesigning In ComponentState) And Not IsDelphiRunning Then
-    Raise exception.Create(SDelphiIsNotRunning);
+  If Not(csDesigning In ComponentState) And Not IsDelphiRunning Then
+    Raise Exception.Create(SDelphiIsNotRunning);
 {$ENDIF}
-
   If FShowWaitCursor Then
   Begin
     SaveCursor := Screen.Cursor;
@@ -8020,44 +9666,47 @@ Begin
   End;
   SaveState := FShowWaitCursor;
   FShowWaitCursor := False;
-  FScriptIsRunning := true;
+  FScriptIsRunning := True;
+
+  fOldRunTimeFormatSettings := DoPrepareFormatSettings( fFormatSettings.Parser.fInnerFormatSettings );
+
   Try
     Repeat
       If Assigned(FResultSet) Then
         FreeObject(FResultSet);
-      P := AnsiPos(';', s);
+      P := AnsiPos(';', S); { patched by fduenas: Changed AnsiPos to Pos }
       If P > 0 Then
       Begin
-        ns := Copy(s, 1, p);
-        System.Delete(s, 1, P);
+        ns := Copy(S, 1, P);
+        System.Delete(S, 1, P);
       End
       Else
-        ns := Trim(s);
+        ns := Trim(S);
       If Length(ns) > 0 Then
       Begin
         FSQL.Text := ns;
         Analizer := TSqlAnalizer.Create(Nil, Self);
         Try
-          If Analizer.parser.yyparse = 1 Then
+          If Analizer.Parser.yyparse = 1 Then
           Begin
-            ErrLine := Analizer.lexer.yylineno;
-            ErrCol := Analizer.lexer.yycolno - Analizer.lexer.yyTextLen - 1;
-            ErrMsg := Analizer.parser.yyerrormsg;
-            Analizer.lexer.getyytext (ErrTxt);
+            ErrLine := Analizer.Lexer.yylineno;
+            ErrCol := Analizer.Lexer.yycolno - Analizer.Lexer.yyTextLen - 1;
+            ErrMsg := Analizer.Parser.yyerrormsg;
+            Analizer.Lexer.getyytext(Errtxt);
             If Assigned(FOnSyntaxError) Then
             Begin
-              FOnSyntaxError(Self, ErrMsg, ErrTxt, ErrLine, ErrCol,
-                Length(ErrTxt));
+              FOnSyntaxError(Self, ErrMsg, Errtxt, ErrLine, ErrCol,
+                Length(Errtxt));
               Abort;
             End
             Else
               { if not raised an error, will raise here }
-              Raise ExQueryError.CreateFmt(SSyntaxErrorMsg, [ErrMsg, ErrLine,
-                ErrCol, ErrTxt]);
+              Raise ExQueryError.CreateFmt(SSyntaxErrorMsg,
+                [ErrMsg, ErrLine, ErrCol, Errtxt]);
           End;
           FScriptStatementType := Analizer.FStatement;
           Try
-            Analizer.DoExecSQL;
+            Analizer.doExecSQL;
           Except
             On E: Exception Do
               If Assigned(FOnScriptError) Then
@@ -8065,7 +9714,7 @@ Begin
                 AbortScript := False;
                 FOnScriptError(Self, E, AbortScript);
                 If AbortScript Then
-                  exit;
+                  Exit;
               End
               Else
                 Raise;
@@ -8080,6 +9729,7 @@ Begin
   Finally
     FScriptIsRunning := False;
     FShowWaitCursor := SaveState;
+    DoRestoreFormatSettings(fOldRunTimeFormatSettings);
     If FShowWaitCursor Then
     Begin
       Screen.Cursor := SaveCursor;
@@ -8102,17 +9752,21 @@ Begin
   // nothing to do here
 End;
 
-Function TCustomxQuery.LocateRecord(Const KeyFields: String; Const KeyValues: Variant;
-  Options: TLocateOptions): Integer;
+Function TCustomxQuery.LocateRecord(Const KeyFields: String;
+  Const KeyValues: Variant; Options: TLocateOptions): Integer;
 Var
-  //fieldlist: TStringList;
+  // fieldlist: TStringList;
   ss, cs, ts: String;
+ {$IFDEF LEVEL4}
+  sws, cws, tws: WideString;
+ {$ENDIF}
   sd, cd: double;
-  si, ci: integer;
-  sb, cb: boolean;
+  si, ci: Integer;
+  sli, cli: Int64;
+  sb, cb: Boolean;
   xqField: TxqField;
-  I, J, rnum: integer;
-  Fields: TList{$if RTLVersion >=24}<TField>{$ifend};
+  I, J, rnum: Integer;
+  Fields: TList;
   FieldCount, MatchCount: Integer;
   IsEqual, Found: Boolean;
 Begin
@@ -8122,7 +9776,7 @@ Begin
   Found := False;
   Result := 0;
   rnum := 0;
-  Fields := TList{$if RTLVersion >=24}<TField>{$ifend}.Create;
+  Fields := TList.Create;
   Try
     GetFieldList(Fields, KeyFields);
     FieldCount := Fields.Count;
@@ -8135,7 +9789,7 @@ Begin
       Begin
         xqField := FResultSet.Fields[TField(Fields[J]).FieldNo - 1];
         Case xqField.DataType Of
-          ttString:
+          ttstring:
             Begin
               ss := xqField.AsString;
               If FieldCount = 1 Then
@@ -8147,10 +9801,32 @@ Begin
               Else
                 ts := ss;
               If loCaseInsensitive In Options Then
-                IsEqual := AnsiCompareText(ts, cs) = 0
+                IsEqual := AnsiCompareText(ts, cs)
+                  = 0 { patched by fduenas: Changed AnsiCompareText to CompareText }
               Else
                 IsEqual := AnsiCompareStr(ts, cs) = 0;
+              { patched by fduenas: Changed AnsiCompareText to CompareText }
             End;
+         {$IFDEF LEVEL4}
+          ttWideString:
+            Begin
+              sws := xqField.AsWideString;
+              If FieldCount = 1 Then
+                cws := KeyValues
+              Else
+                cws := KeyValues[J];
+              If loPartialKey In Options Then
+                tws := Copy(sws, 1, Length(cws))
+              Else
+                tws := sws;
+              If loCaseInsensitive In Options Then
+                IsEqual := WideCompareText(tws, cws)
+                  = 0 { patched by fduenas: Changed AnsiCompareText to CompareText }
+              Else
+                IsEqual := WideCompareStr(tws, cws) = 0;
+              { patched by fduenas: Changed AnsiCompareText to CompareText }
+            End;
+         {$ENDIF}
           ttFloat:
             Begin
               sd := xqField.AsFloat;
@@ -8168,6 +9844,15 @@ Begin
               Else
                 ci := KeyValues[J];
               IsEqual := si = ci;
+            End;
+          ttLargeInt:
+            Begin
+              sli := xqField.AsLargeInt;
+              If FieldCount = 1 Then
+                cli := KeyValues
+              Else
+                cli := KeyValues[J];
+              IsEqual := sli = cli;
             End;
           ttBoolean:
             Begin
@@ -8191,12 +9876,22 @@ Begin
       Result := rnum;
     End;
   Finally
-    Fields.Free;
+    Fields.free;
   End;
 End;
 
-Function TCustomxQuery.Locate(Const KeyFields: String;
-  Const KeyValues: Variant; Options: TLocateOptions): Boolean;
+procedure TCustomxQuery.Loaded;
+begin
+ inherited;
+ if (DateFormat<>'') then
+    fRunTimeFormatSettings.ShortDateFormat := FDateFormat;
+ if (DateSeparator<>'') then
+    fRunTimeFormatSettings.DateSeparator := FDateSeparator;
+ fSystemFormatSettings := fRunTimeFormatSettings;
+end;
+
+Function TCustomxQuery.Locate(Const KeyFields: String; Const KeyValues: Variant;
+  Options: TLocateOptions): Boolean;
 Var
   TmpRecno: Integer;
 Begin
@@ -8207,23 +9902,23 @@ Begin
   Begin
     Recno := TmpRecno;
     Resync([rmExact, rmCenter]);
-    DoAfterScroll;
+    doAfterScroll;
   End;
 End;
 
-Function TCustomxQuery.Lookup(Const KeyFields: String;
-  Const KeyValues: Variant; Const ResultFields: String): Variant;
+Function TCustomxQuery.Lookup(Const KeyFields: String; Const KeyValues: Variant;
+  Const ResultFields: String): Variant;
 Var
   SaveRecno, TmpRecno: Integer;
 Begin
   SaveRecno := Self.Recno;
-  //DoBeforeScroll;
+  // DoBeforeScroll;
   TmpRecno := LocateRecord(KeyFields, KeyValues, []);
   If TmpRecno > 0 Then
   Begin
     Recno := TmpRecno;
     Resync([rmExact, rmCenter]);
-    //DoAfterScroll;
+    // DoAfterScroll;
     Result := Null;
     SetTempState(dsCalcFields);
     Try
@@ -8249,79 +9944,129 @@ Procedure TCustomxQuery.SetFieldData(Field: TField; Buffer: Pointer); // editing
 Var
   Offset: Integer;
   RecBuffer: TRecordBuffer;
-  TempDouble: Double;
+  TempDouble: double;
   Data: TDateTimeRec;
   ts: TTimeStamp;
   TempBool: WordBool;
+  HasData: ByteBool;
   xqField: TxqField;
 Begin
-  If Not Active Then Exit;
+  If Not Active Then
+    Exit;
+
+  If (Field.FieldNo < 1) and (not (Field.FieldKind In [fkCalculated, fkLookup])) Then
+     Exit;
+
   RecBuffer := GetActiveRecordBuffer;
-  If (RecBuffer = Nil) Or (Buffer = Nil) Then Exit;
-  If (Field.FieldKind = fkCalculated) Or (Field.FieldKind = fkLookup) Then
+  If (RecBuffer = Nil) Or (Buffer = Nil) Then
+    Exit;
+
+  If Field.FieldKind in [fkCalculated, fkLookup] Then
   Begin
-    Inc(RecBuffer, StartCalculated + Field.Offset);
-    Boolean(RecBuffer[0]) := (Buffer <> Nil);
-    //if Boolean(RecBuffer[0]) then
-    CopyMemory(@RecBuffer[1], Buffer, Field.DataSize);
+   // Inc(RecBuffer, StartCalculated + Field.Offset);
+   HasData := True;
+   {$IF RTLVersion <= 18.5}
+     Move(HasData, (RecBuffer + StartCalculated + Field.Offset)^,SizeOf(ByteBool));
+   {$ELSE}
+     Move(HasData, RecBuffer[StartCalculated + Field.Offset], SizeOf(ByteBool));
+     { patched by fduenas based on ccy }
+   {$IFEND}
+    // if Boolean(RecBuffer[0]) then
+    //Tstringfield.Create();
+    if Field.DataType in [ftString, ftFixedChar] then
+    begin
+     //CopyMemory(@RecBuffer[StartCalculated + Field.Offset+1], Buffer, Size );
+     Move(Buffer^, RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], IMin( Length(PAnsiChar(Buffer)), Field.Size ));
+    end
+    else if Field.DataType in [ftWideString, ftFixedWideChar] then
+    begin
+     Move(Buffer^, RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)],  IMin(Length(PWideChar(Buffer)), Field.Size) * SizeOf(Char)  )
+    end
+    else
+    begin
+      Move(Buffer^, RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], SizeOfFieldType( Field.DataType ) { GetFieldSize(Field.DataType, Field.Size)} );
+    end;
+    //CopyMemory(@RecBuffer[StartCalculated + Field.Offset + SizeOf(WordBool)], Buffer, GetFieldSize(field.DataType, Field.Size)); {modified by fduenas: fixed Calculated field issues}
   End
   Else
   Begin
-    xqField := FResultSet.Fields[Field.FieldNo - 1];
-    FResultSet.Recno := RecNo;  //FRecNo + 1;
+    xqField := FResultSet.FindFieldByDataSetFieldName(Field.FieldName){FResultSet.Fields[Field.FieldNo - 1]}; {modified by fduenas: use Field name instead of Field Index}
+    if not Assigned(xqField) then
+       exit;
+    FResultSet.RecNo := Recno; // FRecNo + 1;
     Offset := xqField.FFieldOffset;
     Case Field.DataType Of
-      ftInteger:
+      ftLargeInt: { changed by fduenas: fix for ftLargeInt Issue }
         Begin
-          Move(Integer(Buffer^), (RecBuffer + Offset)^, sizeof(Integer));
-          FResultSet.Fields[Field.FieldNo - 1].AsInteger := Integer(Buffer^);
+          Move(Int64(Buffer^), (RecBuffer + Offset)^, SizeOf(Int64));
+          {FResultSet.Fields[Field.FieldNo - 1]}xqField.AsLargeInt := Int64(Buffer^);
+        End;
+      ftInteger, ftWord, {$IFDEF Delphi2009Up} ftLongWord, ftShortInt, {$ENDIF} ftSmallInt:
+        Begin
+          Move(Integer(Buffer^), (RecBuffer + Offset)^, SizeOf(Integer));
+          xqField.AsInteger := Integer(Buffer^);
         End;
       ftBoolean:
         Begin
-          Move(WordBool(Buffer^), TempBool, sizeof(WordBool));
-          Move(TempBool, (RecBuffer + Offset)^, sizeof(WordBool));
-          FResultSet.Fields[Field.FieldNo - 1].AsBoolean := WordBool(Buffer^);
+          Move(WordBool(Buffer^), TempBool, SizeOf(WordBool));
+          Move(TempBool, (RecBuffer + Offset)^, SizeOf(WordBool));
+          xqField.AsBoolean := WordBool(Buffer^);
         End;
-      ftString:
+      ftString, ftFixedChar: { patched by fduenas added ftWideString }
         Begin
-          StrLCopy(PChar(RecBuffer + Offset), Buffer, StrLen(PChar(Buffer)));
-          FResultSet.Fields[Field.FieldNo - 1].AsString := PChar(Buffer);
+          CopyMemory(PAnsiChar(RecBuffer + Offset), Buffer,
+            IMin( xqField.DataSize, Field.DataSize ) { Length(PChar(Buffer)) * SizeOf(Char) } );
+          { patched by fduenas, allow update string data }
+          { StrLCopy(PChar(RecBuffer + Offset), Buffer, StrLen(PChar(Buffer))); }
+          xqField.AsString := PAnsiChar(Buffer);
         End;
+     {$IFDEF LEVEL4}
+      ftWidestring, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}: { patched by fduenas added ftWideString }
+        Begin
+          Copymemory(PWideChar(RecBuffer + Offset), Buffer,
+            IMin( xqField {FResultSet.Fields[Field.FieldNo - 1]}
+                  .DataSize, Field.DataSize ) { Length(PChar(Buffer)) * SizeOf(Char) } );
+          { patched by fduenas, allow update string data }
+          { StrLCopy(PChar(RecBuffer + Offset), Buffer, StrLen(PChar(Buffer))); }
+          xqField.AsWideString := PWideChar(Buffer);
+        End;
+     {$ENDIF}
       ftDate, ftTime:
         Begin
           if Field.DataType = ftDate then
           Begin
-            ts.Time:=0;
-            ts.Date:=Integer(Buffer^);
-          End Else
+            ts.Time := 0;
+            ts.Date := Integer(Buffer^);
+          End
+          Else
           Begin
-            ts.Time:=Integer(Buffer^);
-            ts.Date:=Trunc(Now);
+            ts.Time := Integer(Buffer^);
+            ts.Date := Trunc(Now);
           End;
-          TempDouble:= TimeStampToDateTime(ts);
-          Move(TempDouble, (RecBuffer + Offset)^, Sizeof(Double));
-          FResultSet.Fields[Field.FieldNo - 1].AsFloat := TempDouble;
+          TempDouble := TimeStampToDateTime(ts);
+          Move(TempDouble, (RecBuffer + Offset)^, SizeOf(double));
+          xqField.AsFloat := TempDouble;
         End;
       ftDateTime:
         Begin
           Data := TDateTimeRec(Buffer^);
           ts := MSecsToTimeStamp(Data.DateTime);
           TempDouble := TimeStampToDateTime(ts);
-          Move(TempDouble, (RecBuffer + Offset)^, sizeof(TempDouble));
-          FResultSet.Fields[Field.FieldNo - 1].AsFloat := TempDouble;
+          Move(TempDouble, (RecBuffer + Offset)^, SizeOf(TempDouble));
+          xqField.AsFloat := TempDouble;
         End;
-      ftFloat, ftCurrency:
+      ftFloat, ftCurrency, ftBCD, ftFMTBcd:
         Begin
-          Move(Double(Buffer^), (RecBuffer + Offset)^, sizeof(Double));
-          FResultSet.Fields[Field.FieldNo - 1].AsFloat := Double(Buffer^);
+          Move(double(Buffer^), (RecBuffer + Offset)^, SizeOf(double));
+          xqField.AsFloat := double(Buffer^);
         End;
     End;
   End;
-  If Not (State In [dsCalcFields, dsFilter, dsNewValue]) Then
-    DataEvent(deFieldChange, Longint(Field));
+  If Not(State In [dsCalcFields, dsFilter, dsNewValue]) Then
+    DataEvent(deFieldChange, LongInt(Field));
 End;
 
-Procedure TCustomxQuery.SortByColumns(Const Columns: Array Of integer;
+Procedure TCustomxQuery.SortByColumns(Const Columns: Array Of Integer;
   Descending: Boolean);
 Var
   I, J, ColIndex: Integer;
@@ -8330,9 +10075,9 @@ Var
   Function LocalCreateSortList: TxqSortList;
   Begin
     If FInMemResultSet Then
-      Result := TMemSortList.Create(False)
+      Result := TMemSortList.Create(False, fRuntimeFormatSettings, fSystemFormatSettings)
     Else
-      Result := TFileSortList.Create(False, FMapFileSize);
+      Result := TFileSortList.Create(False, FMapFileSize, fRuntimeFormatSettings, fSystemFormatSettings);
   End;
 
 Begin
@@ -8349,19 +10094,25 @@ Begin
     End;
     For I := 1 To ResultSet.RecordCount Do
     Begin
-      ResultSet.RecNo := I;
+      ResultSet.Recno := I;
       SortList.Insert;
-      SortList.SourceRecNo := I;
+      SortList.SourceRecno := I;
       For J := Low(Columns) To High(Columns) Do
       Begin
         ColIndex := Columns[J];
         Case ResultSet.Fields[ColIndex].DataType Of
           ttstring:
-            SortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].Asstring;
+            SortList.Fields[J].AsString := ResultSet.Fields[ColIndex].AsString;
+         {$IFDEF LEVEL4}
+          ttWideString:
+            SortList.Fields[J].AsWideString := ResultSet.Fields[ColIndex].AsWideString;
+         {$ENDIF}
           ttFloat:
             SortList.Fields[J].AsFloat := ResultSet.Fields[ColIndex].AsFloat;
           ttInteger:
             SortList.Fields[J].AsInteger := ResultSet.Fields[ColIndex].AsInteger;
+          ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+            SortList.Fields[J].AsLargeInt := ResultSet.Fields[ColIndex].AsLargeInt;
           ttBoolean:
             SortList.Fields[J].AsBoolean := ResultSet.Fields[ColIndex].AsBoolean;
         End;
@@ -8373,7 +10124,7 @@ Begin
     { now, position to the first record }
     First;
   Finally
-    SortList.Free;
+    SortList.free;
   End;
 End;
 
@@ -8382,9 +10133,63 @@ Begin
   FParamsAsFields.Assign(Value);
 End;
 
-Procedure TCustomxQuery.SetDataSets(Value: TxDatasets);
+Procedure TCustomxQuery.SetDataSets(Value: TxDataSets);
 Begin
   FDataSets.Assign(Value);
 End;
+
+{ TXQFormatSettings }
+
+constructor TxFormatSettings.Create(aOwner: TObject; aInitSettings: boolean);
+begin
+  inherited Create;
+ fOwner := aOwner;
+ fSystem := TxSystemFormatSettings.Create(self, aInitSettings);
+ fParser := TxParserFormatSettings.Create(self, aInitSettings);
+end;
+
+destructor TxFormatSettings.Destroy;
+begin
+ FreeAndNil(fSystem);
+ FreeAndNil(fParser);
+ fOwner := nil;
+ inherited;
+end;
+
+procedure TxFormatSettings.SetParser(const Value: TxParserFormatSettings);
+begin
+  fParser.Assign(Value);
+end;
+
+procedure TxFormatSettings.SetSystem(const Value: TxSystemFormatSettings);
+begin
+  fSystem.Assign(Value);
+end;
+
+{ TXQParserFormatSettings }
+
+procedure TxParserFormatSettings.SetDateSeparator(const Value: Char);
+begin
+ inherited;
+ if Assigned(fOwner) and
+   (fOwner is TxFormatSettings) and
+   (TxFormatSettings(fOwner).fOwner is TCustomxQuery) then
+ begin
+  if not (csLoading in TCustomxQuery(TxFormatSettings(fOwner).fOwner ).ComponentState) then
+     TCustomxQuery(TxFormatSettings(fOwner).fOwner).FDateSeparator := Value;
+ end;
+end;
+
+procedure TxParserFormatSettings.SetShortDateFormat(const Value: String);
+begin
+ inherited;
+ if Assigned(fOwner) and
+   (fOwner is TxFormatSettings) and
+   (TxFormatSettings(fOwner).fOwner is TCustomxQuery) then
+ begin
+  if not (csLoading in TCustomxQuery(TxFormatSettings(fOwner).fOwner ).ComponentState) then
+     TCustomxQuery(TxFormatSettings(fOwner).fOwner ).FDateFormat := Value;
+ end;
+end;
 
 End.

@@ -1,35 +1,39 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is QYACCLIB.pas                                      }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: QYACCLIB.pas                                        }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
-Unit QYACCLIB;
+Unit QYaccLib;
 
 (* Yacc Library Unit for TP Yacc Version 3.0, 6-17-91 AG *)
 (* adapted to Delphi 3,4,5,6 6/8/2003 *)
@@ -37,14 +41,14 @@ Unit QYACCLIB;
 {$I XQ_FLAG.INC}
 Interface
 
-Uses QLexLib;
+Uses SysUtils, QLexLib;
 
 Const
-  yymaxdepth = 1048;
+  yymaxdepth =  1048;
   (* default stack size of parser *)
 
 Type
-  YYSType = Integer;
+  //YYSType = Integer; removed declaration, use QLexlib.YYSType instead
   TYYFlag = ( yyfnone, yyfaccept, yyfabort, yyferror );
 
   (* default value type, may be redefined in Yacc output file *)
@@ -58,7 +62,8 @@ Type
     yyLexer: TCustomLexer; (* Lexer used to lex input *)
 
     yyerrormsg: String; (* Last error message in string format *)
-
+    yyRuntimeFormatSettings: TFormatSettings;
+    yySystemFormatSettings: TFormatSettings;
     Procedure yyerror( msg: String );
     (* error message printing routine used by the parser *)
 
@@ -88,6 +93,7 @@ Type
   Protected
     yyerrflag: Integer;
     yyflag: TYYFlag;
+    yylval: YYSType;  {modified by fduenas: make TP Yacc/Lex thread safe)}
   End; (* TCustomParser *)
 
 Implementation

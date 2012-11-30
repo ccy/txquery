@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is XQLex.pas                               }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: XQLex.pas                                           }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 unit XQLex;
 
@@ -48,8 +52,8 @@ type
     // utility functions
     function IsKeyword(const id : String; var token : integer) : boolean;
     // Lexer main functions
-    function yylex : Integer; override;
-    procedure yyaction( yyruleno : integer);
+    function yylex( var yylval: YYSType ) : Integer; override; {modified by fduenas: make TP Yacc/Lex thread safe)}
+    procedure yyaction( yyruleno : integer; var yylval: YYSType); {modified by fduenas: make TP Yacc/Lex thread safe)}
     procedure commenteof;
 
     property IsWhereActive: Boolean read FIsWhereActive write FIsWhereActive;
@@ -202,25 +206,36 @@ end;
 
 
 
-procedure TXQLexer.yyaction ( yyruleno : Integer );
+procedure TXQLexer.yyaction ( yyruleno : Integer; var yylval: YYSType ); {modified by fduenas: make TP Yacc/Lex thread safe)}
   (* local definitions: *)
 
    var
       c: char;
       token, code, value: Integer;
-      SaveDate: String;
+      {SaveDate: String;}
 
       Function ReturnDate( const ADate: String ): string;
       begin
-        SaveDate := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
+        (*
+        SaveDate := {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat;
         if Length( Self.FDateFormat ) = 0 then
-           Self.FDateFormat := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;//SDefaultDateFormat;
-        {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := Self.FDateFormat;
+           Self.FDateFormat := {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat;//SDefaultDateFormat;
+        {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat := Self.FDateFormat;
+        *)
         try
-           Result := FloatToStr( StrToDate( ADate ) );
+          {$IFNDEF Delphi7Up}
+           RestoreFormatSettings( yyRuntimeFormatSettings );
+          {$ENDIF}
+           Result := FloatToStr( StrToDate( ADate{$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF} ){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF} );
            if FIsWhereActive then
               Result := 'DummyDate(' + Result + ')';
-           {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SaveDate;
+          {$IFNDEF Delphi7Up}
+           RestoreFormatSettings( yySystemFormatSettings );
+          {$ENDIF}
+
+           (*
+           {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat := SaveDate;
+           *)
            returni( _NUMERIC );
         except
            if not FIgnoreBadDates then
@@ -240,15 +255,23 @@ begin
   begin
     If AnsiCompareText( yylval.yystring, 'NOW' ) = 0 Then
     Begin
-      SaveDate := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
+      (*
+      SaveDate := {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat;
       if Length( Self.FDateFormat ) = 0 then
-         Self.FDateFormat := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;//SDefaultDateFormat;
-      {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := Self.FDateFormat;
+         Self.FDateFormat := {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat;//SDefaultDateFormat;
+      {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat := Self.FDateFormat;
+      *)
       try
-         yylval.yystring := FloatToStr( Now );
+        {$IFNDEF Delphi7Up}
+         RestoreFormatSettings( yyRuntimeFormatSettings );
+        {$ENDIF}
+         yylval.yystring := FloatToStr( Now{$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF} );
          if FIsWhereActive then
             yylval.yystring := 'DummyDate(' + yylval.yystring + ')';
-         {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SaveDate;
+         (* {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat := SaveDate;*)
+        {$IFNDEF Delphi7Up}
+         RestoreFormatSettings( yySystemFormatSettings );
+        {$ENDIF}
          returni( _NUMERIC );
       except
          if not FIgnoreBadDates then
@@ -388,11 +411,11 @@ begin
   end;
 end(*yyaction*);
 
-function TXQLexer.yylex : Integer;
+function TXQLexer.yylex( var yylval: YYSType ) : Integer; {modified by fduenas: make TP Yacc/Lex thread safe)}
 (* DFA table: *)
 
 type YYTRec = record
-                cc : set of AnsiChar; { patched by ccy }
+                cc : {$IFNDEF Delphi7_UP} set of AnsiChar {$ELSE} TSysCharSet {$ENDIF}; { patched by ccy }
                 s  : SmallInt;
               end;
 
@@ -1266,7 +1289,7 @@ action:
 
   if yyfind(yyrule) then
     begin
-      yyaction(yyrule);
+      yyaction(yyrule, yylval);
       if yyreject then goto action;
     end
   else if not yydefault and yywrap then

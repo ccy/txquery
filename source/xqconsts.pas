@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is XQConsts.pas                                      }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: XQConsts.pas                                        }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 Unit XQConsts;
 
@@ -40,14 +44,12 @@ Resourcestring
 
   SXQUERY_ABOUT = 'TxQuery Version 2.0 (Ene 2009)';
 
-  //SDefaultDateFormat = 'm/d/yyyy';
-  SAggrSUM = 'SUM OF ';
-  SAggrAVG = 'AVG OF ';
-  SAggrSTDEV = 'STDEV OF ';
-  SAggrMIN = 'MIN OF ';
-  SAggrMAX = 'MAX OF ';
+  SAggrSUM = 'SumOF_';
+  SAggrAVG = 'AvgOF_';
+  SAggrSTDEV = 'StDevOF_';
+  SAggrMIN = 'MinOF_';
+  SAggrMAX = 'MaxOF_';
   SAggrCOUNT = 'COUNT(*)';
-
 {$IFDEF xqdemo}
   SDelphiIsNotRunning = 'TxQuery Dataset (c) 2004 Alfonso Moreno' + #13#10 +
     'This is a demo version. Delphi must be running !';
@@ -83,6 +85,7 @@ Resourcestring
   SWrongTableName = 'Wrong table name in format %s.*';
   SWrongIndexField = 'Field index incorrect';
   SFieldNotFound = 'Field %s was not found';
+  SDataSetFieldNotFound = 'DataSet Field %s was not found';
   SJoinOnMustHaveDiffTables = 'Left and right tables must be different in JOIN';
   SJoinOnWrongRightTable = 'Right table in JOIN must meet second table in FROM';
   SJoinOnWrongLeftTable = 'Left table in JOIN must meet first table in FROM';
@@ -110,15 +113,20 @@ Resourcestring
   SReadBooleanField = 'Cannot read field as boolean';
   SReadFloatField = 'Cannot read field as float';
   SReadIntegerField = 'Cannot read field as integer';
+  SReadLargeIntegerField = 'Cannot read field as large integer'; {added by fduenas: fix for ftLargeInt issues}
   SReadStringField = 'Cannot read field as string';
+  SReadWideStringField = 'Cannot read field as WideString'; {added by fduenas: added WideString support}
   SReadVariantField = 'Cannot read field as variant';
   SWriteBooleanField = 'Cannot assign field as boolean';
   SWriteFloatField = 'Cannot assign field as float';
   SWriteIntegerField = 'Cannot assign field as integer';
+  SWriteLargeIntegerField = 'Cannot assign field as large integer'; {added by fduenas: fix for ftLargeInt issues}
   SWriteStringField = 'Cannot assign field as string';
+  SWriteWideStringField = 'Cannot assign field as WideString'; {added by fduenas: added WideString support}
   SWriteVariantField = 'Cannot assign field as variant';
   SIsInvalidFloatValue = 'Invalid floating point value %s';
   SIsInvalidIntegerValue = 'Invalid integer value %s';
+  SIsInvalidLargeIntValue = 'Invalid large integer value %s';
   SIsInvalidBoolValue = 'Invalid boolean value %s';
   SNotAnAggregate = 'This is not an aggregate field !';
   SInvalidFieldNo = 'Invalid field number %d';
@@ -150,9 +158,11 @@ Resourcestring
   SEXPR_WRONGTHENEXPR = 'Expressions in THEN section must be all of same type';
   SEXPR_UNKNOWNID = 'Unknown Identifier %s';
   SEXPR_OPERATORINCOMPAT = 'Operator %s incompatible';
+  SEXPR_CANNOTCASTTOWIDESTRING = 'Cannot read %s as WideString';
   SEXPR_CANNOTCASTTOSTRING = 'Cannot read %s as String';
   SEXPR_CANNOTCASTTOFLOAT = 'Cannot read %s as Float';
   SEXPR_CANNOTCASTTOINTEGER = 'Cannot read %s as Integer';
+  SEXPR_CANNOTCASTTOLARGEINTEGER = 'Cannot read %s as Large Integer';
   SEXPR_CANNOTCASTTOBOOLEAN = 'Cannot read %s as boolean';
   SEXPR_WRONGUNARYOP = '%s is not simple unary operator';
   SEXPR_WRONGBINARYOP = '%s is not a simple binary operator';
@@ -160,13 +170,15 @@ Resourcestring
   SEXPR_WRONGRELATIONALOP = '%s is not relational operator';
   SEXPR_WRONGPARAMETER = 'Invalid parameter to %s';
   SEXPR_INVALIDPARAMETERTO = 'Invalid parameter to %s';
+  SEXPR_WRONGPARAMETERCOUNT = '%s: Incorrect number of arguments';
+  SEXPR_PARAMETERSTYPEDIFFERENT = '%s: All parameters must be of the same type';
 {$ENDIF}
 
 {$IFDEF LANG_SPA}
 
   { Resource strings en Español - Mexicano       }
   { Traducido por Francisco Dueñas               }
-  { Email: fduenas@flashmail.com                 }
+  { Email: fduenas@gmail.com                     }
 
   SExprParserError = ' %s Línea : %d, Columna: %d, Identificador: %s'; //' %s at line : %d, Column: %d, token: %s';
   SInsertWrongFieldName = 'INSERT: El Campo: %s no existe en el dataset'; //'INSERT: Field: %s does not exist in the dataset';
@@ -197,6 +209,7 @@ Resourcestring
   SWrongTableName = 'Nombre de Tabla incorrecto con formato %s.*'; //'Wrong table name in format %s.*';
   SWrongIndexField = 'Indice del Campo incorrecto'; //'Field index incorrect';
   SFieldNotFound = 'No se encontró el campo %s'; //'Field %s was not found';
+  SDataSetFieldNotFound = 'No se encontrò el campo %s del DataSet' //'DataSet Field %s was not found';
   SJoinOnMustHaveDiffTables = 'Tablas Izquierda y Derecha deben ser diferentes en el JOIN'; //'Left and right tables must be different in JOIN';
   SJoinOnWrongRightTable = 'La Tabla Derecha en el JOIN debe ser la segunda tabla en el FROM'; //'Right table in JOIN must meet second table in FROM';
   SJoinOnWrongLeftTable = 'Left table in JOIN must meet first table in FROM';
@@ -225,14 +238,17 @@ Resourcestring
   SReadFloatField = 'El campo no puede leerse como tipo punto flotante'; //'Cannot read field as float';
   SReadIntegerField = 'El campo no puede leerse como tipo entero'; //'Cannot read field as integer';
   SReadStringField = 'El campo no puede leerse como tipo cadena'; //'Cannot read field as string';
+  SReadWideStringField = 'El campo no puede leerse como tipo WideString'; {added by fduenas: added WideString support}
   SReadVariantField = 'El campo no puede leerse como variant';
   SWriteBooleanField = 'El campo no puede asignarse valores como tipo lógico o buleano'; //'Cannot assign field as boolean';
   SWriteFloatField = 'El campo no puede asignarse valores como tipo float (punto flotante)'; //'Cannot assign field as float';
   SWriteIntegerField = 'El campo no puede asignarse valores como tipo entero'; //'Cannot assign field as integer';
   SWriteStringField = 'El campo no puede asignarse valores como tipo string (cadena)'; //'Cannot assign field as string';
+  SWriteWideStringField = 'El campo no puede asignarse valores como tipo WideString'; {added by fduenas: added WideString support}
   SWriteVariantField = 'El campo no puede asignarse como variant';
   SIsInvalidFloatValue = 'valor de punto flotante inválido: %s'; //'Invalid floating point value %s';
   SIsInvalidIntegerValue = 'Valor entero inválido: %s'; //'Invalid integer value %s';
+  SIsInvalidLargeIntValue = 'Valor entero largo inválido: %s'; //'Invalid integer value %s';
   SIsInvalidBoolValue = 'Valor lógico o buleano inválido: %s'; //'Invalid boolean value %s';
   SNotAnAggregate = '¡ Este no es un campo de agregado (aggregate) !'; //'This is not an aggregate field !';
   SInvalidFieldNo = 'Número de campo inválido: %d'; //'Invalid field number %d';
@@ -265,8 +281,10 @@ Resourcestring
   SEXPR_UNKNOWNID = 'Identificador desconocido %s'; //'Unknown Identifier %s';
   SEXPR_OPERATORINCOMPAT = 'El operador %s no es compatible con %s'; //'Operator %s incompatible with %s';
   SEXPR_CANNOTCASTTOSTRING = 'No se puede leer %s como tipo String'; //'Cannot read %s as String';
+  SEXPR_CANNOTCASTTOWIDESTRING = 'No se puede leer %s como tipo WideString';//'Cannot read %s as WideString';
   SEXPR_CANNOTCASTTOFLOAT = 'No se puede leer %s como tipo Float'; //'Cannot read %s as Float';
   SEXPR_CANNOTCASTTOINTEGER = 'No se puede leer %s como tipo Integer'; //'Cannot read %s as Integer';
+  SEXPR_CANNOTCASTTOLARGEINTEGER = 'No se puede leer %s como tipo Entero Largo'; '//Cannot read %s as Large Integer';
   SEXPR_CANNOTCASTTOBOOLEAN = 'No se puede leer %s como tipo bolean'; //'Cannot read %s as boolean';
   SEXPR_WRONGUNARYOP = '%s no es un operador unario simple'; //'%s is not simple unary operator';
   SEXPR_WRONGBINARYOP = '%s no es un operador binario simple'; //'%s is not a simple binary operator';
@@ -274,6 +292,8 @@ Resourcestring
   SEXPR_WRONGRELATIONALOP = '%s no es un operador relacional'; //'%s is not relational operator';
   SEXPR_WRONGPARAMETER = 'Parámetro no válido para %s'; //'Invalid parameter to %s';
   SEXPR_INVALIDPARAMETERTO = 'Parámetro no válido para %s'; //'Invalid parameter to %s';
+  SEXPR_WRONGPARAMETERCOUNT = '%s: El número de parámetros es incorrecto'; // '%s: Incorrect number of parameters';
+  SEXPR_PARAMETERSTYPEDIFFERENT = '%s: Todos los parámetros deben de ser del mismo tipo';
 {$ENDIF}
 
 Implementation

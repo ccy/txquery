@@ -11,7 +11,7 @@
 {   License for the specific language governing rights and limitations        }
 {   under the License.                                                        }
 {                                                                             }
-{   The Original Code is: DemoReg.pas                                         }
+{   The Original Code is: xqtypes.pas                                         }
 {                                                                             }
 {                                                                             }
 {   The Initial Developer of the Original Code is Alfonso Moreno.             }
@@ -33,107 +33,46 @@
 {                                                                             }
 {*****************************************************************************}
 
-unit DemoReg;
+unit XQTypes;
 
-{$I XQ_FLAG.INC}
 interface
 
-uses Windows, SysUtils, Classes, Graphics, Forms, Controls, StdCtrls, 
-  Buttons, shellapi, ExtCtrls;
-
-type
-  TfrmRegister = class(TForm)
-    OKBtn: TButton;
-    Bevel1: TBevel;
-    Label2: TLabel;
-    Label3: TLabel;
-    Label4: TLabel;
-    Label5: TLabel;
-    Label7: TLabel;
-    Memo1: TMemo;
-    procedure Label2Click(Sender: TObject);
-    procedure Label4Click(Sender: TObject);
-    procedure Label5Click(Sender: TObject);
-    procedure Label6Click(Sender: TObject);
-    procedure Label7Click(Sender: TObject);
-  private
-    { Private declarations }
-  public
-    { Public declarations }
-  end;
-
-  procedure WriteToUs;
-  procedure WriteToUs2;
-  procedure WriteToUs3;
-  procedure HomePage;
-
-var
-  frmRegister: TfrmRegister;
-
-implementation
-
-{$R *.DFM}
+uses SysUtils;
 
 const
-  RegistrationURL = 'https://secure.element5.com/register.html?productid=143123&language=English';
-  WriteToUsURL='mailto: amoreno@sigmap.com';
-  WriteToUsURL2='mailto: luisarvayo@yahoo.com';
-  WriteToUsURL3='mailto: gismap@hmo.megared.net.mx';
-  HomePageURL= 'http://www.sigmap.com/txquery.htm';
+  SQuote = ['''', '"'];
+  NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' );
+  SBooleanValues = ['T', 't', 'Y', 'y'];
 
-procedure JumpToURL(const s : string);
-begin
-  ShellExecute(Application.Handle, nil, PChar(s), nil, nil, SW_SHOW);
-end;
+type
+  {-------------------------------------------------------------------------------}
+  {                          Some base types needed                               }
+  {-------------------------------------------------------------------------------}
 
-procedure WriteToUs;
-begin
-  JumpToURL(WriteToUsURL);
-end;
+  PFloat = ^Double;
+  PInteger = ^Integer;
+  PWordBool = ^WordBool;
+  PPointer = ^Pointer;
 
-procedure WriteToUs2;
-begin
-  JumpToURL(WriteToUsURL2);
-end;
+  TNativeInt = {$ifdef Delphi2009Up}NativeInt{$else}Integer{$endif};
+  TNativeUInt = {$ifdef Delphi2009Up}NativeUInt{$else}Cardinal{$endif};
 
-procedure WriteToUs3;
-begin
-  JumpToURL(WriteToUsURL3);
-end;
+  TNativeInt32 = {$ifdef DelphiXE2Up}Int32{$else}Integer{$endif};
+  TNativeUInt32 = {$ifdef DelphiXE2Up}UInt32{$else}Cardinal{$endif};
 
-procedure HomePage;
-begin
-  JumpToURL(HomePageURL);
-end;
+  TNativeInt64 = {$ifdef DelphiXE2Up}NativeInt{$else}Int64{$endif};
+  TNativeUInt64 = {$ifdef DelphiXE2Up}NativeUInt{$else}UInt64{$endif};
 
-procedure OnlineRegistration;
-begin
-  JumpToURL(RegistrationURL);
-end;
+  TxBuffer = {$if RtlVersion <= 18.5}PAnsiChar{$else}TBytes{$ifend}; { patched by ccy } {moved from xqbase}
 
-procedure TfrmRegister.Label2Click(Sender: TObject);
-begin
-   OnlineRegistration;
-end;
+  {$if RTLVersion <= 18.5}TRecordBuffer = PChar;{$ifend}
 
-procedure TfrmRegister.Label4Click(Sender: TObject);
-begin
-   WriteToUs;
-end;
+  {-------------------------------------------------------------------------------}
+  {                          Main exception                                       }
+  {-------------------------------------------------------------------------------}
 
-procedure TfrmRegister.Label5Click(Sender: TObject);
-begin
-   WriteToUs2;
-end;
+  ExQueryError = Class( Exception );
 
-procedure TfrmRegister.Label6Click(Sender: TObject);
-begin
-   WriteToUs3;
-end;
-
-procedure TfrmRegister.Label7Click(Sender: TObject);
-begin
-  HomePage;
-end;
+implementation
 
 end.

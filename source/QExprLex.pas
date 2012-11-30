@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is QExprLex.pas                                      }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: QExprLex.pas                                        }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 unit QExprLex;
 
@@ -43,8 +47,8 @@ type
       // utility functions
       function IsKeyword(const id : String; var token : integer) : boolean;
       // Lexer main functions
-      function yylex : Integer; override;
-      procedure yyaction( yyruleno : integer);
+      function yylex( var yylval: YYSType ): Integer; override; {modified by fduenas: make TP Yacc/Lex thread safe)}
+      procedure yyaction( yyruleno : integer; var yylval: YYSType ); {modified by fduenas: make TP Yacc/Lex thread safe)}
       procedure commenteof;
     end;
 
@@ -89,10 +93,7 @@ type
 
 implementation
 
-uses CnvStrUtils;
-
-resourcestring
-  SDefaultDateFormat = 'm/d/yyyy';
+uses CnvStrUtils, QFormatSettings;
 
 function TExprLexer.IsKeyword(const id : string; var token : integer) : boolean;
 (* returns corresponding token number in token *)
@@ -115,20 +116,17 @@ begin
   writeln(yyErrorfile, 'unexpected EOF inside comment at line ' +intToStr( yylineno));
 end;
 
-
-
-
-
-procedure TExprLexer.yyaction ( yyruleno : Integer );
+procedure TExprLexer.yyaction ( yyruleno : Integer; var yylval: YYSType ); {modified by fduenas: make TP Yacc/Lex thread safe)}
   (* local definitions: *)
 
    var
       c: char;
       token, code, value: Integer;
-      SaveDate: String;
-
+     {$IFNDEF Delphi7Up}
+      sfs: TFormatSettings;
+     {$ENDIF}
 begin
-  GetyyText (yylval.yystring);
+  GetyyText (yylval.yystring );
   (* actions: *)
   case yyruleno of
   1:
@@ -190,11 +188,14 @@ begin
 
   if Length( yylval.yystring ) >= 10 then
   begin
-    { section to handle dates in the format m/d/yyyy }
-    SaveDate := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SDefaultDateFormat;
-    yylval.yystring := FloatToStr(StrToDate(Copy(yylval.yystring, 2, yyTextLen - 2)));
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat := SaveDate;
+   { section to handle dates in the format m/d/yyyy, specified in SDefaultDateFormat }
+   {$IFNDEF Delphi7Up}
+    RestoreFormatSettings( yyRuntimeFormatSettings );
+   {$ENDIF}
+    yylval.yystring := FloatToStr(StrToDate(Copy(yylval.yystring, 2, yyTextLen - 2){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF}){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF});
+   {$IFNDEF Delphi7Up}
+    RestoreFormatSettings( yySystemFormatSettings );
+   {$ENDIF}
     returni(_NUMERIC);
   end;
   10:
@@ -230,7 +231,7 @@ begin
   25:
      returni( _DIV );
   26:
-               returni( _COMMENT );
+     returni( _COMMENT );
   27:
      returni( _BLANK );
   28:
@@ -242,11 +243,11 @@ begin
   end;
 end(*yyaction*);
 
-function TExprLexer.yylex : Integer;
+function TExprLexer.yylex( var yylval: YYSType ) : Integer;
 (* DFA table: *)
 
 type YYTRec = record
-                cc : set of AnsiChar; { patched by ccy }
+                cc : {$IFNDEF Delphi7_UP} set of AnsiChar {$ELSE} TSysCharSet {$ENDIF}; { patched by ccy }  {changed to char}
                 s  : SmallInt;
               end;
 
@@ -962,7 +963,7 @@ action:
 
   if yyfind(yyrule) then
     begin
-      yyaction(yyrule);
+      yyaction(yyrule, yylval);
       if yyreject then goto action;
     end
   else if not yydefault and yywrap then

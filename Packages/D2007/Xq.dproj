@@ -58,6 +58,7 @@
     <DCCReference Include="..\..\source\qbaseexpr.pas" />
     <DCCReference Include="..\..\source\QExprLex.pas" />
     <DCCReference Include="..\..\source\QExprYacc.pas" />
+    <DCCReference Include="..\..\source\QFormatSettings.pas" />
     <DCCReference Include="..\..\source\QLEXLIB.pas" />
     <DCCReference Include="..\..\source\QYACCLIB.pas" />
     <DCCReference Include="..\..\source\Sparsarr.pas" />
@@ -66,6 +67,7 @@
     <DCCReference Include="..\..\source\XQJoins.pas" />
     <DCCReference Include="..\..\source\xqLex.pas" />
     <DCCReference Include="..\..\source\XQMiscel.pas" />
+    <DCCReference Include="..\..\source\XQTypes.pas" />
     <DCCReference Include="..\..\source\xquery.pas" />
     <DCCReference Include="..\..\source\xqYacc.pas" />
     <DCCReference Include="dbrtl.dcp" />

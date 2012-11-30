@@ -1,35 +1,39 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is xqYacc.pas                                        }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: xqYacc.pas                                          }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
-unit xqYacc;
+unit XQYacc;
 
 {$I XQ_FLAG.INC}
 {$R xqyacc.res}
@@ -41,7 +45,7 @@ uses
 {$IFDEF LEVEL3}
    , DBTables
 {$ENDIF}
-   ;
+  , xqtypes ;
 
 
 type
@@ -92,7 +96,9 @@ type
     Procedure SetJoinTestTbls( Const Test1, Test2: string);
   public
 
-    constructor Create(Analizer: TSqlAnalizer);
+    constructor Create(Analizer: TSqlAnalizer); overload;
+    constructor Create(Analizer: TSqlAnalizer;
+     aRuntimeSettings, aSystemSettings: TFormatSettings);overload;
     destructor Destroy; override;
 
     function yyparse : integer; override;
@@ -249,13 +255,16 @@ const RW_FIELDS = 383;
 const RW_TO = 384;
 const RW_TOP = 385;
 
-type YYSType = record
-               yystring : string
+
+
+{type YYSType = record
+               yyString : string
                end(*YYSType*);
+}   {modified by fduenas: make TP Yacc/Lex thread safe)}
 
 // global definitions:
 
-var yylval : YYSType;
+//var yylval : YYSType; {modified by fduenas: make TP Yacc/Lex thread safe)}
 
 implementation
 
@@ -277,7 +286,7 @@ begin
    inherited Create;
    fAnalizer:= Analizer;
    fInPredicateList := TStringList.Create;
-   fTempJoinOnItem:= TJoinOnItem.Create(nil);
+   fTempJoinOnItem:= TJoinOnItem.Create(nil, yyRuntimeFormatSettings, yySystemFormatSettings);
    fJoinInWhereTables:= TStringList.create;
    fJoinInWhereFields:= TStringList.create;
 end;
@@ -291,6 +300,7 @@ begin
    fJoinInWhereTables.Free;
    fJoinInWhereFields.Free;
    fInPredicateList.Free;
+   fAnalizer := nil;
    inherited Destroy;
 end;
 
@@ -306,6 +316,14 @@ begin
   TmpAnalizer := GetCurrentAnalizer;
   fCurrAnalizer := TSqlAnalizer.Create( TmpAnalizer, fAnalizer.xQuery );
   TmpAnalizer.SubqueryList.Add( fCurrAnalizer );
+end;
+
+constructor TxqParser.Create(Analizer: TSqlAnalizer;
+  aRuntimeSettings, aSystemSettings: TFormatSettings);
+begin
+ Create(Analizer);
+ yyRuntimeFormatSettings := aRuntimeSettings;
+ yySystemFormatSettings := aSystemSettings;
 end;
 
 function TxqParser.GetRootAnalizer: TSQLAnalizer;
@@ -421,7 +439,7 @@ begin
      Aggregate    := pAggregate;
      IsDistinctAg := Self.fIsDistinctAggr;
   end;
-  Result := Format('{Aggregate %d}', [fAggregateList.Count - 1]);
+  Result := Format('{Aggregate %d}', [fAggregateList.Count - 1]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
 
   Self.fIsDistinctAggr := False;
 end;
@@ -447,7 +465,7 @@ begin
   Analizer := TSqlAnalizer( MainAnalizer.SubqueryList[0] );
   MainAnalizer.SubqueryList.Clear;
   fColSubqueryList.Add( Analizer );
-  Result := Format( '{Subquery %d}',[fColSubqueryList.Count - 1] );
+  Result := Format( '{Subquery %d}',[fColSubqueryList.Count - 1]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF} );
 end;
 
 procedure TxqParser.AddGroupBy(const ColName: String);
@@ -585,7 +603,7 @@ var
       Result := s;
       if Length(Result) > 1 then
       begin
-         if CharInSet(Result[1], xqbase.SQuote) and CharInSet(Result[Length(Result)], xqbase.SQuote) then
+         if CharInSet(Result[1], xqtypes.SQuote) and CharInSet(Result[Length(Result)], xqtypes.SQuote) then
          Result:= Copy(Result, 2, Length(Result) - 2);
       end;
    end;
@@ -746,7 +764,7 @@ begin
    Result := '';
    for i := 0 to fInPredicateList.Count - 1 do
    begin
-      Result := Result + Format('(%s = %s)', [Expr, fInPredicateList[i]]);
+      Result := Result + Format('(%s = %s)', [Expr, fInPredicateList[i]]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
       if i < fInPredicateList.Count - 1 then
         Result := Result + ' OR ';
    end;
@@ -1005,7 +1023,7 @@ begin
        end;
   79 : begin
 
-         yyval.yystring := Format('SQLTRIM(%s, %s, %d)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fTrimPosition]);
+         yyval.yystring := Format('SQLTRIM(%s, %s, %d)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fTrimPosition]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
 
        end;
   80 : begin
@@ -1019,12 +1037,12 @@ begin
        end;
   83 : begin
          case fExtractField of
-         0: yyval.yystring := Format('YEAR(%s)',  [yyv[yysp-1].yystring]);
-         1: yyval.yystring := Format('MONTH(%s)', [yyv[yysp-1].yystring]);
-         2: yyval.yystring := Format('DAY(%s)',   [yyv[yysp-1].yystring]);
-         3: yyval.yystring := Format('HOUR(%s)',  [yyv[yysp-1].yystring]);
-         4: yyval.yystring := Format('MIN(%s)',   [yyv[yysp-1].yystring]);
-         5: yyval.yystring := Format('SEC(%s)',   [yyv[yysp-1].yystring]);
+         0: yyval.yystring := Format('YEAR(%s)',  [yyv[yysp-1].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         1: yyval.yystring := Format('MONTH(%s)', [yyv[yysp-1].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         2: yyval.yystring := Format('DAY(%s)',   [yyv[yysp-1].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         3: yyval.yystring := Format('HOUR(%s)',  [yyv[yysp-1].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         4: yyval.yystring := Format('MIN(%s)',   [yyv[yysp-1].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         5: yyval.yystring := Format('SEC(%s)',   [yyv[yysp-1].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          end;
 
        end;
@@ -1048,9 +1066,9 @@ begin
        end;
   90 : begin
          if Length(fForLength) > 0 then
-         yyval.yystring := Format('COPY(%s,%s,%s)',[yyv[yysp-4].yystring,yyv[yysp-2].yystring,fForLength])
+         yyval.yystring := Format('COPY(%s,%s,%s)',[yyv[yysp-4].yystring,yyv[yysp-2].yystring,fForLength]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF})
          else
-         yyval.yystring := Format('COPY(%s,%s,LENGTH(%s))',[yyv[yysp-4].yystring,yyv[yysp-2].yystring,yyv[yysp-4].yystring]);
+         yyval.yystring := Format('COPY(%s,%s,LENGTH(%s))',[yyv[yysp-4].yystring,yyv[yysp-2].yystring,yyv[yysp-4].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fForLength := '';
        end;
   91 : begin
@@ -1121,7 +1139,7 @@ begin
          yyval := yyv[yysp-0];
        end;
  113 : begin
-         yyval.yystring := Format('\f"%s"',[yyv[yysp-0].yystring]);
+         yyval.yystring := Format('\f"%s"',[yyv[yysp-0].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          CurrentAnalizer.AddFieldIfNot( yyv[yysp-0].yystring );
 
        end;
@@ -1129,7 +1147,7 @@ begin
          yyval := yyv[yysp-0];
        end;
  115 : begin
-         yyval.yystring := Format('\f"%s.%s"',[yyv[yysp-2].yystring, yyv[yysp-0].yystring]);
+         yyval.yystring := Format('\f"%s.%s"',[yyv[yysp-2].yystring, yyv[yysp-0].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          CurrentAnalizer.AddFieldIfNot( yyv[yysp-2].yystring + '.' + yyv[yysp-0].yystring);
 
        end;
@@ -1163,9 +1181,9 @@ begin
  125 : begin
          With CurrentAnalizer.TableList.Add Do
          Begin
-         NumSubquery:= CurrentAnalizer.SubqueryList.Count-1;
-         TableName:= yyv[yysp-0].yystring;
-         Alias:= yyv[yysp-0].yystring;
+          NumSubquery:= CurrentAnalizer.SubqueryList.Count-1;
+          TableName:= yyv[yysp-0].yystring;
+          Alias:= yyv[yysp-0].yystring;
          End;
 
        end;
@@ -1263,13 +1281,13 @@ begin
        end;
  154 : begin
          if fEscapeChar = '' then fEscapeChar := #39#39;
-         yyval.yystring := Format('SQLNOTLIKE(%s, %s, %s)',[yyv[yysp-4].yystring, yyv[yysp-1].yystring, fEscapeChar]);
+         yyval.yystring := Format('SQLNOTLIKE(%s, %s, %s)',[yyv[yysp-4].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
        end;
  155 : begin
          if fEscapeChar = '' then fEscapeChar := #39#39;
-         yyval.yystring := Format('SQLLIKE(%s, %s, %s)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fEscapeChar]);
+         yyval.yystring := Format('SQLLIKE(%s, %s, %s)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
        end;
@@ -1278,7 +1296,7 @@ begin
        end;
  157 : begin
          yyval.yystring := Format('(%s >= %s) AND (%s <= %s)',
-         [yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-4].yystring, yyv[yysp-0].yystring]);
+         [yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-4].yystring, yyv[yysp-0].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  158 : begin
          yyval.yystring := yyv[yysp-2].yystring + '()';
@@ -1336,11 +1354,11 @@ begin
        end;
  176 : begin
          yyval.yystring := Format('(%s >= %s) AND (%s <= %s)',
-         [yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-4].yystring, yyv[yysp-0].yystring]);
+         [yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-4].yystring, yyv[yysp-0].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  177 : begin
          yyval.yystring := Format('(%s >= %s) AND (%s <= %s)',
-         [yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-4].yystring, yyv[yysp-0].yystring]);
+         [yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-4].yystring, yyv[yysp-0].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          AddWhereOptimize( yyv[yysp-4].yystring, yyv[yysp-2].yystring, yyv[yysp-0].yystring, ropBETWEEN );
        end;
  178 : begin
@@ -1348,20 +1366,37 @@ begin
        end;
  179 : begin
          if Pos('NOT',UpperCase(yyv[yysp-1].yystring)) = 0 then
-         yyval.yystring := yyv[yysp-2].yystring + Format(' = (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1])
-         else
-         yyval.yystring := yyv[yysp-2].yystring + Format(' <> (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]);
+         begin
+          yyval.yystring := yyv[yysp-2].yystring + Format(' = (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+          if CurrentAnalizer.SubQueryIsNotInListFlagList.Count < CurrentAnalizer.SubQueryKindList.Count then
+             CurrentAnalizer.SubQueryIsNotInListFlagList.Add( Pointer(false) ) {added by fduenas}
+          else
+             CurrentAnalizer.SubQueryIsNotInListFlagList[CurrentAnalizer.SubQueryKindList.Count-1] := Pointer(false);
 
+          if Boolean( CurrentAnalizer.SubQueryKindIsDefaultFlagList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] ) then
+             CurrentAnalizer.SubqueryKindList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] := Pointer(skAny) ;
+         end
+         else
+         begin
+          yyval.yystring := yyv[yysp-2].yystring + Format(' <> (Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF}); {changed by fduenas}
+          if CurrentAnalizer.SubQueryIsNotInListFlagList.Count < CurrentAnalizer.SubQueryKindList.Count then
+             CurrentAnalizer.SubQueryIsNotInListFlagList.Add( Pointer(true ) ) {added by fduenas}
+          else
+             CurrentAnalizer.SubQueryIsNotInListFlagList[CurrentAnalizer.SubQueryKindList.Count-1] := Pointer(true);
+
+          if Boolean( CurrentAnalizer.SubQueryKindIsDefaultFlagList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] ) then
+             CurrentAnalizer.SubqueryKindList[CurrentAnalizer.SubQueryIsNotInListFlagList.Count-1] := Pointer(skAll) ;
+         end;
        end;
  180 : begin
          if fEscapeChar = '' then fEscapeChar := #39#39;
-         yyval.yystring := Format('SQLLIKE(%s, %s, %s)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fEscapeChar]);
+         yyval.yystring := Format('SQLLIKE(%s, %s, %s)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
        end;
  181 : begin
          if fEscapeChar = '' then fEscapeChar := #39#39;
-         yyval.yystring := Format('SQLNOTLIKE(%s, %s, %s)',[yyv[yysp-4].yystring, yyv[yysp-1].yystring, fEscapeChar]);
+         yyval.yystring := Format('SQLNOTLIKE(%s, %s, %s)',[yyv[yysp-4].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
        end;
@@ -1436,13 +1471,13 @@ begin
          yyval.yystring := yyv[yysp-2].yystring + yyv[yysp-1].yystring + yyv[yysp-0].yystring;
        end;
  203 : begin
-         yyval.yystring := Format('(Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]);
+         yyval.yystring := Format('(Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  204 : begin
-         yyval.yystring := Format('ISNULL(%s,TRUE)', [yyv[yysp-2].yystring]);
+         yyval.yystring := Format('IFNULL(%s,TRUE)', [yyv[yysp-2].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  205 : begin
-         yyval.yystring := Format('ISNULL(%s,FALSE)', [yyv[yysp-3].yystring]);
+         yyval.yystring := Format('IFNULL(%s,FALSE)', [yyv[yysp-3].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  206 : begin
          fIsNotInList := False;
@@ -1530,12 +1565,16 @@ begin
        end;
  232 : begin
          CurrentAnalizer.SubqueryKindList.Add( Pointer(skAny) );
+         CurrentAnalizer.SubQueryKindIsDefaultFlagList.Add( Pointer(True) ); {added by fduenas}
+         CurrentAnalizer.SubQueryIsNotInListFlagList.Add( Pointer(false) ); {added by fduenas}
        end;
  233 : begin
          CurrentAnalizer.SubqueryKindList.Add( Pointer(skAny) );
+         CurrentAnalizer.SubQueryKindIsDefaultFlagList.Add( Pointer(false) ); {added by fduenas}
        end;
  234 : begin
          CurrentAnalizer.SubqueryKindList.Add( Pointer(skAll) );
+         CurrentAnalizer.SubQueryKindIsDefaultFlagList.Add( Pointer(false) ); {added by fduenas}
        end;
  235 : begin
          yyval := yyv[yysp-2];
@@ -1597,7 +1636,7 @@ begin
          AddGroupBy( yyv[yysp-0].yystring );
        end;
  254 : begin
-         yyval.yystring := Format('\f"%s"', [yyv[yysp-0].yystring]);
+         yyval.yystring := Format('\f"%s"', [yyv[yysp-0].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  255 : begin
          yyval := yyv[yysp-0];
@@ -2044,7 +2083,7 @@ next:
     (* get next symbol *)
     begin
       repeat
-         yychar := yyLexer.yylex; if yychar<0 then yychar := 0;
+         yychar := yyLexer.yylex(yylval); if yychar<0 then yychar := 0; {modified by fduenas: make TP Yacc/Lex thread safe)}
          // ignore comments and blanks [ \n\t]
          if not( (yychar=_COMMENT) or (yychar=_BLANK) or
                  (yychar=_TAB) or (yychar=_NEWLINE) ) then break;

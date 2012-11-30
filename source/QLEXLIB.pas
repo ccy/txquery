@@ -1,39 +1,44 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   Copyright (C) <1999-2003> of                                           }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Open Source patch review (2009) with permission from Alfonso Moreno by }
-{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
-{   email: cychau@gmail.com                                                }
-{   url: http://code.google.com/p/txquery/                                 }
-{        http://groups.google.com/group/txquery                            }
-{                                                                          }
-{   This program is free software: you can redistribute it and/or modify   }
-{   it under the terms of the GNU General Public License as published by   }
-{   the Free Software Foundation, either version 3 of the License, or      }
-{   (at your option) any later version.                                    }
-{                                                                          }
-{   This program is distributed in the hope that it will be useful,        }
-{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
-{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
-{   GNU General Public License for more details.                           }
-{                                                                          }
-{   You should have received a copy of the GNU General Public License      }
-{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: QLEXLIB.pas                                         }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
-Unit QLEXLIB;
+Unit QLexLib;
 
 {$I XQ_FLAG.INC}
 Interface
 
-Uses Classes;
+Uses Classes, SysUtils{, QFormatSettings};
 
 Const
   nl = #10; (* newline character *)
@@ -45,6 +50,12 @@ Type
   PCharArray = ^TCharArray;
   TCharArray = array [1..max_chars] of Char;
 
+  {modified by fduenas: move YYSType here to make TP Yacc/Lex thread safe)}
+  YYSType = record
+               yystring : string
+            end
+  (*YYSType*);
+
   TCustomLexer = Class
   private
     function GetBuf(Index: Integer): Char;
@@ -52,6 +63,8 @@ Type
   Public
     //yyinput, yyoutput : Text;      (* input and output file            *)
     //yyerrorfile       : Text;      (* standard error file              *)
+    yyRuntimeFormatSettings: TFormatSettings;
+    yySystemFormatSettings: TFormatSettings;
     yyinput, yyoutput: TStream; (* input and output file            *)
     yyerrorfile: TStream; (* standard error file              *)
     yyline: String; (* current input line               *)
@@ -60,6 +73,7 @@ Type
     yyTextBuf         : PCharArray;
     yyTextLen         : Integer;
     yyTextBufSize     : Integer;
+    yylValInternal: YYSType; {added by fduenas: for use when using only the Lexer without the parser}
     (*   (should be considered r/o)     *)
 {yyleng            : Byte         (* length of matched text *)
 absolute yytext;                incompatible with Delphi 2.0       }
@@ -140,7 +154,8 @@ from/write to memory, etc. *)
   (* The following are the internal data structures and routines used by the
      lexical analyzer routine yylex; they should not be used directly. *)
 
-    Function yylex: Integer; Virtual; Abstract;
+    Function yylex( var yylval: YYSType ): Integer; overload; Virtual;  Abstract; {modified by fduenas: yylval variable for thread safe)}
+    function yylexinternal: Integer; overload; virtual;  {added by fduenas: for use when using only the Lexer without the parser}
     (* this function must be overriden by the Lexer descendent in order
        to provide the lexing service *)
     constructor Create;
@@ -204,7 +219,7 @@ Procedure write( aStream: TStream; aLine: String );
 Implementation
 
 uses
-  math, SysUtils, CnvStrUtils;
+  math, CnvStrUtils;
 
 (* utility procedures *)
 
@@ -225,13 +240,18 @@ Var
 
   procedure CheckBuffer;
   begin
-    repeat
-      if i >= BufSize then
+     repeat
+      //we need to take into account size of char - we are increasing
+      //position in stream by SizeOf(char) and not by a byte
+      if (i * SizeOf(Char)) >= (BufSize - SizeOf(Char)) then
+      //(- SizeOf(Char) is needed if BufSize is odd number and
+      //GetMem works in chunks of 1 byte
       begin
-        BufSize := max (BufSize * 2, 256);
-        ReallocMem (Buf, BufSize * SizeOf(Char)); { patched by ccy }
+        BufSize := Max (BufSize * SizeOf(Char), 256 );
+        ReallocMem (Buf, BufSize);
       end;
-    until i < BufSize;
+    until (i * SizeOf(Char)) < (BufSize - SizeOf(Char));
+
   end;
 
 Begin
@@ -240,6 +260,7 @@ Begin
   BufSize := 256;
   i := 0;
   GetMem (Buf, BufSize * SizeOf(Char)); { patched by ccy }
+  FillChar(Buf^, BufSize * SizeOf(Char), #0); {added by fduenas}
   try
     trouve := false;
     Repeat
@@ -267,7 +288,7 @@ Begin
       End
       Else
         Case unCar Of
-          #10:
+          #10, #11: {added by fduenas: char(11) some times is assigned when assigning TRichEdit.Lines.Text to SQL | SQL Script property}
             Begin
               //aLine := aBuffer;
               if i>0 then
@@ -281,7 +302,8 @@ Begin
           #13:
             Begin
               aStream.read( unCar, 1 * SizeOf(Char)); { patched by ccy }
-              If unCar = #10 Then
+              If {$if RtlVersion <= 18.5} unCar in [#10,#11] {$else} CharInSet(unCar, [#10, #11]) {$ifend} Then {patched by fduenas: some times a char(11) is added to end of each line
+                                                    when assigning TRichEdit.Lines.Text to SQL | SQL Script property}
               Begin
                 //aLine := aBuffer;
                 if i > 0 then
@@ -469,6 +491,11 @@ Begin
   yyTextLen := n;
 End;
 
+function TCustomLexer.yylexinternal: Integer; {modified by fduenas: make TP Yacc/Lex thread safe)}
+begin
+ result := yylex(yylValInternal); {modified by fduenas: make TP Yacc/Lex thread safe)}
+end;
+
 Procedure TCustomLexer.reject;
 Var
   i: Integer;
@@ -626,7 +653,7 @@ begin
   repeat
     if Index > BufSize then
     begin
-      bufSize := max (bufSize * 2, intial_bufsize);
+      bufSize := max (bufSize * SizeOf(Char), intial_bufsize); {changed bye fduenas, 2 to SizeOf(Char)}
       ReallocMem (FBuf, bufSize);
     end;
   until Index <= bufSize;
@@ -649,7 +676,7 @@ begin
   repeat
     if Size > yyTextBufSize then
     begin
-      yyTextBufSize := max (yyTextBufSize * 2, intial_bufsize);
+      yyTextBufSize := max (yyTextBufSize * SizeOf(Char), intial_bufsize); {changed bye fduenas, 2 to SizeOf(Char)}
       ReallocMem (yyTextBuf, yyTextBufSize);
     end;
   until Size <= yyTextBufSize;
@@ -661,7 +688,8 @@ begin
   begin
     SetLength (s, yyTextLen);
     Move (yytextbuf^, s[1], yyTextLen * SizeOf(Char)); { patched by ccy }
-  end else
+  end
+  else
     s:= '';
 end;
 

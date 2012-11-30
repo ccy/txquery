@@ -1,57 +1,65 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   Copyright (C) <1999-2003> of                                           }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Open Source patch review (2009) with permission from Alfonso Moreno by }
-{   Chee-Yang CHAU and Sherlyn CHEW (Klang, Selangor, Malaysia)            }
-{   email: cychau@gmail.com                                                }
-{   url: http://code.google.com/p/txquery/                                 }
-{        http://groups.google.com/group/txquery                            }
-{                                                                          }
-{   This program is free software: you can redistribute it and/or modify   }
-{   it under the terms of the GNU General Public License as published by   }
-{   the Free Software Foundation, either version 3 of the License, or      }
-{   (at your option) any later version.                                    }
-{                                                                          }
-{   This program is distributed in the hope that it will be useful,        }
-{   but WITHOUT ANY WARRANTY; without even the implied warranty of         }
-{   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          }
-{   GNU General Public License for more details.                           }
-{                                                                          }
-{   You should have received a copy of the GNU General Public License      }
-{   along with this program.  If not, see <http://www.gnu.org/licenses/>.  }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: TxQueryTestCase.pas                                 }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 unit TxQueryTestCase;
 
 interface
 
-uses Classes, TestFramework, DB, DBClient, xQuery;
+uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery;
 
 type{$M+}
   TTest_TxQuery = class(TTestCase)
-  private
+  const
+    SglEps = 1.1920928955e-07;
+  type
+    THackDataSet = class(TDataSet);
+  strict private
+    procedure CreateTestData;
+    procedure OnCalcFieldsEvent(ADataset: TDataset);
+    procedure SetupDataSets(const aUseCalcFields: Boolean);
+  protected
     FDate: TDateTime;
     FDetailDataSet: TClientDataSet;
-  protected
     FMainDataSet: TClientDataSet;
     FQuery: TxQuery;
     procedure SetUp; override;
     procedure TearDown; override;
+    function UseCalcFields: boolean; virtual;
   end;
 
   TTest_Between = class(TTest_TxQuery)
-  private
-    FShortDateFormat: string;
-  protected
-    procedure SetUp; override;
-    procedure TearDown; override;
   published
     procedure TTest_Between_SQL;
   end;
@@ -178,10 +186,18 @@ type{$M+}
 
   TTest_Fields = class(TTest_TxQuery)
   published
-    procedure Test_String_Fields;
+    procedure Test_LargeInteger_Fields;
     procedure Test_MaxString;
-    procedure Test_OrderBy_WideString_Field;
     procedure Test_Memo_Fields;
+    procedure Test_OrderBy_WideString_Field;
+    procedure Test_String_Fields;
+  end;
+
+  TTest_CalculatedFields = class(TTest_TxQuery)
+  protected
+    function UseCalcFields: boolean; override;
+  published
+    procedure Test;
   end;
 
   TTest_DateTime = class(TTest_TxQuery)
@@ -196,13 +212,9 @@ type{$M+}
     procedure Test_Hardcode_String_Select;
   end;
 
-var TxQueryTestSuite: TTestSuite;
-
 implementation
 
-uses SysUtils, StrUtils, DateUtils, Variants, Provider;
-
-const SglEps = 1.1920928955e-07;
+uses StrUtils, DateUtils, Variants, Provider;
 
 function GetDataPacket(DataSet: TDataSet): OleVariant;
 var P: TDataSetProvider;
@@ -230,30 +242,11 @@ begin
   Result.ThousandSeparator := ',';
 end;
 
-procedure TTest_TxQuery.SetUp;
+procedure TTest_TxQuery.CreateTestData;
 var i: integer;
 begin
-  inherited;
-  FDate := EncodeDate(2005, 5, 5);
-  FQuery := TxQuery.Create(nil);
-
-  //Main Data
-  FMainDataSet := TClientDataSet.Create(nil);
-  with FMainDataSet do begin
-    FieldDefs.Clear;
-    FieldDefs.Add('DocKey',    ftInteger, 0);
-    FieldDefs.Add('Code',      ftString, 10);
-    FieldDefs.Add('DocNo',     ftString, 20);
-    FieldDefs.Add('DocDate',   ftDate,    0);
-    FieldDefs.Add('Agent',     ftString, 10);
-    FieldDefs.Add('Qty',       ftFmtBCD,  8);
-    FieldDefs.Add('UnitPrice', ftFmtBCD,  8);
-    FieldDefs.Add('Amount',    ftFmtBCD,  8);
-    FieldDefs.Add('WDocNo',    ftWideString, 7);
-    FieldDefs.Add('Memo',      ftMemo,     80);
-    FieldDefs.Add('WMemo',     ftWideMemo, 80);
-    CreateDataSet;
-  end;
+  FMainDataSet.Active := True;
+  FMainDataSet.EmptyDataSet;
 
   for i := 1 to 10 do begin
     FMainDataSet.Append;
@@ -262,8 +255,11 @@ begin
     FMainDataSet['DocNo'] := Format('IV-%.4d', [i]);
     FMainDataSet['WDocNo'] := Format('IV-%.4d', [i]);
     FMainDataSet['DocDate'] := IncDay(FDate, i);
+    FMainDataSet['DocTime'] := IncHour(EncodeTime(1, 1, 1, 1), i);
+    FMainDataSet['DocDateTime'] := IncDay(Now, i);
+    FMainDataSet['LargeKey'] := 123456789012345670+i;
     if i <= 3 then
-      FMainDataSet['Agent'] := 'ABC'
+       FMainDataSet['Agent'] := 'ABC'
     else if (i > 3) and (i < 8) then
       FMainDataSet['Agent'] := 'DEF'
     else
@@ -274,14 +270,10 @@ begin
     FMainDataSet.Post;
   end;
 
-  //Detail Data
-  FDetailDataSet := TClientDataSet.Create(nil);
-  with FDetailDataSet do begin
-    FieldDefs.Add('DocKey',   ftInteger, 0);
-    FieldDefs.Add('ItemCode', ftString, 30);
-    CreateDataSet;
-  end;
-
+  FDetailDataSet.MasterSource := nil;
+  FDetailDataSet.MasterFields := '';
+  FDetailDataSet.Active := true;
+  FDetailDataSet.EmptyDataSet;
   for i := 1 to 5 do begin
     FDetailDataSet.Append;
     if (i <= 3) then
@@ -293,25 +285,103 @@ begin
   end;
 end;
 
+procedure TTest_TxQuery.OnCalcFieldsEvent(ADataset: TDataset);
+var i: integer;
+    F: TField;
+begin
+  with ADataSet do begin
+    for i := 0 to Fields.Count - 1 do begin
+      if not (Fields[i].FieldKind = fkData) then
+        Continue;
+
+      F := FindField('CALC_' + Fields[i].FieldName);
+      if not Assigned(F) then
+        Continue;
+
+      F.Value := Fields[i].Value;
+    end;
+  end;
+end;
+
+procedure TTest_TxQuery.SetUp;
+begin
+  inherited;
+  FDate := EncodeDate(2005, 5, 5);
+  FQuery := TxQuery.Create(nil);
+  SetupDataSets(UseCalcFields);
+end;
+
+procedure TTest_TxQuery.SetupDataSets(const aUseCalcFields: Boolean);
+var i: integer;
+begin
+  // Main Data
+  FMainDataSet := TClientDataSet.Create(nil);
+  with FMainDataSet do begin
+    FMaindataset.Name := 'MainDataSet';
+    FieldDefs.Add('DocKey',      ftInteger,    0);
+    FieldDefs.Add('Code',        ftString,     10);
+    FieldDefs.Add('DocNo',       ftString,     20);
+    FieldDefs.Add('DocDate',     ftDate,       0);
+    FieldDefs.Add('DocTime',     ftTime,       0);
+    FieldDefs.Add('DocDateTime', ftDateTime,   0);
+    FieldDefs.Add('Agent',       ftString,     10);
+    FieldDefs.Add('Qty',         ftFmtBCD,     8);
+    FieldDefs.Add('UnitPrice',   ftFmtBCD,     8);
+    FieldDefs.Add('Amount',      ftFmtBCD,     8);
+    FieldDefs.Add('WDocNo',      ftWideString, 10);
+    FieldDefs.Add('Memo',        ftMemo,       80);
+    FieldDefs.Add('WMemo',       ftWideMemo,   80);
+    FieldDefs.Add('LargeKey',    ftLargeint,   0);
+
+    if aUseCalcFields then begin
+      THackDataSet(FMainDataSet).CreateFields;
+      for i := 0 to FieldDefs.Count - 1 do begin
+        if (FieldDefs[i].InternalCalcField) or
+           (FieldDefs[i].DataType in ftNonTextTypes) or
+           (FieldDefs[i].DataType = ftWideMemo) then
+          Continue;
+        with FieldDefs[i].FieldClass.Create(FMainDataSet) do begin
+          Name := FMainDataSet.Name + 'CALC_' + FieldDefs[i].DisplayName;
+          FieldName := 'CALC_' + FieldDefs[i].DisplayName;
+          FieldKind := fkCalculated;
+          Size := FieldDefs[i].Size;
+          DataSet := FMainDataSet;
+        end;
+      end;
+      FMainDataSet.OnCalcFields := OnCalcFieldsEvent;
+    end;
+    FMainDataSet.AutoCalcFields := aUseCalcFields;
+
+    CreateDataSet;
+  end;
+
+  // Detail Data
+  FDetailDataSet := TClientDataSet.Create(nil);
+  with FDetailDataSet do begin
+    FieldDefs.Add('DocKey',   ftInteger, 0);
+    FieldDefs.Add('ItemCode', ftString,  30);
+    CreateDataSet;
+  end;
+
+  CreateTestData;
+end;
+
 procedure TTest_TxQuery.TearDown;
 begin
   inherited;
   FMainDataSet.Free;
+  FMainDataSet := nil;
+
   FDetailDataSet.Free;
+  FDetailDataSet := nil;
+
   FQuery.Free;
+  FQuery := nil;
 end;
 
-procedure TTest_Between.SetUp;
+function TTest_TxQuery.UseCalcFields: boolean;
 begin
-  inherited;
-  FShortDateFormat := {$if RtlVersion >= 22}FormatSettings.{$ifend}ShortDateFormat;
-  {$if RtlVersion >= 22}FormatSettings.{$ifend}ShortDateFormat := 'dd/mm/yyyy';
-end;
-
-procedure TTest_Between.TearDown;
-begin
-  inherited;
-  {$if RtlVersion >= 22}FormatSettings.{$ifend}ShortDateFormat := FShortDateFormat;
+  Result := False;
 end;
 
 procedure TTest_Between.TTest_Between_SQL;
@@ -327,7 +397,7 @@ begin
       Clear;
       Add(      'SELECT *');
       Add(        'FROM Main');
-      Add(Format('WHERE DocDate BETWEEN #%s# AND #%s#', [FormatDateTime('dd/mm/yyyy', IncDay(FDate, 3)) , FormatDateTime('dd/mm/yyyy', IncDay(FDate, 6))]));
+      Add(Format('WHERE DocDate BETWEEN #%s# AND #%s#', [FormatDateTime(FQuery.DateFormat, IncDay(FDate, 3)) , FormatDateTime(FQuery.DateFormat, IncDay(FDate, 6))]));
       Add(       'ORDER BY DocKey');
     end;
     lDataSet.Data := GetDataPacket(FQuery);
@@ -345,6 +415,10 @@ begin
         for i := 0 to lDataSet.FieldCount - 1 do begin
           if lDataSet.Fields[i] is TStringField then
             CheckEquals(FMainDataSet.FindField(lDataSet.Fields[i].FieldName).AsString, lDataSet.Fields[i].AsString)
+         {$if RtlVersion >= 12}
+          else if lDataSet.Fields[i] is TWideStringField then
+            CheckEquals(FMainDataSet.FindField(lDataSet.Fields[i].FieldName).AsWideString, lDataSet.Fields[i].AsWideString)
+         {$ifend}
           else if lDataSet.Fields[i] is TIntegerField then
             CheckEquals(FMainDataSet.FindField(lDataSet.Fields[i].FieldName).AsInteger, lDataSet.Fields[i].AsInteger)
           else if lDataSet.Fields[i] is TFmtBCDField then
@@ -1661,23 +1735,40 @@ begin
     Add( 'WHERE (EXTRACT(DAY FROM DocDate)=8)');
   end;
   FQuery.Open;
-  CheckEquals(1,          FQuery.RecordCount,                 'FQuery Record Count incorrect.');
+  CheckEquals(1,         FQuery.RecordCount,                 'FQuery Record Count incorrect.');
   CheckEquals('IV-0003', FQuery.FindField('DocNo').AsString, 'Field "DocNo" incorrect');
   FQuery.Close;
-end;   
+end;
 
 procedure TTest_ParamByName.Test_ParamByName;
 begin
   FQuery.DataSets.Clear;
   FQuery.AddDataSet(FMainDataSet, 'Main');
 
-  FQuery.SQL.Text := 'UPDATE Main SET Agent=:Agent WHERE DocNo=:DocNo';
+  FQuery.SQL.Text := 'UPDATE Main SET Agent=:Agent WHERE DocNo=:DocParam';
   FQuery.ParamByName('Agent').AsString := 'XYZ';
-  FQuery.ParamByName('DocNo').AsString := 'IV-0001';
+  FQuery.ParamByName('DocParam').AsString := 'IV-0001';
   FQuery.ExecSQL;
 
   CheckTrue(FMainDataSet.Locate('DocNo', 'IV-0001', []));
   CheckEquals('XYZ', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
+end;
+
+procedure TTest_Fields.Test_LargeInteger_Fields;
+begin
+{$if RTLVersion >= 21}
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := 'SELECT LargeKey From Main ORDER BY LargeKey DESC';
+  FQuery.Open;
+  FQuery.First;
+  FMainDataSet.Last;
+  while not FQuery.Eof do begin
+    CheckEquals(FMainDataSet.FindField('LargeKey').AsLargeInt, FQuery.Fields[0].AsLargeInt);
+    FQuery.Next;
+    FMainDataSet.Prior;
+  end;
+{$ifend}
 end;
 
 procedure TTest_Fields.Test_MaxString;
@@ -1830,6 +1921,69 @@ begin
   CheckEquals(FMainDataSet.RecordCount, FQuery.RecordCount);
 end;
 
+procedure TTest_CalculatedFields.Test;
+var i: integer;
+    qFld, cFld: TField;
+    testMsg: string;
+begin
+  CheckEquals(True, FMainDataSet.AutoCalcFields, 'Calculated fields not triggered');
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := 'SELECT * From Main';
+  FQuery.Open;
+  FQuery.First;
+  while not FQuery.Eof do begin
+    for I := 0 to FQuery.Fields.Count - 1 do begin
+      qFld := FQuery.Fields[i];
+      if not (qFld.FieldKind = fkData) then
+        Continue;
+
+      cFld := FQuery.FindField('CALC_' + qFld.FieldName);
+      if not Assigned(cFld) then
+        Continue;
+
+      testMsg := 'Record ' + IntToStr(FQuery.RecNo) + ': Comparing Fields [' + qFld.FieldName + ']  Vs.  [' + cFld.FieldName + ']';
+
+      if cFld.DataType in [ftString, ftFixedChar] then
+        CheckEquals(qFld.AsString, cFld.AsString, testMsg);
+
+      if cFld.DataType in [ftWideString, ftFixedWideChar] then
+        CheckEquals(qFld.AsWideString, cFld.AsWideString, testMsg);
+
+      if cFld.DataType = ftDate then
+        CheckEquals(FormatDateTime('yyyy-mm-dd', qFld.AsDateTime, GetUSFormatSettings),
+                    FormatDateTime('yyyy-mm-dd', cFld.AsDateTime, GetUSFormatSettings), testMsg);
+
+      if cFld.DataType = ftTime then
+        CheckEquals(FormatDateTime('HH:nn:ss', qFld.AsDateTime, GetUSFormatSettings),
+                    FormatDateTime('HH:nn:ss', cFld.AsDateTime, GetUSFormatSettings), testMsg);
+
+      if cFld.DataType = ftDateTime then
+        CheckEquals(FormatDateTime('yyyy-mm-dd HH:nn:ss', qFld.AsDateTime, GetUSFormatSettings),
+                    FormatDateTime('yyyy-mm-dd HH:nn:ss', cFld.AsDateTime, GetUSFormatSettings) , testMsg);
+
+      if cFld.DataType in [ftFloat, ftFMTBcd] then
+        CheckEquals(qFld.AsFloat, cFld.AsFloat, testMsg);
+
+      {$if RtlVersion >= 21}
+      if cFld.DataType in [ftInteger, ftShortint] then
+        CheckEquals(qFld.AsInteger, cFld.AsInteger, testMsg);
+
+      if qFld.DataType in [ftLargeint] then
+        CheckEquals(qFld.AsLargeInt, cFld.AsLargeInt, testMsg);
+      {$ifend}
+    end;
+    FQuery.Next;
+  end;
+end;
+
+function TTest_CalculatedFields.UseCalcFields: boolean;
+begin
+  Result := True;
+end;
+
+var TxQueryTestSuite: TTestSuite;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -1855,6 +2009,7 @@ initialization
     AddSuite(TTest_Extract.Suite);
     AddSuite(TTest_ParamByName.Suite);
     AddSuite(TTest_Fields.Suite);
+    AddSuite(TTest_CalculatedFields.Suite);
 
     AddSuite(TTest_DateTime.Suite);
     AddSuite(TTest_Hardcode_String.Suite);

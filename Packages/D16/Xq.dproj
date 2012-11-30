@@ -128,6 +128,8 @@
 			<DCCReference Include="..\..\source\xqYacc.pas"/>
 			<DCCReference Include="..\..\source\xquery.pas"/>
 			<DCCReference Include="..\..\source\xqLex.pas"/>
+			<DCCReference Include="..\..\source\XQTypes.pas"/>
+			<DCCReference Include="..\..\source\QFormatSettings.pas"/>
 			<RcCompile Include="..\..\source\QExprYacc.rc">
 				<Form>QExprYacc.res</Form>
 			</RcCompile>

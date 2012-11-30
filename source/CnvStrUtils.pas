@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is CnvStrUtils.pas                                   }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: CnvStrUtils.pas                                     }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 unit CnvStrUtils;
 
@@ -39,8 +43,10 @@ uses
 
 type
   TStringArray = array of string;
-  TCharSet = set of AnsiChar; { patched by ccy }
-  
+ { TSysCharSet = set of AnsiChar;} { patched by ccy }
+  {$IFNDEF Delphi7Up}
+    TSysCharSet = Set of AnsiChar;
+  {$ENDIF}
   TAdvStringList = class (TStringList)
   private
     FTokenSeparator: Char;
@@ -58,7 +64,7 @@ function RemoveEscapeChars (const s : string; EscChar : char) : string;
 function TextToBool (const Value : string) : boolean;
 function BoolToText (Value : boolean) : char;
 function EliminateWhiteSpaces (const s : string) : string;
-function EliminateChars (const s : string; const chars : TCharSet) : string;
+function EliminateChars (const s : string; const chars : TSysCharSet) : string;
 function LastPartOfName (const s : String) : string;
 function FirstPartOfName(const s : string): string;
 procedure MixTStrings(Source, Dest : TStrings; FromIndex : Integer = 0);
@@ -80,14 +86,15 @@ function StrToIntEx(const s : string): Integer;
 procedure StrCount(const s : string; var Alpha, Numeric : Integer);
 
 {$if CompilerVersion <= 18.5}
-function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean;
+function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean; overload;
+function CharInSet(C: WideChar; const CharSet: TSysCharSet): Boolean; overload;
 {$ifend}
 
 implementation
 
 uses
   Windows;
-  
+
 const
   _TextToBool : array ['0'..'1'] of Boolean = (False, True);
   _BoolToText : array [False..True] of char = ('0', '1');
@@ -117,7 +124,7 @@ begin
   Result := _BoolToText [Value];
 end;
 
-function EliminateChars (const s : string; const chars : TCharSet) : string;
+function EliminateChars (const s : string; const chars : TSysCharSet) : string;
 var
   i : Integer;
 begin
@@ -129,7 +136,7 @@ end;
 
 function EliminateWhiteSpaces (const s : string) : string;
 begin
-  Result := EliminateChars (s, [' ', #255, #13, #10]);
+  Result := EliminateChars (s, [' ', #255, #13, #10, #11]); {added by fduenas: added the #11 char}
 end;
 
 function LastPartOfName (const s : String) : string;
@@ -348,7 +355,7 @@ begin
   if s <> ''
     then
     try
-      Result := StrToInt (s);
+      Result := StrToInt(s);
     except
       on EConvertError do Result := 0;
     end
@@ -368,12 +375,16 @@ begin
 end;
 
 {$if CompilerVersion <= 18.5}
-function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean;
+function CharInSet(C: AnsiChar; const CharSet: TSysCharSet): Boolean; overload;
 begin
-  Result := C in CharSet;
+  Result := (C in CharSet);
+end;
+
+function CharInSet(C: WideChar; const CharSet: TSysCharSet): Boolean; overload;
+begin
+  Result := (AnsiChar(C) in CharSet);
 end;
 {$ifend}
-
 
 { TAdvStringList }
 

@@ -1,82 +1,132 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is Qbaseexpr.pas                                     }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: QBaseExpr.pas                                       }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
-Unit Qbaseexpr;
+Unit QBaseExpr;
 
 {$I XQ_flag.Inc}
 Interface
 
 Uses
-  SysUtils, Classes;
-
+  SysUtils, Classes, QFormatSettings;
+Type
+  TExprType = (ttString, {$IFDEF LEVEL4} ttWideString,{$ENDIF} ttFloat, ttLargeInt, ttInteger, ttBoolean );
+  {to get a string representation of TExprType use NExprType[ExprType] }
+Const
+  NExprType: Array[TExprType] Of String =
+  ( 'String', {$IFDEF LEVEL4}'WideString',{$ENDIF} 'Float', 'Integer', 'Large Integer', 'Boolean' );
+  NTypeCast: Array[TExprType] Of PChar =
+  ('STRING', {$IFDEF LEVEL4}'WIDESTRING',{$ENDIF} 'FLOAT', 'LARGE INTEGER', 'INTEGER', 'BOOLEAN' );
+  //NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' ); duplicate definition, alreday defined in xqtypes.pas
 Type
 
-  TExprType = ( ttString, ttFloat, ttInteger, ttBoolean );
+  EExpression = Class( Exception );
 
   TExpression = Class
   Private
     Function GetMaxLen: Integer;
   Protected
+    fExprName: string;
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
+    function GetExprName: string;
     Function GetMaxString: String; Virtual;
     Function GetAsString: String; Virtual;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Virtual; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Virtual; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsFloat: Double; Virtual;
     Function GetAsInteger: Integer; Virtual;
+    Function GetAsLargeInt: Int64; Virtual; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Virtual;
     Function GetExprType: TExprType; Virtual; Abstract;
     Function GetIsNull: boolean; Virtual;
-    function StringCharSize: integer; virtual;
+    function StringCharSize: Integer; virtual;  { patched by ccy } {removed the 'abstract' clause to prevent compiler warnings}
   Public
     Function CanReadAs( aExprType: TExprType ): Boolean;
+    Function SetFormatSettings(aRuntimeSettings, aSystemSettings: TFormatSettings): TExpression;
+    function SetExpresionName(const aName: string): TExpression;
     {means 'can be interpreted as'. Sort of}
     Property MaxString: String Read GetMaxString;
+   {$IFDEF LEVEL4}
+    Property MaxWideString: WideString Read GetMaxWideString;
+   {$ENDIF}
     Property AsString: String Read GetAsString;
+   {$IFDEF LEVEL4}
+    Property AsWideString: WideString Read GetAsWideString; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Property AsFloat: Double Read GetAsFloat;
     Property AsInteger: Integer Read GetAsInteger;
+    Property AsLargeInt: Int64 Read GetAsLargeInt; {added by fduenas: added LargeInt (Int64) support}
     Property AsBoolean: Boolean Read GetAsBoolean;
     Property ExprType: TExprType Read GetExprType;
     Property IsNull: boolean Read GetIsNull;
-    Property MaxLen: Integer read GetMaxLen;
+    Property MaxLen: Integer Read GetMaxLen;
+    property ExprName: string read GetExprName write FExprName;
   End;
 
-  TStringLiteral = Class( TExpression )
+  TLiteralExpr = Class( TExpression );
+  TStringLiteral = Class( TLiteralExpr )
   Private
     FAsString: String;
   Protected
     Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( Const aAsString: String );
+    Constructor Create( Const aAsString: String;
+     aRuntimeSettings, aSystemSettings: TFormatSettings );
   End;
 
-  TFloatLiteral = Class( TExpression )
+ {$IFDEF LEVEL4} {added by fduenas: added WideString (Delphi4Up) support}
+  TWideStringLiteral = Class( TStringLiteral )
+  Private
+    FAsWideString: WideString;
+  Protected
+    Function GetAsString: String; Override;
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetExprType: TExprType; Override;
+  Public
+    Constructor Create( Const aAsWideString: WideString;
+     aRuntimeSettings, aSystemSettings: TFormatSettings );
+  End;
+ {$ENDIF}
+
+  TFloatLiteral = Class( TLiteralExpr )
   Private
     FAsFloat: Double;
   Protected
@@ -84,22 +134,38 @@ Type
     Function GetAsFloat: Double; Override;
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( Const aAsFloat: Double );
+    Constructor Create( Const aAsFloat: Double;
+     aRuntimeSettings, aSystemSettings: TFormatSettings );
   End;
 
-  TIntegerLiteral = Class( TExpression )
+  TIntegerLiteral = Class( TLiteralExpr )
   Private
     FAsInteger: Integer;
   Protected
     Function GetAsString: String; Override;
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aAsInteger: Integer );
+    Constructor Create( aAsInteger: Integer; aRuntimeSettings, aSystemSettings: TFormatSettings );
   End;
 
-  TBooleanLiteral = Class( TExpression )
+  TLargeIntLiteral = Class( TLiteralExpr ) {added by fduenas: added LargeInt (Int64) support}
+  Private
+    FAsLargeInt: Int64;
+  Protected
+    Function GetAsString: String; Override;
+    Function GetAsFloat: Double; Override;
+    Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
+    Function GetExprType: TExprType; Override;
+  Public
+    Constructor Create( aAsLargeInt: Int64;
+     aRuntimeSettings, aSystemSettings: TFormatSettings );
+  End;
+
+  TBooleanLiteral = Class( TLiteralExpr )
   Private
     FAsBoolean: Boolean;
   Protected
@@ -107,49 +173,77 @@ Type
     Function GetAsString: String; Override;
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aAsBoolean: Boolean );
+    Constructor Create( aAsBoolean: Boolean;
+     aRuntimeSettings, aSystemSettings: TFormatSettings );
   End;
 
   TParameterList = Class( TList )
   Private
     Function GetAsString( i: Integer ): String;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString( i: Integer ): WideString; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsFloat( i: Integer ): Double;
     Function GetAsInteger( i: Integer ): Integer;
+    Function GetAsLargeInt( i: Integer ): Int64; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean( i: Integer ): Boolean;
     Function GetExprType( i: Integer ): TExprType;
     Function GetParam( i: Integer ): TExpression;
+  protected
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
   Public
+    function GetExprTypeIndex( aExprTypeToFind: TExprType; aStartIndex: Integer=0; aCount: Integer=0 ):  Integer;
+    Constructor Create( aRuntimeSettings, aSystemSettings: TFormatSettings );
     Destructor Destroy; Override;
     Property Param[i: Integer]: TExpression Read GetParam;
     Property ExprType[i: Integer]: TExprType Read GetExprType;
     Property AsString[i: Integer]: String Read GetAsString;
+    {$IFDEF LEVEL4}
+     Property AsWideString[i: Integer]: WideString Read GetAsWideString;
+    {$ENDIF}
     Property AsFloat[i: Integer]: Double Read GetAsFloat;
     Property AsInteger[i: Integer]: Integer Read GetAsInteger;
+    Property AsLargeInt[i: Integer]: Int64 Read GetAsLargeInt; {added by fduenas: added LargeInt (Int64) support}
     Property AsBoolean[i: Integer]: Boolean Read GetAsBoolean;
+    property RuntimeFormatSettings: TFormatSettings read fRuntimeFormatSettings write fRuntimeFormatSettings;
+    property SystemFormatSettings: TFormatSettings read fSystemFormatSettings write fSystemFormatSettings;
   End;
 
-  TFunction = Class( TExpression )
+  TFunctionExpr = Class( TExpression )
   Private
     FParameterList: TParameterList;
-    Function GetParam( n: Integer ): TExpression;
+    Function GetParam( n: Integer ): TExpression; virtual;
+  Protected
+    function CheckParameters: Boolean; overload; virtual;
+    function CheckParameters(var aErrorCode:Integer; var aErrorMsg: string): Boolean; overload; virtual;
   Public
-    Constructor Create( aParameterList: TParameterList );
+    Constructor Create( aParameterList: TParameterList ); overload; virtual;
+    Constructor Create( aName: string; aParameterList: TParameterList ); overload; virtual;
+    Constructor Create( aName: string; aParameterList: TParameterList;
+     aRunTimeFormatsettings, aSystemFormatsettings: TFormatSettings ); overload;
     Destructor Destroy; Override;
     Function ParameterCount: Integer;
     Property Param[n: Integer]: TExpression Read GetParam;
   End;
 
-  TTypeCast = Class( TFunction )
+  TTypeCastExpr = Class( TFunctionExpr )
   Private
-    Operator: TExprType;
+    OperatorType: TExprType;  {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
   Protected
     Function GetMaxString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsString: String; Override;
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprType; Override;
   Public
@@ -157,131 +251,180 @@ Type
       aOperator: TExprType );
   End;
 
+  TNumericFunctionExpr = Class( TFunctionExpr );
+
   TMF =
     ( mfTrunc, mfRound, mfAbs, mfArcTan, mfCos, mfExp, mfFrac, mfInt,
     mfLn, mfPi, mfSin, mfSqr, mfSqrt, mfPower );
 
-  TMathExpression = Class( TFunction )
+  TMathFunctionExprLib = Class( TNumericFunctionExpr )
   Private
-    Operator: TMF;
-    Procedure CheckParameters;
+    OperatorType: TMF; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+  Protected
+    function CheckParameters: Boolean; override;
   Protected
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aParameterList: TParameterList;
+    Constructor Create( aName: string; aParameterList: TParameterList;
       aOperator: TMF );
   End;
 
-  TSF = ( sfUpper, sfLower, sfCopy, sfPos, sfLength, sfLTrim, sfRTrim, sfTrim );
+  TStringFunctionExpr = Class( TFunctionExpr );
 
-  TStringExpression = Class( TFunction )
+  TSF = ( sfUpper, sfLower, sfCopy, sfPos, sfLength, sfLTrim, sfRTrim, sfTrim, sfConcat, sfConcatWS ); {added sConcat and sdfConcatWS for concatenating values}
+
+  TStringFunctionExprLib = Class( TFunctionExpr )
   Private
-    Operator: TSF;
-    Procedure CheckParameters;
+    OperatorType: TSF; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
   Protected
+    function CheckParameters: Boolean; override;
+  Protected
+    {added function for Special Copy Behaviour} {fduenas}
+    Function DoCopyString(aString: string;
+                          aStartPos, aCount: Integer): String; virtual;
+    function DoConcat( aSeparator: string; aGetMaxString: boolean ) : string;
+   {$IFDEF LEVEL4}
+    Function DoCopyStringW(aString: WideString;
+                           aStartPos, aCount: Integer): WideString; virtual;
+    function DoConcatW( aSeparator: Widestring; aGetMaxString: boolean ): WideString;
+   {$ENDIF}
     Function GetMaxString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsString: String; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aParameterList: TParameterList; aOperator: TSF );
+    Constructor Create(aName: string; aParameterList: TParameterList; aOperator: TSF );
   End;
 
-  TConditional = Class( TFunction )
+  TConditionalExpr = Class( TFunctionExpr )
   Private
-    Procedure CheckParameters;
     Function Rex: TExpression;
   Protected
+    function CheckParameters: Boolean; override;
     Function GetMaxString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsString: String; Override;
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprType; Override;
+   public
+    Constructor Create( aParameterList: TParameterList ); override;
   End;
 
 Type
-  TOperator = ( opNot,
+  TOperatorType = ( opNot,
     opExp,
     opMult, opDivide, opDiv, opMod, opAnd, opShl, opShr,
     opPlus, opMinus, opOr, opXor,
     opEq, opNEQ, opLT, opGT, opLTE, opGTE );
 
-  TOperators = Set Of TOperator;
+type
 
-  TUnaryOp = Class( TExpression )
+  TOperatorTypeSet = Set Of TOperatorType;
+
+  TOperatorExpr = Class( TExpression );
+  TUnaryOp = Class( TOperatorExpr )
   Private
     Operand: TExpression;
     OperandType: TExprType;
-    Operator: TOperator;
+    OperatorType: TOperatorType; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
   Protected
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aOperator: TOperator; aOperand: TExpression );
+    Constructor Create( aOperator: TOperatorType; aOperand: TExpression );
     Destructor Destroy; Override;
   End;
 
-  TBinaryOp = Class( TExpression )
+  TBinaryOp = Class( TOperatorExpr )
   Private
     Operand1, Operand2: TExpression;
-    Operator: TOperator;
+    OperatorType: TOperatorType; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     OperandType: TExprType;
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aOperator: TOperator; aOperand1, aOperand2: TExpression );
+    Constructor Create( aOperator: TOperatorType; aOperand1, aOperand2: TExpression );
     Destructor Destroy; Override;
   End;
 
-  TRelationalOp = Class( TExpression )
+  TRelationalOp = Class( TOperatorExpr )
   Private
     Operand1, Operand2: TExpression;
-    Operator: TOperator;
+    OperatorType: TOperatorType; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( aOperator: TOperator; aOperand1, aOperand2: TExpression );
+    Constructor Create( aOperator: TOperatorType; aOperand1, aOperand2: TExpression );
     Destructor Destroy; Override;
   End;
 
-  EExpression = Class( Exception );
-
   { additional functions }
-  TASCIIExpr = Class( TFunction )
+  TASCIIExpr = Class( TFunctionExpr )
   Protected
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( ParameterList: TParameterList );
+    constructor Create(aName: string; ParameterList: TParameterList); reintroduce;
   End;
 
-  TLeftExpr = Class( TFunction )
+  TLeftExpr = Class( TFunctionExpr )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetExprType: TExprType; Override;
+  Public
+    constructor Create(aName: string; ParameterList: TParameterList); reintroduce;
   End;
 
-  TRightExpr = Class( TFunction )
+  TRightExpr = Class( TFunctionExpr )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetExprType: TExprType; Override;
+  Public
+    constructor Create(aName: string; ParameterList: TParameterList); reintroduce;
   End;
 
   { This function is used exclusively for the LIKE predicate in SQL }
@@ -310,7 +453,7 @@ Type
     Property Items[Index: Integer]: TLikeItem Read GetItem; Default;
   End;
 
-  TSQLLikeExpr = Class( Tfunction )
+  TSQLLikeExpr = Class( TFunctionExpr )
   Private
     LikeList: TLIKEList;
     FIsNotLike: Boolean;
@@ -319,7 +462,8 @@ Type
     Function GetAsBoolean: Boolean; Override;
     function GetExprType: TExprtype; override;
   Public
-    Constructor Create( ParameterList: TParameterList; IsNotLike: Boolean );
+    Constructor Create( ParameterList: TParameterList; IsNotLike: Boolean ); overload;
+    Constructor Create( aName: String; ParameterList: TParameterList; IsNotLike: Boolean ); overload;
     Destructor Destroy; Override;
     Procedure AddToList( Like: TLikeItem );
   End;
@@ -327,7 +471,7 @@ Type
   { TSQLInPredicateExpr }
   { This function is used exclusively for the IN predicate in SQL SELECT
      something like this : SELECT * FROM customer WHERE CustNo IN (1,10,8) }
-  TSQLInPredicateExpr = Class( Tfunction )
+  TSQLInPredicateExpr = Class( TFunctionExpr )
   Private
     FIsNotIn: Boolean;
   Protected
@@ -337,7 +481,7 @@ Type
     Constructor Create( ParameterList: TParameterList; IsNotIn: Boolean );
   End;
 
-  TBetweenExpr = Class( Tfunction )
+  TBetweenExpr = Class( TFunctionExpr )
   Private
     FIsNotBetween: Boolean;
   Protected
@@ -347,16 +491,21 @@ Type
     Constructor Create( ParameterList: TParameterList; IsNotBetween: Boolean );
   End;
 
-  TCaseWhenElseExpr = Class( TFunction )
+  TCaseWhenElseExpr = Class( TFunctionExpr )
   Private
     FElseExpr: TExpression;
     FThenParamList: TParameterList;
-    Procedure CheckParameters;
   Protected
+    function CheckParameters: Boolean; override;
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     function GetExprType: TExprtype; override;
   Public
@@ -365,20 +514,25 @@ Type
     Destructor Destroy; Override;
   End;
 
-  TDecodeExpr = Class( TFunction )
+  TDecodeExpr = Class( TFunctionExpr )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
     Function GetAsFloat: Double; Override;
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetAsBoolean: Boolean; Override;
     function GetExprType: TExprtype; override;
   Public
-    Constructor Create( ParameterList: TParameterList );
+    constructor Create(aName: string; ParameterList: TParameterList); reintroduce;
   End;
 
   {Evaluate FormatDateTime('dd/mmm/yyyy', 32767)}
-  TFormatDateTimeExpr = Class( TFunction )
+  TFormatDateTimeExpr = Class( TFunctionExpr )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
@@ -386,7 +540,7 @@ Type
   End;
 
   {Evaluate FormatFloat('###,###,##0.00', 12345.567)}
-  TFormatFloatExpr = Class( TFunction )
+  TFormatFloatExpr = Class( TFunctionExpr )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
@@ -394,82 +548,51 @@ Type
   End;
 
   {Evaluate Format(Format,Args)}
-  TFormatExpr = Class( TFunction )
+  TFormatExpr = Class( TFunctionExpr )
   Protected
     Function GetMaxString: String; Override;
     Function GetAsString: String; Override;
+    Function GetMaxWideString: WideString; Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+   {$ENDIF}
     Function GetExprType: TExprType; Override;
   End;
 
   TDecodeKind = ( dkYear, dkMonth, dkDay, dkHour, dkMin, dkSec, dkMSec, dkWeek );
 
   { supports syntax: YEAR(expr), MONTH(expr), DAY(expr), HOUR(expr), MIN(expr), SEC(expr), MSEC(expr)}
-  TDecodeDateTimeExpr = Class( TFunction )
+  TDecodeDateTimeExpr = Class( TFunctionExpr )
   Private
     FDecodeKind: TDecodeKind;
   Protected
     Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: added LargeInt (Int64) support}
     Function GetExprType: TExprType; Override;
   Public
-    Constructor Create( ParameterList: TParameterList; DecodeKind: TDecodeKind );
+    Constructor Create( aName: string; ParameterList: TParameterList; DecodeKind: TDecodeKind );
   End;
 
   {  MINOF(arg1,arg2, ..., argn), MAXOF(ARG1,ARG2, ... ,argn)
       hint by: Fady Geagea
   }
-  TMinMaxOfExpr = Class( Tfunction )
+  TMinMaxOfExpr = Class( TFunctionExpr )
   Private
     FIsMin: Boolean;
   Protected
     Function GetAsFloat: Double; Override;
     function GetExprType: TExprtype; override;
   Public
-    Constructor Create( ParameterList: TParameterList; IsMin: Boolean );
+    Constructor Create( aName: string; ParameterList: TParameterList; IsMin: Boolean );
   End;
-
-Const
-  {to get a string representation of TExprType use NExprType[ExprType] }
-  NExprType: Array[TExprType] Of String =
-  ( 'String', 'Float', 'Integer', 'Boolean' );
-
-  NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' );
 
 Implementation
 
 Uses
-  xqmiscel, QExprYacc;
-
-Resourcestring
-  SEXPR_WRONGWHENEXPR = 'Expression in Case must be boolean';
-
-  SEXPR_WRONGTHENEXPR = 'Expressions in THEN section must be all of same type';
-
-  SEXPR_UNKNOWNID = 'Unknown Identifier %s';
-
-  SEXPR_OPERATORINCOMPAT = 'Operator %s incompatible with %s';
-
-  SEXPR_CANNOTCASTTOSTRING = 'Cannot read %s as String';
-
-  SEXPR_CANNOTCASTTOFLOAT = 'Cannot read %s as Float';
-
-  SEXPR_CANNOTCASTTOINTEGER = 'Cannot read %s as Integer';
-
-  SEXPR_CANNOTCASTTOBOOLEAN = 'Cannot read %s as boolean';
-
-  SEXPR_WRONGUNARYOP = '%s is not simple unary operator';
-
-  SEXPR_WRONGBINARYOP = '%s is not a simple binary operator';
-
-  SEXPR_WRONGBOOLEANOP = 'cannot apply %s to boolean operands';
-
-  SEXPR_WRONGRELATIONALOP = '%s is not relational operator';
-
-  SEXPR_WRONGPARAMETER = 'Invalid parameter to %s';
-
-  SEXPR_INVALIDPARAMETERTO = 'Invalid parameter to %s';
+  xqmiscel, xqtypes, QExprYacc, XQConsts, Math;
 
 Const
-  NOperator: Array[TOperator] Of String =
+  NOperatorType: Array[TOperatorType] Of String =
   ( 'opNot',
     'opExp',
     'opMult', 'opDivide', 'opDiv', 'opMod', 'opAnd', 'opShl', 'opShr',
@@ -478,33 +601,42 @@ Const
 
   RelationalOperators = [opEQ, opNEQ, opLT, opGT, opLTE, opGTE];
 
-Function ResultType( Operator: TOperator; OperandType: TExprType ): TExprType;
+Function ResultType( OperatorType: TOperatorType; OperandType: TExprType ): TExprType; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 
   Procedure NotAppropriate;
   Begin
     Result := ttString;
     Raise EExpression.CreateFmt( SEXPR_OPERATORINCOMPAT,
-      [NOperator[Operator], NExprType[OperandType]] )
+      [NOperatorType[OperatorType], NExprType[OperandType]] ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
   End;
 
 Begin
   Case OperandType Of
     ttString:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opPlus: Result := ttString;
         opEq..opGTE: Result := ttBoolean;
       Else
         NotAppropriate;
       End;
+   {$IFDEF LEVEL4}
+    ttWideString:  {added by fduenas: added WideString (Delphi4Up) support}
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := ttWideString;
+        opEq..opGTE: Result := ttBoolean;
+      Else
+        NotAppropriate;
+      End;
+   {$ENDIF}
     ttFloat:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opExp, opMult, opDivide, opPlus, opMinus: Result := ttFloat;
         opEq..opGTE: Result := ttBoolean;
       Else
         NotAppropriate;
       End;
     ttInteger:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opNot, opMult, opDiv, opMod, opAnd, opShl, opShr, opPlus, opMinus,
           opOr, opXor: Result := ttInteger;
         opExp, opDivide: Result := ttFloat;
@@ -512,8 +644,17 @@ Begin
       Else
         NotAppropriate;
       End;
+     ttLargeInt:  {added by fduenas: added LargeInt (Int64) support}
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opNot, opMult, opDiv, opMod, opAnd, opShl, opShr, opPlus, opMinus,
+          opOr, opXor: Result := ttLargeInt;
+        opExp, opDivide: Result := ttFloat;
+        opEq..opGTE: Result := ttBoolean;
+      Else
+        NotAppropriate;
+      End;
     ttBoolean:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opNot, opAnd, opOr, opXor, opEq, opNEQ: Result := ttBoolean;
       Else
         NotAppropriate;
@@ -540,50 +681,94 @@ Begin
   Result := False;
 End;
 
-Function TExpression.GetMaxLen: Integer;   { patched by ccy }
-var iSize: integer;
+Function TExpression.GetMaxLen: Integer;
 Begin
   Result:= 0;
-  If ExprType = ttString then begin
-    iSize := SizeOf(AnsiChar);
-    if Self.ClassNameIs('TFieldExpr') then
-      iSize := StringCharSize;
-    Result:= Length( GetMaxString ) * iSize;  
-  end;
+  If (ExprType = ttString) then
+    Result:= Length( GetMaxString ) {* SizeOf(Char)};  { patched by ccy } {patched by fduenas: prevents duplication of original string size}
+ {$IFDEF LEVEL4}
+  If (ExprType = ttWideString) then {added by fduenas: added WideString (Delphi4Up) support}
+    Result:= Length( GetMaxWideString ); {* SizeOf(Char)};  { patched by ccy } {patched by fduenas: prevents duplication of original string size}
+ {$ENDIF}
 End;
 
 Function TExpression.GetMaxString: String;
 Begin
   Result:= AsString;  { the same string as default }
 End;
+{$IFDEF LEVEL4}
+function TExpression.GetMaxWideString: WideString;
+begin
+  Result := GetMaxString; { the same string as default }
+end;
+{$ENDIF}
+function TExpression.SetExpresionName(const aName: string): TExpression;
+begin
+ fExprName := aName;
+ Result := Self;
+end;
+
+function TExpression.SetFormatSettings(aRuntimeSettings,
+  aSystemSettings: TFormatSettings): TExpression;
+begin
+ fRuntimeFormatSettings := aRuntimeSettings;
+ fSystemFormatSettings  := aSystemSettings;
+ result := self;
+end;
+
+function TExpression.StringCharSize: Integer;
+begin
+ {$IFDEF LEVEL4}
+  if ExprType=ttWideString then {added by fduenas: added WideString (Delphi4Up) support}
+     result := SizeOfExprType(ttWideString)
+  else
+ {$ENDIF}
+     result := SizeOfExprType(ttString);
+end;
 
 Function TExpression.GetAsString: String;
 Begin
   Case ExprType Of
     ttString: Raise EExpression.CreateFmt( SEXPR_CANNOTCASTTOSTRING,
         [NExprType[ExprType]] );
-    ttFloat: Result := FloatToStr( AsFloat );
+    {$IFDEF LEVEL4}
+    ttWideString: Raise EExpression.CreateFmt( SEXPR_CANNOTCASTTOWIDESTRING,
+        [NExprType[ExprType]] );
+    {$ENDIF}
+    ttFloat: Result := FloatToStr( AsFloat{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} );
     ttInteger: Result := IntToStr( AsInteger );
+    ttLargeInt: Result := IntToStr( AsLargeInt ); {added by fduenas: added LargeInt (Int64) support}
     ttBoolean: Result := NBoolean[AsBoolean];
   End
 End;
+function TExpression.GetExprName: string;
+begin
+ result := fExprName;
+end;
 
+{$IFDEF LEVEL4}
+function TExpression.GetAsWideString: WideString;
+begin
+ result := GetAsString;
+end;
+{$ENDIF}
 Function TExpression.GetAsFloat: Double;
 Begin
   Result := 0;
   Case ExprType Of
-    ttString:
+    ttString{$IFDEF LEVEL4}, ttWideString {$ENDIF}:
       begin
         try
-          Result := StrToFloat (AsString);
+          Result := StrToFloat(AsString{$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF});
         except
           on EConvertError do
-            Result := StrToDateTime (AsString);
+            Result := StrToDateTime(AsString{$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF});
         end;
       end;
     ttFloat:
       Raise EExpression.CreateFmt( SEXPR_CANNOTCASTTOFLOAT, [NExprType[ExprType]] );
     ttInteger, ttBoolean: Result := AsInteger;
+    ttLargeInt: Result := AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
   End
 End;
 
@@ -592,13 +777,31 @@ Begin
   Result := 0;
   Case ExprType Of
     // Allow cast expression to string
-    ttString : Result := StrToInt (AsString);
-    //ttFloat : Result := FloatToStr (AsFloat);
+    ttString {$IFDEF LEVEL4}, ttWideString {$ENDIF} : Result := StrToInt(AsString);
+
+    //ttFloat : Result := FloatToStr (AsFloat{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
     ttFloat, ttInteger: raise EExpression.CreateFmt(SEXPR_CANNOTCASTTOINTEGER,
                                [NExprType[ExprType]]);
+    ttLargeInt: raise EExpression.CreateFmt(SEXPR_CANNOTCASTTOINTEGER,
+                               [NExprType[ExprType]]); {added by fduenas: added LargeInt (Int64) support}
     ttBoolean: Result := Integer( AsBoolean );
   End;
 End;
+
+function TExpression.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
+begin
+  Result := 0;
+  Case ExprType Of
+    // Allow cast expression to string
+    ttString {$IFDEF LEVEL4}, ttWideString {$ENDIF}: Result := StrToInt64(AsString);
+    //ttFloat : Result := FloatToStr (AsFloat{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
+    ttFloat, ttInteger: raise EExpression.CreateFmt(SEXPR_CANNOTCASTTOLARGEINTEGER,
+                               [NExprType[ExprType]]);
+    ttLargeInt: raise EExpression.CreateFmt(SEXPR_CANNOTCASTTOLARGEINTEGER,
+                               [NExprType[ExprType]]);
+    ttBoolean: Result := Int64( AsBoolean );
+  End;
+end;
 
 Function TExpression.GetAsBoolean: Boolean;
 Begin
@@ -611,31 +814,60 @@ Begin
   Result := Ord( ExprType ) >= Ord( aExprType )
 End;
 
-function TExpression.StringCharSize: integer;
-begin
-  Result := SizeOf(AnsiChar);
-end;
-
 { TStringLiteral }
 Function TStringLiteral.GetAsString: String;
 Begin
   Result := FAsString
 End;
-
+{$IFDEF LEVEL4}
+function TStringLiteral.GetAsWideString: WideString;
+begin
+ result := GetAsString;
+end;
+{$ENDIF}
 Function TStringLiteral.GetExprType: TExprType;
 Begin
   Result := ttString
 End;
 
-Constructor TStringLiteral.Create( Const aAsString: String );
+Constructor TStringLiteral.Create( Const aAsString: String;
+ aRuntimeSettings, aSystemSettings: TFormatSettings );
 Begin
   Inherited Create;
-  FAsString := aAsString
+  FAsString := aAsString;
+  SetFormatSettings(aRuntimeSettings, aSystemSettings);
 End;
 
+{$IFDEF LEVEL4}
+{ TWideStringLiteral }
+
+constructor TWideStringLiteral.Create(const aAsWideString: WideString;
+ aRuntimeSettings, aSystemSettings: TFormatSettings);
+begin
+ Inherited Create( aAsWideString, aRuntimeSettings, aSystemSettings );
+ FAsWideString := aAsWideString;
+end;
+
+function TWideStringLiteral.GetAsString: String;
+begin
+ Result := FAsWideString;
+end;
+
+function TWideStringLiteral.GetAsWideString: WideString;
+begin
+ result := FAsWideString;
+end;
+
+function TWideStringLiteral.GetExprType: TExprType;
+begin
+ result := ttWideString;
+end;
+{$ENDIF}
+
+{ TFloatLiteral }
 Function TFloatLiteral.GetAsString: String;
 Begin
-  Result := FloatToStr( FAsFloat )
+ Result := FloatToStr( FAsFloat{$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF} )
 End;
 
 Function TFloatLiteral.GetAsFloat: Double;
@@ -648,15 +880,17 @@ Begin
   Result := ttFloat
 End;
 
-Constructor TFloatLiteral.Create( Const aAsFloat: Double );
+Constructor TFloatLiteral.Create( Const aAsFloat: Double;
+ aRuntimeSettings, aSystemSettings: TFormatSettings );
 Begin
   Inherited Create;
-  FAsFloat := aAsFloat
+  FAsFloat := aAsFloat;
+  SetFormatSettings(aRuntimeSettings, aSystemSettings);
 End;
 
 Function TIntegerLiteral.GetAsString: String;
 Begin
-  Result := FloatToStr( FAsInteger )
+  Result := IntToStr( FAsInteger ); //FloatToStr( FAsInteger{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} )
 End;
 
 Function TIntegerLiteral.GetAsFloat: Double;
@@ -669,16 +903,58 @@ Begin
   Result := FAsInteger
 End;
 
+function TIntegerLiteral.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
+begin
+ result := FAsInteger;
+end;
+
 Function TIntegerLiteral.GetExprType: TExprType;
 Begin
   Result := ttInteger
 End;
 
-Constructor TIntegerLiteral.Create( aAsInteger: Integer );
+Constructor TIntegerLiteral.Create( aAsInteger: Integer;
+ aRuntimeSettings, aSystemSettings: TFormatSettings );
 Begin
   Inherited Create;
-  FAsInteger := aAsInteger
+  FAsInteger := aAsInteger;
+  SetFormatSettings(aRuntimeSettings, aSystemSettings);
 End;
+
+{ TLargeIntLiteral }
+
+constructor TLargeIntLiteral.Create(aAsLargeInt: Int64;
+ aRuntimeSettings, aSystemSettings: TFormatSettings);
+begin
+ Inherited Create;
+ FAsLargeInt := aAsLargeInt;
+ SetFormatSettings(aRuntimeSettings, aSystemSettings);
+end;
+
+function TLargeIntLiteral.GetAsFloat: Double;
+begin
+ result := FAsLargeInt;
+end;
+
+function TLargeIntLiteral.GetAsInteger: Integer;
+begin
+ result := Integer( FAsLargeInt );
+end;
+
+function TLargeIntLiteral.GetAsLargeInt: Int64;
+begin
+ result := FAsLargeInt;
+end;
+
+function TLargeIntLiteral.GetAsString: String;
+begin
+   Result := IntToStr( FAsLargeInt );// FloatToStr( FAsLargeInt{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} )
+end;
+
+function TLargeIntLiteral.GetExprType: TExprType;
+begin
+   Result := ttLargeInt
+end;
 
 function TBooleanLiteral.GetMaxString: String;
 begin
@@ -700,9 +976,14 @@ Begin
   Result := Integer( FAsBoolean );
 End;
 
+function TBooleanLiteral.GetAsLargeInt: Int64;
+begin
+ result := Int64( FAsBoolean );
+end;
+
 Function TBooleanLiteral.GetAsBoolean: Boolean;
 Begin
-  Result := FAsBoolean;
+ Result := FAsBoolean;
 End;
 
 Function TBooleanLiteral.GetExprType: TExprType;
@@ -710,15 +991,17 @@ Begin
   Result := ttBoolean
 End;
 
-Constructor TBooleanLiteral.Create( aAsBoolean: Boolean );
+Constructor TBooleanLiteral.Create( aAsBoolean: Boolean; aRuntimeSettings, aSystemSettings: TFormatSettings
+ );
 Begin
   Inherited Create;
-  FAsBoolean := aAsBoolean
+  FAsBoolean := aAsBoolean;
+  SetFormatSettings(aRuntimeSettings, aSystemSettings);
 End;
 
 Function TUnaryOp.GetAsFloat: Double;
 Begin
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     opMinus: Result := -Operand.AsFloat;
     opPlus: Result := Operand.AsFloat;
   Else
@@ -729,12 +1012,13 @@ End;
 Function TUnaryOp.GetAsInteger: Integer;
 Begin
   Result := 0;
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     opMinus: Result := -Operand.AsInteger;
     opPlus: Result := Operand.AsInteger;
     opNot:
       Case OperandType Of
         ttInteger: Result := Not Operand.AsInteger;
+        ttLargeInt: Result := Not Operand.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
         ttBoolean: Result := Integer( AsBoolean );
       Else
         Internal( 6 );
@@ -744,9 +1028,28 @@ Begin
   End
 End;
 
+function TUnaryOp.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
+Begin
+  Result := 0;
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    opMinus: Result := -Operand.AsLargeInt;
+    opPlus: Result := Operand.AsLargeInt;
+    opNot:
+      Case OperandType Of
+        ttInteger: Result := Not Operand.AsInteger;
+        ttLargeInt: Result := Not Operand.AsLargeInt;
+        ttBoolean: Result := Int64( AsBoolean );
+      Else
+        Internal( 6 );
+      End;
+  Else
+    Result := Inherited GetAsLargeInt;
+  End
+End;
+
 Function TUnaryOp.GetAsBoolean: Boolean;
 Begin
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     opNot: Result := Not ( Operand.AsBoolean )
   Else
     Result := Inherited GetAsBoolean;
@@ -755,18 +1058,21 @@ End;
 
 Function TUnaryOp.GetExprType: TExprType;
 Begin
-  Result := ResultType( Operator, OperandType )
+  Result := ResultType( OperatorType, OperandType ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Constructor TUnaryOp.Create( aOperator: TOperator; aOperand: TExpression );
+Constructor TUnaryOp.Create( aOperator: TOperatorType; aOperand: TExpression );
 Begin
   Inherited Create;
   Operand := aOperand;
-  Operator := aOperator;
+  fExprName :=  NOperatorType[aOperator];
+  fRuntimeFormatSettings := aOperand.fRuntimeFormatSettings;
+  fSystemFormatSettings := aOperand.fSystemFormatSettings;
+  OperatorType := aOperator; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
   OperandType := Operand.ExprType;
-  If Not ( Operator In [opNot, opPlus, opMinus] ) Then
+  If Not ( OperatorType In [opNot, opPlus, opMinus] ) Then {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     Raise EExpression.CreateFmt( SEXPR_WRONGUNARYOP,
-      [NOperator[Operator]] )
+      [NOperatorType[OperatorType]] ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
 Destructor TUnaryOp.Destroy;
@@ -777,9 +1083,9 @@ End;
 
 Function TBinaryOp.GetMaxString: String;
 begin
-  If ExprType = ttString then
+  If ExprType in [ttString{$IFDEF LEVEL4}, ttWideString{$ENDIF}] then
   begin
-    Case Operator Of
+    Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
       opPlus: Result := Operand1.GetMaxString + Operand2.GetMaxString;
     Else
       Internal( 10 );
@@ -787,32 +1093,83 @@ begin
   end else
     Result:= GetAsString;
 end;
-
+{$IFDEF LEVEL4}
+function TBinaryOp.GetMaxWideString: WideString;
+begin
+  If ExprType in [ttString, ttWideString] then
+  begin
+    Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+      opPlus: Result := Operand1.GetMaxWideString + Operand2.GetMaxWideString;
+    Else
+      Internal( 10 );
+    End;
+  end else
+    Result:= GetAsWideString;
+end;
+{$ENDIF}
 Function TBinaryOp.GetAsString: String;
 Begin
   Result := '';
   Case ExprType Of
     ttString:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opPlus: Result := Operand1.AsString + Operand2.AsString;
       Else
         Internal( 10 );
       End;
+   {$IFDEF LEVEL4}
+    ttWideString:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := Operand1.AsWideString + Operand2.AsWideString;
+      Else
+        Internal( 10 );
+      End;
+   {$ENDIF}
     ttFloat:
-      Result := FloatToStr( AsFloat );
+      Result := FloatToStr( AsFloat{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} );
     ttInteger:
       Result := IntToStr( AsInteger );
+    ttLargeInt:
+      Result := IntToStr( AsLargeInt ); {added by fduenas: added LargeInt (Int64) support}
     ttBoolean:
       Result := NBoolean[AsBoolean];
   End
 End;
+{$IFDEF LEVEL4}
+function TBinaryOp.GetAsWideString: WideString;
+Begin
+  Result := '';
+  Case ExprType Of
+    ttString:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := Operand1.AsString + Operand2.AsString;
+      Else
+        Internal( 10 );
+      End;
+    ttWideString:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := Operand1.AsWideString + Operand2.AsWideString;
+      Else
+        Internal( 10 );
+      End;
+    ttFloat:
+      Result := FloatToStr( AsFloat{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} );
+    ttInteger:
+      Result := IntToStr( AsInteger );
+    ttLargeInt:
+      Result := IntToStr( AsLargeInt ); {added by fduenas: added LargeInt (Int64) support}
+    ttBoolean:
+      Result := NBoolean[AsBoolean];
+  End
+End;
+{$ENDIF}
 
 Function TBinaryOp.GetAsFloat: Double;
 Begin
   Result := 0;
   Case ExprType Of
     ttFloat:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opExp: Result := Exp( Operand2.AsFloat * Ln( Operand1.AsFloat ) );
         opPlus: Result := Operand1.AsFloat + Operand2.AsFloat;
         opMinus: Result := Operand1.AsFloat - Operand2.AsFloat;
@@ -823,6 +1180,8 @@ Begin
       End;
     ttInteger:
       Result := AsInteger;
+    ttLargeInt:
+      Result := AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
     ttBoolean:
       Result := Integer( AsBoolean );
   End
@@ -833,7 +1192,7 @@ Begin
   Result := 0;
   Case ExprType Of
     ttInteger:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opPlus: Result := Operand1.AsInteger + Operand2.AsInteger;
         opMinus: Result := Operand1.AsInteger - Operand2.AsInteger;
         opMult: Result := Operand1.AsInteger * Operand2.AsInteger;
@@ -847,15 +1206,71 @@ Begin
       Else
         Internal( 12 );
       End;
+    ttLargeInt:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := Operand1.AsLargeInt + Operand2.AsLargeInt;
+        opMinus: Result := Operand1.AsLargeInt - Operand2.AsLargeInt;
+        opMult: Result := Operand1.AsLargeInt * Operand2.AsLargeInt;
+        opDiv: Result := Operand1.AsLargeInt Div Operand2.AsLargeInt;
+        opMod: Result := Operand1.AsLargeInt Mod Operand2.AsLargeInt;
+        opShl: Result := Operand1.AsLargeInt Shl Operand2.AsLargeInt;
+        opShr: Result := Operand1.AsLargeInt Shr Operand2.AsLargeInt;
+        opAnd: Result := Operand1.AsLargeInt And Operand2.AsLargeInt;
+        opOr: Result := Operand1.AsLargeInt Or Operand2.AsLargeInt;
+        opXor: Result := Operand1.AsLargeInt Xor Operand2.AsLargeInt;
+      Else
+        Internal( 12 );
+      End;
     ttBoolean:
       Result := Integer( GetAsBoolean );
   End
 End;
 
+function TBinaryOp.GetAsLargeInt: Int64;
+begin
+Begin
+  Result := 0;
+  Case ExprType Of
+    ttInteger:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := Operand1.AsInteger + Operand2.AsInteger;
+        opMinus: Result := Operand1.AsInteger - Operand2.AsInteger;
+        opMult: Result := Operand1.AsInteger * Operand2.AsInteger;
+        opDiv: Result := Operand1.AsInteger Div Operand2.AsInteger;
+        opMod: Result := Operand1.AsInteger Mod Operand2.AsInteger;
+        opShl: Result := Operand1.AsInteger Shl Operand2.AsInteger;
+        opShr: Result := Operand1.AsInteger Shr Operand2.AsInteger;
+        opAnd: Result := Operand1.AsInteger And Operand2.AsInteger;
+        opOr: Result := Operand1.AsInteger Or Operand2.AsInteger;
+        opXor: Result := Operand1.AsInteger Xor Operand2.AsInteger;
+      Else
+        Internal( 12 );
+      End;
+    ttLargeInt:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opPlus: Result := Operand1.AsLargeInt + Operand2.AsLargeInt;
+        opMinus: Result := Operand1.AsLargeInt - Operand2.AsLargeInt;
+        opMult: Result := Operand1.AsLargeInt * Operand2.AsLargeInt;
+        opDiv: Result := Operand1.AsLargeInt Div Operand2.AsLargeInt;
+        opMod: Result := Operand1.AsLargeInt Mod Operand2.AsLargeInt;
+        opShl: Result := Operand1.AsLargeInt Shl Operand2.AsLargeInt;
+        opShr: Result := Operand1.AsLargeInt Shr Operand2.AsLargeInt;
+        opAnd: Result := Operand1.AsLargeInt And Operand2.AsLargeInt;
+        opOr: Result := Operand1.AsLargeInt Or Operand2.AsLargeInt;
+        opXor: Result := Operand1.AsLargeInt Xor Operand2.AsLargeInt;
+      Else
+        Internal( 12 );
+      End;
+    ttBoolean:
+      Result := Int64( GetAsBoolean );
+  End
+End;
+end;
+
 Function TBinaryOp.GetAsBoolean: Boolean;
 Begin
   Result := false;
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     opAnd: Result := Operand1.AsBoolean And Operand2.AsBoolean;
     opOr: Result := Operand1.AsBoolean Or Operand2.AsBoolean;
     opXor: Result := Operand1.AsBoolean Xor Operand2.AsBoolean;
@@ -866,19 +1281,22 @@ End;
 
 Function TBinaryOp.GetExprType: TExprType;
 Begin
-  GetExprType := ResultType( Operator, OperandType )
+  result := ResultType( OperatorType, OperandType ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Constructor TBinaryOp.Create( aOperator: TOperator; aOperand1, aOperand2: TExpression );
+Constructor TBinaryOp.Create( aOperator: TOperatorType; aOperand1, aOperand2: TExpression );
 Begin
   Inherited Create;
-  Operator := aOperator;
+  OperatorType := aOperator; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+  fExprName :=  NOperatorType[aOperator];
   Operand1 := aOperand1;
   Operand2 := aOperand2;
   OperandType := CommonType( Operand1.ExprType, Operand2.ExprType );
-  If Not ( Operator In [opExp, opMult..opXor] ) Then
+  fRuntimeFormatSettings := aOperand1.fRuntimeFormatSettings;
+  fSystemFormatSettings := aOperand1.fSystemFormatSettings;
+  If Not ( OperatorType In [opExp, opMult..opXor] ) Then {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     Raise EExpression.CreateFmt( SEXPR_WRONGBINARYOP,
-      [NOperator[Operator]] )
+      [NOperatorType[OperatorType]] ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
 Destructor TBinaryOp.Destroy;
@@ -908,23 +1326,34 @@ Begin
   Result := Integer( AsBoolean )
 End;
 
+function TRelationalOp.GetAsLargeInt: Int64;
+begin
+ Result := Int64( AsBoolean )
+end;
+
 Function TRelationalOp.GetAsBoolean: Boolean;
 Begin
   Result := false;
-  If ( Operand1.IsNull ) Or ( Operand2.IsNull ) Then
-    Exit;
+
+  If ( Operand1.IsNull ) and ( Operand2.IsNull ) and (OperatorType=opEQ) Then {added by fduenas: NULL=NULL must return true}
+  begin
+   result := true;
+   exit;
+  end
+  else If ( Operand1.IsNull ) Or ( Operand2.IsNull ) Then
+       Exit;
   Case CommonType( Operand1.ExprType, Operand2.ExprType ) Of
     ttBoolean:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opEQ: Result := Operand1.AsBoolean = Operand2.AsBoolean;
         opNEQ: Result := Operand1.AsBoolean <> Operand2.AsBoolean;
       Else
         Raise EExpression.CreateFmt( SEXPR_WRONGBOOLEANOP,
-          [NOperator[Operator]] );
+          [NOperatorType[OperatorType]] ); {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
       End;
 
     ttInteger:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opLT: Result := Operand1.AsInteger < Operand2.AsInteger;
         opLTE: Result := Operand1.AsInteger <= Operand2.AsInteger;
         opGT: Result := Operand1.AsInteger > Operand2.AsInteger;
@@ -933,8 +1362,18 @@ Begin
         opNEQ: Result := Operand1.AsInteger <> Operand2.AsInteger;
       End;
 
+    ttLargeInt:  {added by fduenas: added LargeInt (Int64) support}
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opLT: Result := Operand1.AsLargeInt < Operand2.AsLargeInt;
+        opLTE: Result := Operand1.AsLargeInt <= Operand2.AsLargeInt;
+        opGT: Result := Operand1.AsLargeInt > Operand2.AsLargeInt;
+        opGTE: Result := Operand1.AsLargeInt >= Operand2.AsLargeInt;
+        opEQ: Result := Operand1.AsLargeInt = Operand2.AsLargeInt;
+        opNEQ: Result := Operand1.AsLargeInt <> Operand2.AsLargeInt;
+      End;
+
     ttFloat:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opLT: Result := Operand1.AsFloat < Operand2.AsFloat;
         opLTE: Result := Operand1.AsFloat <= Operand2.AsFloat;
         opGT: Result := Operand1.AsFloat > Operand2.AsFloat;
@@ -944,7 +1383,7 @@ Begin
       End;
 
     ttString:
-      Case Operator Of
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
         opLT: Result := Operand1.AsString < Operand2.AsString;
         opLTE: Result := Operand1.AsString <= Operand2.AsString;
         opGT: Result := Operand1.AsString > Operand2.AsString;
@@ -952,6 +1391,17 @@ Begin
         opEQ: Result := Operand1.AsString = Operand2.AsString;
         opNEQ: Result := Operand1.AsString <> Operand2.AsString;
       End;
+   {$IFDEF LEVEL4}
+    ttWideString:
+      Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+        opLT: Result := Operand1.AsWideString < Operand2.AsWideString;
+        opLTE: Result := Operand1.AsWideString <= Operand2.AsWideString;
+        opGT: Result := Operand1.AsWideString > Operand2.AsWideString;
+        opGTE: Result := Operand1.AsWideString >= Operand2.AsWideString;
+        opEQ: Result := Operand1.AsWideString = Operand2.AsWideString;
+        opNEQ: Result := Operand1.AsWideString <> Operand2.AsWideString;
+      End;
+   {$ENDIF}
   End
 End;
 
@@ -960,15 +1410,18 @@ Begin
   Result := ttBoolean
 End;
 
-Constructor TRelationalOp.Create( aOperator: TOperator; aOperand1, aOperand2: TExpression );
+Constructor TRelationalOp.Create( aOperator: TOperatorType; aOperand1, aOperand2: TExpression );
 Begin
   Inherited Create;
-  Operator := aOperator;
+  OperatorType := aOperator; {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+  fExprName :=  NOperatorType[aOperator];
   Operand1 := aOperand1;
   Operand2 := aOperand2;
-  If Not ( Operator In RelationalOperators ) Then
+  fRuntimeFormatSettings := aOperand1.fRuntimeFormatSettings;
+  fSystemFormatSettings := aOperand1.fSystemFormatSettings;
+  If Not ( OperatorType In RelationalOperators ) Then {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     Raise EExpression.CreateFmt( SEXPR_WRONGRELATIONALOP,
-      [NOperator[Operator]] )
+      [NOperatorType[OperatorType]] ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
 Destructor TRelationalOp.Destroy;
@@ -983,6 +1436,13 @@ Begin
   Result := Param[i].AsString
 End;
 
+{$IFDEF LEVEL4}
+function TParameterList.GetAsWideString(i: Integer): WideString;
+begin
+  Result := Param[i].AsWideString
+end;
+{$ENDIF}
+
 Function TParameterList.GetAsFloat( i: Integer ): Double;
 Begin
   Result := Param[i].AsFloat
@@ -992,6 +1452,11 @@ Function TParameterList.GetAsInteger( i: Integer ): Integer;
 Begin
   Result := Param[i].AsInteger
 End;
+
+function TParameterList.GetAsLargeInt(i: Integer): Int64; {added by fduenas: added LargeInt (Int64) support}
+begin
+ Result := Param[i].AsLargeInt;
+end;
 
 Function TParameterList.GetAsBoolean( i: Integer ): Boolean;
 Begin
@@ -1003,10 +1468,38 @@ Begin
   Result := Param[i].ExprType
 End;
 
+function TParameterList.GetExprTypeIndex(aExprTypeToFind: TExprType;
+  aStartIndex: Integer; aCount: Integer): Integer;
+var i, _end: Integer;
+begin
+ result := -1;
+ if aCount=0 then
+    _end := Count-1
+ else
+    _end := Min(aStartIndex+aCount-1, Count-1);
+
+ for i :=  aStartIndex to _end do
+ begin
+  if Param[i].ExprType = aExprTypeToFind then
+  begin
+    Result := i;
+    break;
+  end;
+ end;
+end;
+
 Function TParameterList.GetParam( i: Integer ): TExpression;
 Begin
   Result := TExpression( Items[i] )
 End;
+
+constructor TParameterList.Create(aRuntimeSettings,
+  aSystemSettings: TFormatSettings);
+begin
+ inherited Create;
+ fRuntimeFormatSettings := aRuntimeSettings;
+ fSystemFormatSettings := aSystemSettings;
+end;
 
 Destructor TParameterList.Destroy;
 Var
@@ -1019,12 +1512,12 @@ End;
 
 { TFunction }
 
-Function TFunction.GetParam( n: Integer ): TExpression;
+Function TFunctionExpr.GetParam( n: Integer ): TExpression;
 Begin
   Result := FParameterList.Param[n]
 End;
 
-Function TFunction.ParameterCount: Integer;
+Function TFunctionExpr.ParameterCount: Integer;
 Begin
   If ( FParameterList <> Nil ) Then
     ParameterCount := FParameterList.Count
@@ -1032,79 +1525,244 @@ Begin
     ParameterCount := 0
 End;
 
-Constructor TFunction.Create( aParameterList: TParameterList );
+function TFunctionExpr.CheckParameters: Boolean;
+begin
+ result := true;
+end;
+
+function TFunctionExpr.CheckParameters(var aErrorCode: Integer; var aErrorMsg: string): Boolean;
+begin
+ result := true;
+end;
+
+constructor TFunctionExpr.Create(aName: string; aParameterList: TParameterList;
+  aRunTimeFormatsettings, aSystemFormatsettings: TFormatSettings);
+begin
+ inherited Create;
+ fExprName := aName;
+ FParameterList := aParameterList;
+ fRuntimeFormatSettings := aRuntimeFormatSettings;
+ fSystemFormatSettings := aSystemFormatSettings;
+end;
+
+constructor TFunctionExpr.Create(aName: string; aParameterList: TParameterList);
+begin
+ inherited Create;
+ fExprName := aName;
+ FParameterList := aParameterList;
+ if assigned( aParameterList ) then
+ begin
+  fRuntimeFormatSettings := aParameterList.fRuntimeFormatSettings;
+  fSystemFormatSettings := aParameterList.fSystemFormatSettings;
+ end;
+end;
+
+Constructor TFunctionExpr.Create( aParameterList: TParameterList );
 Begin
   Inherited Create;
-  FParameterList := aParameterList
+  FParameterList := aParameterList;
+  if assigned( aParameterList ) then
+  begin
+   fRuntimeFormatSettings := aParameterList.fRuntimeFormatSettings;
+   fSystemFormatSettings := aParameterList.fSystemFormatSettings;
+  end;
 End;
 
-Destructor TFunction.Destroy;
+Destructor TFunctionExpr.Destroy;
 Begin
-  FParameterList.Free;
+  if Assigned(FParameterList) then
+     FParameterList.Free;
   Inherited Destroy
 End;
 
 Const
-  NTypeCast: Array[TExprType] Of PChar =
-  ( 'STRING', 'FLOAT', 'INTEGER', 'BOOLEAN' );
   NMF: Array[TMF] Of PChar =
   ( 'TRUNC', 'ROUND', 'ABS', 'ARCTAN', 'COS', 'EXP', 'FRAC', 'INT',
     'LN', 'PI', 'SIN', 'SQR', 'SQRT', 'POWER' );
-  NSF: Array[TSF] Of PChar = ( 'UPPER', 'LOWER', 'COPY', 'POS', 'LENGTH', 'LTRIM', 'RTRIM', 'TRIM' );
+  NSF: Array[TSF] Of PChar = ( 'UPPER', 'LOWER', 'COPY', 'POS', 'LENGTH', 'LTRIM', 'RTRIM', 'TRIM', 'CONCAT', 'CONCAT_WS' );
 
-Function TStringExpression.GetMaxString: String;
+{ DoCopyString Adds a Special Behaviour to Copy(str, start, count) function
+  If _startPos or _count
+}
+function TStringFunctionExprLib.DoConcat(aSeparator: string; aGetMaxString: boolean): string;
+var _string: string;
+    _count, _start: integer;
+begin
+ _string := '';
+ _start := 0;
+ if aSeparator<>'' then
+    Inc(_start);
+ for _count  := _start to FParameterList.Count-1 do
+ begin
+  if _string <> '' then
+     _string := _string+aSeparator;
+  if aGetMaxString then
+     _string := _string+Param[_count].MaxString
+  else
+     _string := _string+Param[_count].AsString
+ end;
+ result := _string;
+end;
+{$IFDEF LEVEL4}
+function TStringFunctionExprLib.DoConcatW(aSeparator: Widestring; aGetMaxString: boolean): WideString;
+var _string: WideString;
+    _count, _start: integer;
+begin
+ _string := '';
+ _start := 0;
+if aSeparator<>'' then
+    Inc(_start);
+ for _count  := _start to FParameterList.Count-1 do
+ begin
+  if _string <> '' then
+     _string := _string+aSeparator;
+  if aGetMaxString then
+     _string := _string+Param[_count].MaxWideString
+  else
+     _string := _string+Param[_count].AsWideString
+ end;
+ result := _string;
+end;
+{$ENDIF}
+Function TStringFunctionExprLib.DoCopyString(aString: string; aStartPos, aCount: Integer): String;
+Begin
+ if aStartPos < 0 then {if aStartPos < 0, position start from rigth to left}
+     aStartPos := (Length(aString) - Abs(aStartPos))+1;
+  if aCount < 0 then {if aCount < 0, copy will start from rigth to left}
+  begin
+   aCount := Abs(aCount);
+   aStartPos := (aStartPos-aCount)+1;
+  end;
+  Result :=  Copy( aString, aStartPos, aCount );
+End;
+
+function TStringFunctionExprLib.DoCopyStringW(aString: WideString; aStartPos,
+  aCount: Integer): WideString;
+Begin
+ if aStartPos < 0 then {if aStartPos < 0, position start from rigth to left}
+     aStartPos := (Length(aString) - Abs(aStartPos))+1;
+  if aCount < 0 then {if aCount < 0, copy will start from rigth to left}
+  begin
+   aCount := Abs(aCount);
+   aStartPos := (aStartPos-aCount)+1;
+  end;
+  Result := Copy( aString, aStartPos, aCount );
+End;
+
+Function TStringFunctionExprLib.GetMaxString: String;
 Begin
   CheckParameters;
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     sfUpper, sfLower, sfLTrim, sfRTrim, sfTrim: Result := Param[0].MaxString;
-    sfCopy: Result := Copy( Param[0].MaxString, Param[1].AsInteger, Param[2].AsInteger );
+    sfCopy:  Result := DoCopyString( Param[0].MaxString, Param[1].AsInteger, Param[2].AsInteger ); {Special Copy Function}
+    sfConcat: Result := DoConcat('', true);
+    sfConcatWS: result := DoConcat(Param[0].MaxString, true);
   Else
     Result := Inherited GetAsString;
   End
 End;
-
-Function TStringExpression.GetAsString: String;
+{$IFDEF LEVEL4}
+function TStringFunctionExprLib.GetMaxWideString: WideString;
+begin
+  CheckParameters;
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    sfUpper, sfLower, sfLTrim, sfRTrim, sfTrim: Result := Param[0].MaxWideString;
+    sfCopy:  Result := DoCopyStringW( Param[0].MaxWideString, Param[1].AsInteger, Param[2].AsInteger ); {Special Copy Function}
+    sfConcat: Result := DoConcatW('', true);
+    sfConcatWS: result := DoConcatW(Param[0].MaxWideString, true);
+  Else
+    Result := Inherited GetAsWideString;
+  End
+end;
+{$ENDIF}
+Function TStringFunctionExprLib.GetAsString: String;
 Begin
   CheckParameters;
-  Case Operator Of
-    sfUpper: Result := AnsiUpperCase( Param[0].AsString );
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    sfUpper: Result := UpperCase( Param[0].AsString );
     sfLower:
-      Result := AnsiLowerCase( Param[0].AsString );
-    sfCopy: Result := Copy( Param[0].AsString, Param[1].AsInteger, Param[2].AsInteger );
+      Result := LowerCase( Param[0].AsString );
+    sfCopy:
+    begin
+      if not (FParameterList.GetExprTypeIndex(ttWideString)> -1) then
+         Result := DoCopyString( Param[0].AsString, Param[1].AsInteger, Param[2].AsInteger ) {patched by fduenas: Copy( Param[0].AsString, Param[1].AsInteger, Param[2].AsInteger );}
+      else
+         Result := DoCopyString( Param[0].AsWideString, Param[1].AsInteger, Param[2].AsInteger ); {patched by fduenas: Copy( Param[0].AsString, Param[1].AsInteger, Param[2].AsInteger );}
+    end;
     sfLTrim: Result := TrimLeft( Param[0].AsString );
     sfRTrim: Result := TrimRight( Param[0].AsString );
     sfTrim: Result := Trim( Param[0].AsString );
+    sfConcat: Result := DoConcat('', false);
+    sfConcatWS: result := DoConcat(Param[0].AsString, false);
   Else
     Result := Inherited GetAsString;
   End
 End;
-
-Function TStringExpression.GetAsInteger: Integer;
+{$IFDEF LEVEL4}
+function TStringFunctionExprLib.GetAsWideString: WideString;
 Begin
   CheckParameters;
-  Case Operator Of
-    sfPos: Result := AnsiPos( Param[0].AsString, Param[1].AsString );
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    sfUpper: Result := WideUpperCase( Param[0].AsWideString );
+    sfLower:
+      Result := WideLowerCase( Param[0].AsWideString );
+    sfCopy:
+      Result := DoCopyStringW( Param[0].AsWideString, Param[1].AsInteger, Param[2].AsInteger ); {patched by fduenas: Copy( Param[0].AsString, Param[1].AsInteger, Param[2].AsInteger );}
+    sfLTrim: Result := TrimLeft( Param[0].AsWideString );
+    sfRTrim: Result := TrimRight( Param[0].AsWideString );
+    sfTrim: Result := Trim( Param[0].AsWideString );
+    sfConcat: Result := DoConcatW('', false);
+    sfConcatWS: Result := DoConcatW(Param[0].AsWideString, false);
+  Else
+    Result := Inherited GetAsWideString;
+  End
+End;
+{$ENDIF}
+Function TStringFunctionExprLib.GetAsInteger: Integer;
+Begin
+  CheckParameters;
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    sfPos: Result := Pos( Param[0].AsString, Param[1].AsString ); {patched by fduenas: unicode version}
     sfLength: Result := Length( Param[0].AsString );
   Else
     Result := Inherited GetAsInteger
   End
 End;
 
-Function TStringExpression.GetExprType: TExprType;
+function TStringFunctionExprLib.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
 Begin
-  Case Operator Of
-    sfUpper, sfLower, sfCopy, sfLTrim, sfRTrim, sfTrim: Result := ttString;
+  CheckParameters;
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    sfPos: Result := Pos( Param[0].AsString, Param[1].AsString ); {patched by fduenas: unicode version}
+    sfLength: Result := Length( Param[0].AsString );
+  Else
+    Result := Inherited GetAsLargeInt;
+  End
+End;
+
+Function TStringFunctionExprLib.GetExprType: TExprType;
+Begin
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    sfUpper, sfLower, sfCopy, sfLTrim, sfRTrim, sfTrim, sfConcat, sfConcatWS:
+    begin
+    {$IFDEF LEVEL4}
+     if FParameterList.GetExprTypeIndex(ttWideString) > -1 then
+        Result := ttWideString
+     else
+    {$ENDIF}
+        Result := ttString;
+    end
   Else
     Result := ttInteger;
   End
 End;
 
-Procedure TStringExpression.CheckParameters;
+function TStringFunctionExprLib.CheckParameters: Boolean;
 Var
   OK: Boolean;
 Begin
   OK := false;
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     sfUpper, sfLower, sfLength, sfLTrim, sfRTrim, sfTrim:
       OK := ( ParameterCount = 1 ) And
         ( Param[0].ExprType >= ttString );
@@ -1117,23 +1775,29 @@ Begin
       OK := ( ParameterCount = 2 ) And
         ( Param[0].ExprType >= ttString ) And
         ( Param[1].ExprType >= ttString );
+    sfConcat:
+      OK := ( ParameterCount >= 1 );
+    sfConcatWS:
+      OK := ( ParameterCount >= 2 ) And
+        ( Param[0].ExprType in [ttString{$IFDEF LEVEL4}, ttWideString{$ENDIF}] )
   End;
+  result := OK;
   If Not OK Then
-    Raise EExpression.CreateFmt( SEXPR_WRONGPARAMETER,
-      [NSF[Operator]] )
+    raise EExpression.CreateFmt( SEXPR_WRONGPARAMETER,
+      [NSF[OperatorType]] ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Constructor TStringExpression.Create( aParameterList: TParameterList;
+Constructor TStringFunctionExprLib.Create( aName: string; aParameterList: TParameterList;
   aOperator: TSF );
 Begin
-  Inherited Create( aParameterList );
-  Operator := aOperator
+  Inherited Create(aName, aParameterList );
+  OperatorType := aOperator {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Function TMathExpression.GetAsFloat: Double;
+Function TMathFunctionExprLib.GetAsFloat: Double;
 Begin
   CheckParameters;
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     mfAbs: Result := Abs( Param[0].AsFloat );
     mfArcTan: Result := ArcTan( Param[0].AsFloat );
     mfCos: Result := Cos( Param[0].AsFloat );
@@ -1145,36 +1809,74 @@ Begin
     mfSin: Result := Sin( Param[0].AsFloat );
     mfSqr: Result := Sqr( Param[0].AsFloat );
     mfSqrt: Result := Sqrt( Param[0].AsFloat );
-    mfPower: Result := Exp( Param[1].AsFloat * Ln( Param[0].AsFloat ) )
+    mfPower: Result := Exp( Param[1].AsFloat * Ln( Param[0].AsFloat ) );
+    mfTrunc: Result := Trunc(Param[0].AsFloat);  {added by fduenas}
+    mfRound:
+    begin
+     if ParameterCount=1 then
+        Result := Round( Param[0].AsFloat )
+     else
+        result := RoundTo(Param[0].AsFloat, abs( Param[1].AsInteger )*-1);
+    end;
   Else
     Result := Inherited GetAsFloat;
   End
 End;
 
-Function TMathExpression.GetAsInteger: Integer;
+Function TMathFunctionExprLib.GetAsInteger: Integer;
 Begin
   CheckParameters;
-  Case Operator Of
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
     mfTrunc: Result := Trunc( Param[0].AsFloat );
-    mfRound: Result := Round( Param[0].AsFloat );
+    mfRound:
+    begin
+     if ParameterCount=1 then
+        Result := Round( Param[0].AsFloat )
+     else
+        result := Trunc( RoundTo(Param[0].AsFloat, abs( Param[1].AsInteger )*-1) );
+    end;
     mfAbs: Result := Abs( Param[0].AsInteger );
   Else
     Result := Inherited GetAsInteger;
   End
 End;
 
-Procedure TMathExpression.CheckParameters;
+function TMathFunctionExprLib.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
+begin
+  CheckParameters;
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    mfTrunc: Result := Trunc( Param[0].AsFloat );
+    mfRound:
+    begin
+     if ParameterCount=1 then
+        Result := Round( Param[0].AsFloat )
+     else
+        result := Trunc( RoundTo(Param[0].AsFloat, abs( Param[1].AsInteger )*-1) );
+    end;
+    mfAbs: Result := Abs( Param[0].AsLargeInt );
+  Else
+    Result := Inherited GetAsLargeInt;
+  End
+end;
+
+function TMathFunctionExprLib.CheckParameters: Boolean;
 Var
   OK: Boolean;
 Begin
   OK := True;
-  Case Operator Of
-    mfTrunc, mfRound, mfArcTan, mfCos, mfExp, mfFrac, mfInt,
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    mfTrunc, mfArcTan, mfCos, mfExp, mfFrac, mfInt,
       mfLn, mfSin, mfSqr, mfSqrt, mfAbs:
       Begin
         OK := ( ParameterCount = 1 ) And
           ( Param[0].ExprType >= ttFloat );
       End;
+    mfRound:
+      begin
+       OK := ( ( ParameterCount = 1 ) or
+               ((ParameterCount = 2) and (Param[1].ExprType = ttInteger)) ) and
+             ( Param[0].ExprType >= ttFloat );
+      end;
     mfPower:
       Begin
         OK := ( ParameterCount = 2 ) And
@@ -1182,72 +1884,118 @@ Begin
           ( Param[1].ExprType >= ttFloat );
       End;
   End;
+  result := OK;
   If Not OK Then
-    Raise EExpression.CreateFmt( SEXPR_INVALIDPARAMETERTO, [NMF[Operator]] )
+    Raise EExpression.CreateFmt( SEXPR_INVALIDPARAMETERTO, [NMF[OperatorType]] ) {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Function TMathExpression.GetExprType: TExprType;
+Function TMathFunctionExprLib.GetExprType: TExprType;
 Begin
-  Case Operator Of
-    mfTrunc, mfRound: Result := ttInteger;
+  Case OperatorType Of {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
+    mfTrunc:
+    begin
+     if Param[0].ExprType in [ttLargeInt, ttFloat] then  {added by fduenas: added LargeInt (Int64) support}
+        Result := ttFloat
+     else
+        Result := ttInteger;
+    end;
+    mfRound:
+    begin
+     if (Param[0].ExprType in [ttLargeInt, ttFloat]) or (ParamCount=2) then  {added by fduenas: added LargeInt (Int64) support}
+        Result := ttFloat
+     else
+        Result := ttInteger;
+    end
   Else
     Result := ttFloat;
   End
 End;
 
-Constructor TMathExpression.Create( aParameterList: TParameterList;
+Constructor TMathFunctionExprLib.Create( aName: string; aParameterList: TParameterList;
   aOperator: TMF );
 Begin
-  Inherited Create( aParameterList );
-  Operator := aOperator
+  Inherited Create( aName, aParameterList );
+  OperatorType := aOperator {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-function TTypeCast.GetMaxString: String;
+function TTypeCastExpr.GetMaxString: String;
 begin
   Result := Param[0].GetMaxString
 end;
-
-Function TTypeCast.GetAsString: String;
+{$IFDEF LEVEL4}
+function TTypeCastExpr.GetMaxWideString: WideString;
+begin
+ Result := Param[0].GetMaxWideString
+end;
+{$ENDIF}
+Function TTypeCastExpr.GetAsString: String;
 Begin
   Result := Param[0].AsString
 End;
-
-Function TTypeCast.GetAsFloat: Double;
+{$IFDEF LEVEL4}
+function TTypeCastExpr.GetAsWideString: WideString;
+begin
+ Result := Param[0].AsWideString
+end;
+{$ENDIF}
+Function TTypeCastExpr.GetAsFloat: Double;
 Begin
   If Param[0].ExprType = ttString Then
-    Result := StrToFloat( Param[0].AsString )
+    Result := StrToFloat( Param[0].AsString{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} )
+ {$IFDEF LEVEL4}
+  Else If Param[0].ExprType = ttWideString Then
+    Result := StrToFloat( Param[0].AsWideString{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} )
+ {$ENDIF}
   Else
     Result := Param[0].AsFloat
 End;
 
-Function TTypeCast.GetAsInteger: Integer;
+Function TTypeCastExpr.GetAsInteger: Integer;
 Begin
   If Param[0].ExprType = ttString Then
     Result := StrToInt( Param[0].AsString )
+ {$IFDEF LEVEL4}
+  Else If Param[0].ExprType = ttWideString Then
+    Result := StrToInt( Param[0].AsWideString )
+ {$ENDIF}
   Else If Param[0].ExprType = ttFloat Then
     Result := Trunc( Param[0].AsFloat )
   Else
     Result := Param[0].AsInteger
 End;
 
-Function TTypeCast.GetAsBoolean: Boolean;
+function TTypeCastExpr.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
+Begin
+  If Param[0].ExprType = ttString Then
+    Result := StrToInt64( Param[0].AsString )
+ {$IFDEF LEVEL4}
+  Else If Param[0].ExprType = ttWideString Then
+    Result := StrToInt64( Param[0].AsWideString )
+ {$ENDIF}
+  Else If Param[0].ExprType = ttFloat Then
+    Result := Trunc( Param[0].AsFloat )
+  Else
+    Result := Param[0].AsLargeInt;
+end;
+
+Function TTypeCastExpr.GetAsBoolean: Boolean;
 Begin
   Result := Param[0].AsBoolean
 End;
 
-Function TTypeCast.GetExprType: TExprType;
+Function TTypeCastExpr.GetExprType: TExprType;
 Begin
-  Result := Operator
+  Result := OperatorType {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Constructor TTypeCast.Create( aParameterList: TParameterList;
+Constructor TTypeCastExpr.Create( aParameterList: TParameterList;
   aOperator: TExprType );
 Begin
-  Inherited Create( aParameterList );
-  Operator := aOperator
+  Inherited Create('CAST', aParameterList );
+  OperatorType := aOperator {patched by fduenas: Renamed from 'Operator' to OperatorType to prevent excepetion with IDE Editor }
 End;
 
-Function TConditional.Rex: TExpression;
+Function TConditionalExpr.Rex: TExpression;
 Begin
   CheckParameters;
   If Param[0].AsBoolean Then
@@ -1256,14 +2004,15 @@ Begin
     Result := Param[2]
 End;
 
-Procedure TConditional.CheckParameters;
+function TConditionalExpr.CheckParameters: Boolean;
 Begin
-  If Not ( ( ParameterCount = 3 ) And
-    ( Param[0].ExprType = ttBoolean ) ) Then
+ result := ( ( ParameterCount = 3 ) And
+    ( Param[0].ExprType = ttBoolean ) );
+  If Not result Then
     Raise EExpression.Create( 'IF: Invalid parameters' )
 End;
 
-Function TConditional.GetMaxString: String;
+Function TConditionalExpr.GetMaxString: String;
 Begin
   If Length( Param[1].AsString ) > Length( Param[2].AsString ) Then
     Result := Param[1].AsString
@@ -1271,41 +2020,74 @@ Begin
     Result := Param[2].AsString;
 End;
 
-Function TConditional.GetAsString: String;
+{$IFDEF LEVEL4}
+function TConditionalExpr.GetMaxWideString: WideString;
+Begin
+  If Length( Param[1].AsWideString ) > Length( Param[2].AsWideString ) Then
+    Result := Param[1].AsWideString
+  Else
+    Result := Param[2].AsWideString;
+End;
+{$ENDIF}
+
+Function TConditionalExpr.GetAsString: String;
 Begin
   Result := Rex.AsString;
 End;
-
-Function TConditional.GetAsFloat: Double;
+{$IFDEF LEVEL4}
+function TConditionalExpr.GetAsWideString: WideString;
+begin
+  Result := Rex.AsWideString;
+end;
+{$ENDIF}
+Function TConditionalExpr.GetAsFloat: Double;
 Begin
   Result := Rex.AsFloat
 End;
 
-Function TConditional.GetAsInteger: Integer;
+Function TConditionalExpr.GetAsInteger: Integer;
 Begin
   Result := Rex.AsInteger
 End;
 
-Function TConditional.GetAsBoolean: Boolean;
+function TConditionalExpr.GetAsLargeInt: Int64;
+begin
+ result := Rex.AsLargeInt;
+end;
+
+constructor TConditionalExpr.Create(aParameterList: TParameterList);
+begin
+ inherited Create('IF', aParameterList);
+end;
+
+Function TConditionalExpr.GetAsBoolean: Boolean;
 Begin
   Result := Rex.AsBoolean
 End;
 
-Function TConditional.GetExprType: TExprType;
+Function TConditionalExpr.GetExprType: TExprType;
 Begin
   Result := Rex.ExprType
 End;
 
 {TASCIIExpr}
 
-Constructor TASCIIExpr.Create( ParameterList: TParameterList );
+constructor TASCIIExpr.Create(aName: string; ParameterList: TParameterList);
 Begin
-  Inherited Create( ParameterList );
-  If ( ParameterList.Count <> 1 ) Or ( ParameterList.ExprType[0] <> ttString ) Then
+  Inherited Create( aName, ParameterList );
+  If ( ParameterList.Count <> 1 ) Or ( not (ParameterList.ExprType[0] in [ttString{$IFDEF LEVEL4}, ttWideString{$ENDIF}]) ) Then
     Raise EExpression.Create( 'ASCII: Incorrect argument' );
 End;
 
 Function TASCIIExpr.GetAsInteger: Integer;
+Begin
+  If Length( Param[0].AsString ) = 0 Then
+    Result := 0
+  Else
+    Result := Ord( Param[0].AsString[1] );
+End;
+
+function TASCIIExpr.GetAsLargeInt: Int64;
 Begin
   If Length( Param[0].AsString ) = 0 Then
     Result := 0
@@ -1320,19 +2102,44 @@ End;
 
 { TLeftExpr }
 
+constructor TLeftExpr.Create(aName: string; ParameterList: TParameterList);
+begin
+ Inherited Create( aName, ParameterList );
+ If ( ParameterList.Count <> 2 ) Then
+    Raise EExpression.Create( 'LeftStr: Incorrect Number of arguments' );
+ If ( ParameterList.ExprType[1] <> ttInteger ) and
+    ( ParameterList.ExprType[1] <> ttFloat ) then
+    Raise EExpression.Create( 'LeftStr: Incorrect argument[2] type. Must be of type number' );
+end;
+
 Function TLeftExpr.GetMaxString: String;
 Begin
   Result := Copy( Param[0].GetMaxString, 1, Param[1].AsInteger );
 End;
-
+{$IFDEF LEVEL4}
+function TLeftExpr.GetMaxWideString: WideString;
+begin
+ Result := Copy( Param[0].GetMaxWideString, 1, Param[1].AsInteger );
+end;
+{$ENDIF}
 Function TLeftExpr.GetAsString: String;
 Begin
   Result := Copy( Param[0].AsString, 1, Param[1].AsInteger );
 End;
-
+{$IFDEF LEVEL4}
+function TLeftExpr.GetAsWideString: WideString;
+begin
+ Result := Copy( Param[0].AsWideString, 1, Param[1].AsInteger );
+end;
+{$ENDIF}
 Function TLeftExpr.GetExprType: TExprType;
 Begin
-  Result := ttString;
+ {$IFDEF LEVEL4}
+  if Param[0].ExprType=ttWideString then
+     Result := ttWideString
+  else
+ {$ENDIF}
+     Result := ttString;
 End;
 
 Function imax( a, b: integer ): integer;
@@ -1353,6 +2160,16 @@ End;
 
 { TRightExpr }
 
+constructor TRightExpr.Create(aName: string; ParameterList: TParameterList);
+begin
+ Inherited Create( aName, ParameterList );
+ If ( ParameterList.Count <> 2 ) Then
+    Raise EExpression.Create( 'RightStr: Incorrect Number of arguments' );
+ If ( ParameterList.ExprType[1] <> ttInteger ) and
+    ( ParameterList.ExprType[1] <> ttFloat ) then
+    Raise EExpression.Create( 'RightStr: Incorrect argument[2] type. Must be of type number' );
+end;
+
 Function TRightExpr.GetMaxString: String;
 Var
   p: Integer;
@@ -1360,7 +2177,15 @@ Begin
   p := IMax( 1, Length( Param[0].GetMaxString ) - Param[1].AsInteger + 1 );
   Result := Copy( Param[0].GetMaxString, p, Param[1].AsInteger );
 End;
-
+{$IFDEF LEVEL4}
+function TRightExpr.GetMaxWideString: WideString;
+Var
+  p: Integer;
+Begin
+  p := IMax( 1, Length( Param[0].GetMaxWideString ) - Param[1].AsInteger + 1 );
+  Result := Copy( Param[0].GetMaxWideString, p, Param[1].AsInteger );
+End;
+{$ENDIF}
 Function TRightExpr.GetAsString: String;
 Var
   p: Integer;
@@ -1368,10 +2193,23 @@ Begin
   p := IMax( 1, Length( Param[0].AsString ) - Param[1].AsInteger + 1 );
   Result := Copy( Param[0].AsString, p, Param[1].AsInteger );
 End;
-
+{$IFDEF LEVEL4}
+function TRightExpr.GetAsWideString: WideString;
+Var
+  p: Integer;
+Begin
+  p := IMax( 1, Length( Param[0].AsWideString ) - Param[1].AsInteger + 1 );
+  Result := Copy( Param[0].AsWideString, p, Param[1].AsInteger );
+End;
+{$ENDIF}
 Function TRightExpr.GetExprType: TExprType;
 Begin
-  Result := ttString;
+ {$IFDEF LEVEL4}
+  if Param[0].ExprType=ttWideString then
+     Result := ttWideString
+  else
+ {$ENDIF}
+     Result := ttString;
 End;
 
 { TLikeList implementaton}
@@ -1431,7 +2269,7 @@ Var
   Accept: Boolean;
   Found, FoundPerc: Boolean;
 Begin
-  Inherited Create( ParameterList );
+  Inherited Create( 'LIKE', ParameterList );
   LIKEList := TLikeList.Create;
   FIsNotLike := IsNotLike;
   If ( ParameterCount > 2 ) And ( Length( Param[2].AsString ) > 0 ) Then
@@ -1504,7 +2342,7 @@ Begin
           Else
           Begin
             // el texto debe tener en medio work
-            (*With LikeList.Add Do
+            (*With LikeList.Add Do //
             Begin
               LikeText := Work;
               LikePos := lpMiddle;
@@ -1512,7 +2350,7 @@ Begin
                 LikeCode := lcSingle
               Else
                 LikeCode := lcMultiple
-            End;*)
+            End; *)
             with LikeList.Add Do begin
               LikePos := lpMiddle;
               if s[p] = '_' then begin
@@ -1525,7 +2363,7 @@ Begin
             end;
           End;
         End;
-        work := '';
+        work :=  '';
         inc( n );
         if s[p] = '_' then Break; { patched by ccy }
       End
@@ -1554,6 +2392,12 @@ Begin
   End;
 End;
 
+constructor TSQLLikeExpr.Create(aName: String; ParameterList: TParameterList; IsNotLike: Boolean);
+begin
+ Create( ParameterList, IsNotLike );
+ fExprName := aName;
+end;
+
 Destructor TSQLLikeExpr.Destroy;
 Begin
   LIKEList.Free;
@@ -1571,7 +2415,7 @@ Begin
   If ( L1 = 0 ) Or ( L2 = 0 ) Or ( L2 > L1 ) Then Exit;
   If ( Start = 1 ) And ( Pos( '_', Substr ) = 0 ) Then
   Begin
-    Result := Pos( Substr, Str ); // speed up result
+    Result := AnsiPos( Substr, Str ); // speed up result
     If Result > 0 Then
       Inc( Start, Length( Substr ) );
   End Else
@@ -1660,8 +2504,8 @@ Begin
           If Start <= p Then
           Begin
             Start := p;
-//            If Like.LikeCode = lcSingle Then   { patched by ccy }
-//              s1 := '_' + s1;                  { patched by ccy }
+            //If Like.LikeCode = lcSingle Then   { patched by ccy }    {uncommented by fduenas: why was commented}
+            //   s1 := '_' + s1;                  { patched by ccy } {uncommented by fduenas: why was commented}
             Accept := ( SQLPos( Start, s1, s0 ) = p );
             If Accept And ( Like.LikeCode = lcSingle ) And
               ( Length( s1 ) <> Length( s0 ) ) Then
@@ -1697,6 +2541,7 @@ Var
   s: String;
   f: Double;
   i: Integer;
+  li: Int64;
   b: Boolean;
 Begin
   Result := False;
@@ -1709,6 +2554,13 @@ Begin
         s := Param[0].AsString;
         result := ( s >= Param[1].AsString ) And ( s <= Param[2].AsString );
       End;
+   {$IFDEF LEVEL4}
+    ttWideString:
+      Begin
+        s := Param[0].AsWideString;
+        result := ( s >= Param[1].AsWideString ) And ( s <= Param[2].AsWideString );
+      End;
+   {$ENDIF}
     ttFloat:
       Begin
         f := Param[0].AsFloat;
@@ -1718,6 +2570,11 @@ Begin
       Begin
         i := Param[0].AsInteger;
         result := ( i >= Param[1].AsInteger ) And ( i <= Param[2].AsInteger );
+      End;
+    ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+      Begin
+        li := Param[0].AsLargeInt;
+        result := ( li >= Param[1].AsLargeInt ) And ( li <= Param[2].AsLargeInt );
       End;
     ttBoolean:
       Begin
@@ -1746,8 +2603,12 @@ Function TSQLInPredicateExpr.GetAsBoolean: Boolean;
 Var
   t: Integer;
   s: String;
+ {$IFDEF LEVEL4}
+  ws: WideString;
+ {$ENDIF}
   f: Double;
-  i: Integer;
+  i: integer;
+  li: Integer; {added by fduenas: added LargeInt (Int64) support}
   b: Boolean;
 Begin
   Result := False;
@@ -1770,6 +2631,18 @@ Begin
             Break;
           End;
       End;
+   {$IFDEF LEVEL4}
+    ttWideString:
+      Begin
+        ws := Param[0].AsWideString;
+        For t := 1 To ParameterCount - 1 Do
+          If ws = Param[t].AsWideString Then
+          Begin
+            Result := True;
+            Break;
+          End;
+      End;
+   {$ENDIF}
     ttFloat:
       Begin
         f := Param[0].AsFloat;
@@ -1785,6 +2658,16 @@ Begin
         i := Param[0].AsInteger;
         For t := 1 To ParameterCount - 1 Do
           If i = Param[t].AsInteger Then
+          Begin
+            Result := True;
+            Break;
+          End;
+      End;
+    ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+      Begin
+        li := Param[0].AsLargeInt;
+        For t := 1 To ParameterCount - 1 Do
+          If li = Param[t].AsLargeInt Then
           Begin
             Result := True;
             Break;
@@ -1820,14 +2703,15 @@ Begin
   FElseExpr := ElseExpr;
 End;
 
-Procedure TCaseWhenElseExpr.CheckParameters;
+function TCaseWhenElseExpr.CheckParameters: Boolean;
 Var
   I: Integer;
 Begin
   { check that WHEN expression be of type boolean}
+  result := true;
   For I := 0 To ParameterCount - 1 Do
   Begin
-    If Param[I].ExprType <> ttBoolean Then
+    If (Param[I].ExprType <> ttBoolean) Then
       Raise EExpression.Create( SEXPR_WRONGWHENEXPR );
   End;
   { check that all expression in THEN be of same type }
@@ -1896,19 +2780,48 @@ Begin
     Result := FElseExpr.AsInteger;
 End;
 
+function TCaseWhenElseExpr.GetAsLargeInt: Int64; {added by fduenas: added LargeInt (Int64) support}
+Var
+  I: Integer;
+Begin
+  CheckParameters;
+  Result := 0;
+  For I := 0 To ParameterCount Do
+    If Param[I].AsBoolean Then
+    Begin
+      Result := FThenParamList.AsLargeInt[I];
+      Exit;
+    End;
+  If FElseExpr <> Nil Then
+    Result := FElseExpr.AsLargeInt;
+End;
+
 Function TCaseWhenElseExpr.GetMaxString: String;
 var
   I: Integer;
 Begin
   Result:= '';
-  if not (GetExprType = ttString) then Exit;
+  if not (GetExprType in [ttString{$IFDEF LEVEL4}, ttWideString{$ENDIF}]) then Exit;
   For I := 0 To ParameterCount - 1 Do
     if Length( FThenParamList.AsString[I] ) > Length( Result ) then
       Result:= FThenParamList.AsString[I];
   If ( FElseExpr <> Nil ) And ( Length( FElseExpr.AsString ) > Length( Result ) ) then
     Result := FElseExpr.AsString;
 End;
-
+{$IFDEF LEVEL4}
+function TCaseWhenElseExpr.GetMaxWideString: WideString;
+var
+  I: Integer;
+Begin
+  Result:= '';
+  if not (GetExprType in [ttString, ttWideString]) then Exit;
+  For I := 0 To ParameterCount - 1 Do
+    if Length( FThenParamList.AsWideString[I] ) > Length( Result ) then
+      Result:= FThenParamList.AsWideString[I];
+  If ( FElseExpr <> Nil ) And ( Length( FElseExpr.AsWideString ) > Length( Result ) ) then
+    Result := FElseExpr.AsWideString;
+End;
+{$ENDIF}
 Function TCaseWhenElseExpr.GetAsString: String;
 Var
   I: Integer;
@@ -1924,7 +2837,23 @@ Begin
   If FElseExpr <> Nil Then
     Result := FElseExpr.AsString;
 End;
-
+{$IFDEF LEVEL4}
+function TCaseWhenElseExpr.GetAsWideString: WideString;
+Var
+  I: Integer;
+Begin
+  CheckParameters;
+  Result := '';
+  For I := 0 To ParameterCount - 1 Do
+    If Param[I].AsBoolean Then
+    Begin
+      Result := FThenParamList.AsWideString[I];
+      Exit;
+    End;
+  If FElseExpr <> Nil Then
+    Result := FElseExpr.AsWideString;
+End;
+{$ENDIF}
 function TCaseWhenElseExpr.GetExprType: TExprtype;
 Begin
   { the expression type is the type of the first expression }
@@ -1934,12 +2863,12 @@ End;
 {TFormatDateTimeExpr - class implementation}
 Function TFormatDateTimeExpr.GetMaxString: String;
 Begin
-  Result := FormatDateTime( Param[0].GetMaxString, Param[1].AsFloat );
+  Result := FormatDateTime( Param[0].GetMaxString, Param[1].AsFloat{$IFDEF Delphi7Up},fSystemFormatSettings{$ENDIF} );
 End;
 
 Function TFormatDateTimeExpr.GetAsString: String;
 Begin
-  Result := FormatDateTime( Param[0].AsString, Param[1].AsFloat );
+  Result := FormatDateTime( Param[0].AsString, Param[1].AsFloat{$IFDEF Delphi7Up},fSystemFormatSettings{$ENDIF} );
 End;
 
 Function TFormatDateTimeExpr.GetExprType: TExprType;
@@ -1952,12 +2881,12 @@ End;
 
 Function TFormatFloatExpr.GetMaxString: String;
 Begin
-  Result := FormatFloat( Param[0].GetMaxString, Param[1].AsFloat );
+  Result := FormatFloat( Param[0].GetMaxString, Param[1].AsFloat{$IFDEF Delphi7Up},fSystemFormatSettings{$ENDIF} );
 End;
 
 Function TFormatFloatExpr.GetAsString: String;
 Begin
-  Result := FormatFloat( Param[0].AsString, Param[1].AsFloat );
+  Result := FormatFloat( Param[0].AsString, Param[1].AsFloat{$IFDEF Delphi7Up},fSystemFormatSettings{$ENDIF} );
 End;
 
 Function TFormatFloatExpr.GetExprType: TExprType;
@@ -1973,8 +2902,12 @@ Const
 Var
   cnt, n: integer;
   ss: Array[0..MAXARGS] Of String;
+ {$IFDEF LEVEL4}
+  ws: Array[0..MAXARGS] Of WideString;
+ {$ENDIF}
   ea: Array[0..MAXARGS] Of Extended;
   Vars: Array[0..MAXARGS] Of TVarRec;
+  //Args: Array[0..1] Of TVarRec = ('hello');
 Begin
   n := imin( ParameterCount - 1, MAXARGS );
   { first parameter is the format string and the rest are the args}
@@ -1983,9 +2916,88 @@ Begin
     Case Param[cnt].ExprType Of
       ttString:
         Begin
-          Vars[cnt - 1].VType := vtString;
-          ss[cnt - 1] := Param[cnt].AsString;
-          Vars[cnt - 1].VString := @ss[cnt - 1];
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ss[cnt - 1] := Param[cnt].GetMaxString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VString := @ss[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ss[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
+        End;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        Begin
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ws[cnt - 1] := Param[cnt].GetMaxWideString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VString := @ws[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ws[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
+        End;
+     {$ENDIF}
+      ttFloat:
+        Begin
+          Vars[cnt - 1].VType := vtExtended;
+          ea[cnt - 1] := Param[cnt].AsFloat;
+          Vars[cnt - 1].VExtended := @ea[cnt - 1];
+        End;
+      ttInteger:
+        Begin
+          Vars[cnt - 1].VType := vtInteger;
+          Vars[cnt - 1].VInteger := Param[cnt].AsInteger;
+        End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+          Vars[cnt - 1].VType := vtInt64;
+          ea[cnt - 1] := Param[cnt].AsLargeInt;
+          Vars[cnt - 1].VInt64 := @ea[cnt - 1];
+        End;
+      ttBoolean:
+        Begin
+          Vars[cnt - 1].VType := vtBoolean;
+          Vars[cnt - 1].VBoolean := Param[cnt].AsBoolean;
+        End;
+    End;
+  End;
+  result :=  Format( Param[0].AsString,  Vars{$IFDEF Delphi7Up}, fSystemFormatSettings {$ENDIF});
+End;
+{$IFDEF LEVEL4}
+function TFormatExpr.GetMaxWideString: WideString;
+Const
+  MAXARGS = 20; {maximum number of arguments allowed (increase if needed)}
+Var
+  cnt, n: integer;
+  ss: Array[0..MAXARGS] Of String;
+  ws: Array[0..MAXARGS] Of WideString;
+  ea: Array[0..MAXARGS] Of Extended;
+  Vars: Array[0..MAXARGS] Of TVarRec;
+  //Args: Array[0..1] Of TVarRec = ('hello');
+Begin
+  n := imin( ParameterCount - 1, MAXARGS );
+  { first parameter is the format string and the rest are the args}
+  For cnt := 1 To n Do
+  Begin
+    Case Param[cnt].ExprType Of
+      ttString:
+        Begin
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ss[cnt - 1] := Param[cnt].GetMaxString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VString := @ss[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ss[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
+        End;
+      ttWideString:
+        Begin
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ws[cnt - 1] := Param[cnt].GetMaxWideString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VString := @ws[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ws[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
         End;
       ttFloat:
         Begin
@@ -1998,6 +3010,12 @@ Begin
           Vars[cnt - 1].VType := vtInteger;
           Vars[cnt - 1].VInteger := Param[cnt].AsInteger;
         End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+          Vars[cnt - 1].VType := vtInt64;
+          ea[cnt - 1] := Param[cnt].AsLargeInt;
+          Vars[cnt - 1].VInt64 := @ea[cnt - 1];
+        End;
       ttBoolean:
         Begin
           Vars[cnt - 1].VType := vtBoolean;
@@ -2005,18 +3023,23 @@ Begin
         End;
     End;
   End;
-  result := Format( Param[0].GetMaxString, Vars );
+  result :=  WideFormat( Param[0].AsWideString,  Vars{$IFDEF Delphi7Up}, fSystemFormatSettings {$ENDIF} );
 End;
-
+{$ENDIF}
 Function TFormatExpr.GetAsString: String;
 Const
   MAXARGS = 20; {maximum number of arguments allowed (increase if needed)}
 Var
   cnt, n: integer;
   ss: Array[0..MAXARGS] Of String;
+ {$IFDEF LEVEL4}
+  ws: Array[0..MAXARGS] Of WideString;
+ {$ENDIF}
   ea: Array[0..MAXARGS] Of Extended;
   Vars: Array[0..MAXARGS] Of TVarRec;
-  SFS: xqmiscel.TSaveFormatSettings;
+ {$IFNDEF Delphi7Up}
+  SFS: TFormatSettings;
+ {$ENDIF}
 Begin
   n := imin( ParameterCount - 1, MAXARGS );
   { first parameter is the format string and the rest are the args}
@@ -2025,9 +3048,101 @@ Begin
     Case Param[cnt].ExprType Of
       ttString:
         Begin
-          Vars[cnt - 1].VType := vtString;
-          ss[cnt - 1] := Param[cnt].AsString;
-          Vars[cnt - 1].VString := @ss[cnt - 1];
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ss[cnt - 1] := Param[cnt].AsString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VString := @ss[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ss[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
+        End;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        Begin
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ws[cnt - 1] := Param[cnt].AsWideString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VWideString := @ws[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ws[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
+        End;
+     {$ENDIF}
+      ttFloat:
+        Begin
+          Vars[cnt - 1].VType := vtExtended;
+          ea[cnt - 1] := Param[cnt].AsFloat;
+          Vars[cnt - 1].VExtended := @ea[cnt - 1];
+        End;
+      ttInteger:
+        Begin
+          Vars[cnt - 1].VType := vtInteger;
+          Vars[cnt - 1].VInteger := Param[cnt].AsInteger;
+        End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+          Vars[cnt - 1].VType := vtInt64;
+          ea[cnt - 1] := Param[cnt].AsLargeInt;
+          Vars[cnt - 1].VInt64 := @ea[cnt - 1];
+        End;
+      ttBoolean:
+        Begin
+          Vars[cnt - 1].VType := vtBoolean;
+          Vars[cnt - 1].VBoolean := Param[cnt].AsBoolean;
+        End;
+    End;
+  End;
+  try
+  {$IFNDEF Delphi7Up}
+   SaveFormatSettings( SFS );
+   RefreshSystemFormatSettings; {Reset to windows settings}
+  {$ENDIF}
+   result := Format( Param[0].AsString, Vars{$IFDEF Delphi7Up}, fSystemFormatSettings {$ENDIF});
+  finally
+   {$IFNDEF Delphi7Up}
+    RestoreFormatSettings(SFS);
+   {$ENDIF}
+  end;
+End;
+
+{$IFDEF LEVEL4}
+function TFormatExpr.GetAsWideString: WideString;
+Const
+  MAXARGS = 20; {maximum number of arguments allowed (increase if needed)}
+Var
+  cnt, n: integer;
+  ss: Array[0..MAXARGS] Of String;
+  ws: Array[0..MAXARGS] Of WideString;
+  ea: Array[0..MAXARGS] Of Extended;
+  Vars: Array[0..MAXARGS] Of TVarRec;
+ {$IFNDEF Delphi7Up}
+  SFS: TFormatSettings;
+ {$ENDIF}
+Begin
+  n := imin( ParameterCount - 1, MAXARGS );
+  { first parameter is the format string and the rest are the args}
+  For cnt := 1 To n Do
+  Begin
+    Case Param[cnt].ExprType Of
+      ttString:
+        Begin
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ss[cnt - 1] := Param[cnt].AsString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VString := @ss[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ss[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
+        End;
+      ttWideString:
+        Begin
+          Vars[cnt - 1].VType := {$if RtlVersion <= 18.5} vtString {$else} vtPWideChar {$ifend} ; {patched by fduenas for Unicode enabling}
+          ws[cnt - 1] := Param[cnt].AsWideString; {patched by fduenas changed frpm AsString to GetMaxString to prevent data truncation}
+          {$if RtlVersion <= 18.5}
+           Vars[cnt - 1].VWideString := @ws[cnt - 1]; {patched by fduenas for Unicode enabling}
+          {$else}
+           Vars[cnt - 1].VPWideChar := PWideChar( ws[cnt - 1] ); {patched by fduenas for Unicode enabling}
+          {$ifend}
         End;
       ttFloat:
         Begin
@@ -2040,6 +3155,12 @@ Begin
           Vars[cnt - 1].VType := vtInteger;
           Vars[cnt - 1].VInteger := Param[cnt].AsInteger;
         End;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        Begin
+          Vars[cnt - 1].VType := vtInt64;
+          ea[cnt - 1] := Param[cnt].AsLargeInt;
+          Vars[cnt - 1].VInt64 := @ea[cnt - 1];
+        End;
       ttBoolean:
         Begin
           Vars[cnt - 1].VType := vtBoolean;
@@ -2047,14 +3168,19 @@ Begin
         End;
     End;
   End;
-  SFS := SaveFormatSettings;
   try
-    SysUtils.GetFormatSettings; {Reset to windows settings}
-    result := Format( Param[0].AsString, Vars );
+  {$IFNDEF Delphi7Up}
+   SaveFormatSettings( SFS );
+   RefreshSystemFormatSettings; {Reset to windows settings}
+  {$ENDIF}
+   result := WideFormat( Param[0].AsString, Vars{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} );
   finally
+   {$IFNDEF Delphi7Up}
     RestoreFormatSettings(SFS);
+   {$ENDIF}
   end;
 End;
+{$ENDIF}
 
 Function TFormatExpr.GetExprType: TExprType;
 Begin
@@ -2063,10 +3189,10 @@ End;
 
 // TDecodeDateTimeExpr implementation
 
-Constructor TDecodeDateTimeExpr.Create( ParameterList: TParameterList;
+Constructor TDecodeDateTimeExpr.Create( aName: string; ParameterList: TParameterList;
   DecodeKind: TDecodeKind );
 Begin
-  Inherited Create( ParameterList );
+  Inherited Create( aName, ParameterList );
   FDecodeKind := DecodeKind;
 End;
 
@@ -2097,6 +3223,11 @@ Begin
   End;
 End;
 
+function TDecodeDateTimeExpr.GetAsLargeInt: Int64;
+begin
+ result := GetAsInteger;
+end;
+
 { TDecodeExpr
   DECODE('abc', 'a', 1,
                 'b', 2,
@@ -2105,9 +3236,9 @@ End;
                 -1 )
  }
 
-Constructor TDecodeExpr.Create( ParameterList: TParameterList );
+constructor TDecodeExpr.Create(aName: string; ParameterList: TParameterList);
 Begin
-  Inherited Create( ParameterList );
+  Inherited Create( aName, ParameterList );
   { check for valid expressions }
   If ( ParameterList = Nil ) Or ( ( ParameterList.Count Mod 2 ) <> 0 ) Then
     Raise EExpression.Create( 'DECODE: Incorrect number of arguments' );
@@ -2126,12 +3257,20 @@ Begin
     Case Param[0].ExprType Of
       ttString:
         If Param[0].AsString = Param[I].AsString Then
-          Found := true;
+           Found := true;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        If Param[0].AsWideString = Param[I].AsWideString Then
+           Found := true;
+     {$ENDIF}
       ttFloat:
         If Param[0].AsFloat = Param[I].AsFloat Then
           Found := true;
       ttInteger:
         If Param[0].AsInteger = Param[I].AsInteger Then
+          Found := true;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        If Param[0].AsLargeInt = Param[I].AsLargeInt Then
           Found := true;
       ttBoolean:
         If Param[0].AsBoolean = Param[I].AsBoolean Then
@@ -2162,11 +3301,19 @@ Begin
       ttString:
         If Param[0].AsString = Param[I].AsString Then
           Found := true;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        If Param[0].AsWideString = Param[I].AsWideString Then
+          Found := true;
+     {$ENDIF}
       ttFloat:
         If Param[0].AsFloat = Param[I].AsFloat Then
           Found := true;
       ttInteger:
         If Param[0].AsInteger = Param[I].AsInteger Then
+          Found := true;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        If Param[0].AsLargeInt = Param[I].AsLargeInt Then
           Found := true;
       ttBoolean:
         If Param[0].AsBoolean = Param[I].AsBoolean Then
@@ -2197,12 +3344,20 @@ Begin
       ttString:
         If Param[0].AsString = Param[I].AsString Then
           Found := true;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        If Param[0].AsWideString = Param[I].AsWideString Then
+          Found := true;
+     {$ENDIF}
       ttFloat:
         If Param[0].AsFloat = Param[I].AsFloat Then
           Found := true;
       ttInteger:
         If Param[0].AsInteger = Param[I].AsInteger Then
-          Found := true;
+           Found := true;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        If Param[0].AsLargeInt = Param[I].AsLargeInt Then
+           Found := true;
       ttBoolean:
         If Param[0].AsBoolean = Param[I].AsBoolean Then
           Found := true;
@@ -2216,6 +3371,49 @@ Begin
   End;
   If Not found Then
     Result := Param[ParameterCount - 1].AsInteger;
+End;
+
+function TDecodeExpr.GetAsLargeInt: Int64;
+Var
+  I: Integer;
+  Found: Boolean;
+Begin
+  Result := 0;
+  Found := false;
+  I := 1;
+  While I < ParameterCount - 1 Do
+  Begin
+    Case Param[0].ExprType Of
+      ttString:
+        If Param[0].AsString = Param[I].AsString Then
+          Found := true;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        If Param[0].AsWideString = Param[I].AsWideString Then
+          Found := true;
+     {$ENDIF}
+      ttFloat:
+        If Param[0].AsFloat = Param[I].AsFloat Then
+          Found := true;
+      ttInteger:
+        If Param[0].AsInteger = Param[I].AsInteger Then
+           Found := true;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        If Param[0].AsLargeInt = Param[I].AsLargeInt Then
+           Found := true;
+      ttBoolean:
+        If Param[0].AsBoolean = Param[I].AsBoolean Then
+          Found := true;
+    End;
+    If found Then
+    Begin
+      Result := Param[I + 1].AsLargeInt;
+      break;
+    End;
+    Inc( I, 2 );
+  End;
+  If Not found Then
+    Result := Param[ParameterCount - 1].AsLargeInt;
 End;
 
 Function TDecodeExpr.GetMaxString: String;
@@ -2236,7 +3434,26 @@ Begin
   End;
   Result := Param[L].AsString;
 End;
-
+{$IFDEF LEVEL4}
+function TDecodeExpr.GetMaxWideString: WideString;
+var
+  I, L, MaxL: Integer;
+Begin
+  L := 2;
+  MaxL := Length( Param[L].AsWideString );
+  I := 2;
+  While I <= ParameterCount - 1 Do
+  Begin
+    If Length( Param[I].AsWideString ) > MaxL Then
+    Begin
+      L := I;
+      MaxL := Length( Param[I].AsWideString );
+    End;
+    Inc( I, 2 );
+  End;
+  Result := Param[L].AsWideString;
+End;
+{$ENDIF}
 Function TDecodeExpr.GetAsString: String;
 Var
   I: Integer;
@@ -2250,11 +3467,19 @@ Begin
       ttString:
         If Param[0].AsString = Param[I].AsString Then
           Found := true;
+     {$IFDEF LEVEL4}
+      ttWideString:
+        If Param[0].AsWideString = Param[I].AsWideString Then
+          Found := true;
+     {$ENDIF}
       ttFloat:
         If Param[0].AsFloat = Param[I].AsFloat Then
           Found := true;
       ttInteger:
         If Param[0].AsInteger = Param[I].AsInteger Then
+          Found := true;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        If Param[0].AsLargeInt = Param[I].AsLargeInt Then
           Found := true;
       ttBoolean:
         If Param[0].AsBoolean = Param[I].AsBoolean Then
@@ -2270,7 +3495,47 @@ Begin
   If Not found Then
     Result := Param[ParameterCount - 1].AsString;
 End;
-
+{$IFDEF LEVEL4}
+function TDecodeExpr.GetAsWideString: WideString;
+Var
+  I: Integer;
+  Found: Boolean;
+Begin
+  Found := False;
+  I := 1;
+  While I < ParameterCount - 1 Do
+  Begin
+    Case Param[0].ExprType Of
+      ttString:
+        If Param[0].AsString = Param[I].AsString Then
+          Found := true;
+      ttWideString:
+        If Param[0].AsWideString = Param[I].AsWideString Then
+          Found := true;
+      ttFloat:
+        If Param[0].AsFloat = Param[I].AsFloat Then
+          Found := true;
+      ttInteger:
+        If Param[0].AsInteger = Param[I].AsInteger Then
+          Found := true;
+      ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
+        If Param[0].AsLargeInt = Param[I].AsLargeInt Then
+          Found := true;
+      ttBoolean:
+        If Param[0].AsBoolean = Param[I].AsBoolean Then
+          Found := true;
+    End;
+    If found Then
+    Begin
+      Result := Param[I + 1].AsWideString;
+      break;
+    End;
+    Inc( I, 2 );
+  End;
+  If Not found Then
+    Result := Param[ParameterCount - 1].AsWideString;
+End;
+{$ENDIF}
 function TDecodeExpr.GetExprType: TExprtype;
 Begin
   Result := Param[2].ExprType;
@@ -2278,9 +3543,9 @@ End;
 
 { MINOF, MAXOF functions support}
 
-Constructor TMinMaxOfExpr.Create( ParameterList: TParameterList; IsMin: Boolean );
+Constructor TMinMaxOfExpr.Create( aName: string; ParameterList: TParameterList; IsMin: Boolean );
 Begin
-  Inherited Create( ParameterList );
+  Inherited Create( aName, ParameterList );
   { check for valid expressions }
   If ( ParameterList = Nil ) Or ( ParameterList.Count < 1 ) Then
     Raise EExpression.Create( 'MINOF, MAXOF: Incorrect number of arguments' );

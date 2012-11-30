@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is HalcnQry.pas                                      }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: HalcnQry.pas                                        }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 Unit HalcnQry;
 
@@ -658,7 +662,7 @@ Begin
             FieldDec := 0;
           End;
       End;
-      FieldList.Add( format( '%s;%s;%d;%d', [FieldName, FieldType, FieldSize, FieldDec] ) );
+      FieldList.Add( format( '%s;%s;%d;%d', [FieldName, FieldType, FieldSize, FieldDec]{$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF} ) );
     End;
     gs6_shel.CreateDBF( FileName, '', FType, FieldList );
     Halc := THalcyonDataSet.Create( Nil );
@@ -846,13 +850,20 @@ Begin
             FieldSize := 10;
             FieldDec := 0;
           End;
-        ftAutoInc, ftSmallInt, ftInteger, ftWord
-{$IFNDEF LEVEL3}, ftLargeInt{$ENDIF}:
+        ftAutoInc, ftSmallInt, ftInteger, ftWord:
           Begin
             FieldType := 'N';
             FieldSize := 11; // configure this also to your needs
             FieldDec := 0;
           End;
+     {$IFDEF LEVEL4}
+        ftLargeInt:
+          Begin
+            FieldType := 'N';
+            FieldSize := 15; // configure this also to your needs
+            FieldDec := 0;
+          End;
+     {$ENDIF}
         ftBoolean:
           Begin
             FieldType := 'L';
@@ -860,7 +871,7 @@ Begin
             FieldDec := 0;
           End;
       End;
-      FieldList.Add( format( '%s;%s;%d;%d', [FieldName, FieldType, FieldSize, FieldDec] ) );
+      FieldList.Add( format( '%s;%s;%d;%d', [FieldName, FieldType, FieldSize, FieldDec]{$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF} ) );
     End;
     gs6_shel.CreateDBF( FileName, '', FoxPro2, FieldList ); // change FoxPro2 to your choice
     Halc.Open;
@@ -975,7 +986,7 @@ Begin
       For I := Ps + 1 To Length( Filter ) Do
         If Filter[I] = ')' Then
         Begin
-          Dt := StrToFloat( Copy( Filter, Ps + 10, I - ( Ps + 10 ) ) );
+          Dt := StrToFloat( Copy( Filter, Ps + 10, I - ( Ps + 10 ) ) {$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF});
           ReplaceString( Filter, Copy( Filter, Ps, ( I - Ps ) + 1 ), '{' + DateToStr( Dt ) + '}' );
           Break;
         End;

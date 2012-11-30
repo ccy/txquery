@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is SyntaxHi.pas                                      }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: SyntaxHi.pas                                        }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 Unit SyntaxHi;
 
@@ -35,7 +39,7 @@ Interface
 
 {$I XQ_FLAG.INC}
 Uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  Windows, Messages, Classes, Graphics, Controls, Forms, Dialogs,
   xqlex, xqyacc, StdCtrls, Inifiles, ComCtrls, Buttons, RichEdit, xquery;
 
 Type
@@ -144,7 +148,7 @@ Uses
 {$IFNDEF BCB}
   , ColorSet
 {$ENDIF}
-  ;
+  , QLEXLIB, SysUtils, QFormatSettings;
 
 Const
   _TABLE = 1000;
@@ -253,24 +257,31 @@ Var
   DataSet: TDataSet;
   Field: TField;
   ayytext : string;
-
+  SFS: TFormatSettings;
   Procedure strToRichEdit( Const S: String );
   Var
-    aMem: TMemoryStream;
+    //aMem: TMemoryStream;  {commented by fduenas}
+    aMem: TStringStream;  {changed by fduenas}
     SelStart: Integer;
   Begin
-    aMem := TMemoryStream.Create;
+    //aMem := TMemoryStream.Create; {commented by fduenas}
+    aMem := TStringStream.Create( s ); {patched by fduenas} //This avoids casting the var 'S' to AnsiString
     FChanging := True;
     SelStart := 0; //Basri
     Try
-      aMem.Write( Pointer( S )^, Length( S ) );
+      //aMem.Write( Pointer( S )^, Length( S ) );
+      //aMem.Write( Pointer( AnsiString(S) )^, Length( AnsiString(S) )  ); {commented by fduenas}
       aMem.Position := 0;
       If FEditor.Focused Then
         SelStart := FEditor.SelStart;
       //LockWindowUpdate( FEditor.Handle );
+      fEditor.OnChange := nil;
+       FEditor.OnSelectionChange := nil;
       FEditor.Lines.BeginUpdate;
-      FEditor.Lines.LoadFromStream( aMem );    
+      FEditor.Lines.LoadFromStream( aMem );
       FEditor.Lines.EndUpdate;
+      feditor.OnChange := MyOnChange;
+      FEditor.OnSelectionChange := MyOnSelectionChange;
       If FEditor.Focused Then
         FEditor.SelStart := SelStart;
       //LockWindowUpdate( 0 );
@@ -290,6 +301,8 @@ Var
   End;
 
 Begin
+  Reslt := '';
+  RtfHeader := '';
 {$IFDEF XQDEMO}
   If Not IsDelphiRunning Then
   Begin
@@ -299,9 +312,11 @@ Begin
 {$ENDIF}
   If Not Assigned( FEditor ) Or ( csDestroying In ComponentState ) Then
     Exit;
+  InitializeFormatSettings( SFS );
   s := FEditor.Text + ' ';
-  inputStream := TMemoryStream.create;
-  inputStream.WriteBuffer( Pointer( s )^, Length( s ) );
+  inputStream := TMemoryStream.Create;
+  //inputStream.WriteBuffer( Pointer( S )^, Length( S ) ); {commented by fduenas}
+  inputStream.WriteBuffer( Pointer( S )^, Length( S )*SizeOf(Char) ); {patched by fduenas}
   inputStream.Seek( 0, 0 );
   outputStream := TMemoryStream.create;
   errorStream := TMemoryStream.create;
@@ -310,12 +325,31 @@ Begin
   lexer.yyoutput := outputStream;
   lexer.yyerrorfile := errorStream;
   If Assigned( FXQuery ) Then
-    ( lexer As TXQlexer ).DateFormat := FXQuery.DateFormat
+  begin
+   ( lexer As TXQlexer ).DateFormat := FXQuery.DateFormat;
+   ( lexer As TXQlexer ).yyRuntimeFormatSettings := FXQuery.RunTimeFormatSettings;
+   ( lexer As TXQlexer ).yySystemFormatSettings  := FXQuery.SystemFormatSettings;
+  end
   Else
-    ( lexer As TXQlexer ).DateFormat := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;//SDefaultDateFormat;
+  begin
+   if SFmtDefaultShortDateFormat<>'' then
+      SFS.ShortDateFormat :=SFmtDefaultShortDateFormat;
+   ( lexer As TXQlexer ).yySystemFormatSettings := SFS;
+   SFS.ThousandSeparator := SFmtDefaultThousandSeparator[1];
+   SFS.DecimalSeparator := SFmtDefaultDecimalSeparator[1];
+   SFS.ThousandSeparator := SFmtDefaultThousandSeparator[1];
+   SFS.DateSeparator := SFmtDefaultDateSeparator[1];
+   ( lexer As TXQlexer ).DateFormat := SFS.ShortDateFormat;
+   ( lexer As TXQlexer ).yyRuntimeFormatSettings := SFS;
+  end;
+
+  ( lexer As TXQlexer ).yyRuntimeFormatSettings.ShortDateFormat :=
+   ( lexer As TXQlexer ).DateFormat;
+
+  RestoreFormatSettings( ( lexer As TXQlexer ).yyRuntimeFormatSettings );
 
   RtfHeader :=
-    '{\rtf1\ansi\deff0\deftab720' +
+    '{\rtf1\utf-8\deff0\deftab720' +
     '{\fonttbl' +
     //format('{\f0\\fcharset0\fprq2\f%s %s;}}',[FFontFamily,FEditor.Font.Name])+
   '{\f0\fswiss Arial;}' +
@@ -338,7 +372,7 @@ Begin
     Repeat
       Try
         Lexer.IgnoreBadDates := True;
-        yychar := Lexer.yylex;
+        yychar := Lexer.yylexinternal;
       Except
         { ignore syntax errors }
       End;
@@ -364,7 +398,7 @@ Begin
         Begin
           For I := 0 To TCustomXQueryClass( FxQuery ).DataSets.Count - 1 Do
           Begin
-            If AnsiCompareText( TCustomXQueryClass( FxQuery ).DataSets[I].Alias, atext ) = 0 Then
+            If AnsiCompareText( TCustomXQueryClass( FxQuery ).DataSets[I].Alias, atext ) = 0 Then {patched by fduenas: changed from  Ansi to Unicode}
             Begin
               yychar := _TABLE;
               Break;
@@ -431,6 +465,7 @@ Begin
     inputStream.free;
     outputStream.free;
     errorStream.free;
+    RestoreFormatSettings( SFS );
   End;
 End;
 

@@ -1,33 +1,37 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is XQMiscel.pas                                      }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: XQMiscel.pas                                        }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
 Unit XQMiscel;
 
@@ -36,43 +40,13 @@ Interface
 
 Uses
   SysUtils, Windows, Messages, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, IniFiles, ExtCtrls, DB, Qbaseexpr
+  StdCtrls, IniFiles, ExtCtrls, DB, Qbaseexpr, QFormatSettings
 {$IFDEF LEVEL6}
   , Variants
 {$ENDIF}
   ;
 
 Type
-{$IFNDEF LEVEL7}                                  // Nonn ...
-  { from SysUtils }
-  TFormatSettings = record
-    CurrencyFormat: Byte;
-    NegCurrFormat: Byte;
-    ThousandSeparator: Char;
-    DecimalSeparator: Char;
-    CurrencyDecimals: Byte;
-    DateSeparator: Char;
-    TimeSeparator: Char;
-    ListSeparator: Char;
-    CurrencyString: string;
-    ShortDateFormat: string;
-    LongDateFormat: string;
-    TimeAMString: string;
-    TimePMString: string;               
-    ShortTimeFormat: string;
-    LongTimeFormat: string;
-    ShortMonthNames: array[1..12] of string;
-    LongMonthNames: array[1..12] of string;
-    ShortDayNames: array[1..7] of string;
-    LongDayNames: array[1..7] of string;
-    TwoDigitYearCenturyWindow: Word;
-  end;
-{$ENDIF}
-
-  TSaveFormatSettings = record
-    FS: TFormatSettings;
-    SL: TSysLocale;                               // ...Nonn
-  end;
 
   {Buffered read/write class - used for fast sequencial reads/writes}
   PCharArray = ^TCharArray;
@@ -121,18 +95,18 @@ Type
   Function AddSlash( Const Path: String ): String;
   Function RemoveSlash( Const Path: String ): String;
   Function Field2Exprtype( Datatype: TFieldtype ): TExprtype;
+  Function SizeOfExprType( ExprType: TExprtype ): Integer;
+  Function SizeOfFieldType( FieldType: TFieldtype ): Integer;
   Function RemoveStrDelim( Const S: String ): String;
   Function CountChars( const s: string; Ch: Char ): Integer;
   Function VarMin( const Value1, Value2: Variant): Variant;
   Function VarMax( const Value1, Value2: Variant): Variant;
-  Function SaveFormatSettings: TSaveFormatSettings;             // Nonn
-  Procedure RestoreFormatSettings(aSFS: TSaveFormatSettings);   // Nonn
   Function AddCorrectStrDelim(Const S: String) : String;
 
 Implementation
 
 Uses
-  xqbase, xquery, xqconsts, qexprlex, CnvStrUtils;
+  xqbase, xquery, xqconsts, qexprlex, CnvStrUtils, xqtypes;
 
 Function VarMin( const Value1, Value2: Variant): Variant;
 Begin
@@ -154,16 +128,87 @@ Begin
     Result := ttString
   Else
     Case Datatype Of
-      ftString{$IFDEF LEVEL4}, ftFixedChar, ftWideString{$ENDIF}{$IFDEF LEVEL5}, ftGUID{$ENDIF}:
+      ftString{$IFDEF LEVEL4}, ftFixedChar{$ENDIF}{$IFDEF LEVEL5}, ftGUID{$ENDIF}:
         Result := ttString;
+      {$IFDEF LEVEL4}
+      ftWideString, ftFixedWideChar (*$IFDEF Delphi2006Up*), ftWideMemo(*$ENDIF*):
+        Result := ttWideString;
+      {$ENDIF}
       ftFloat, ftCurrency, ftBCD, {$IFDEF LEVEL6}ftFMTBcd, {$ENDIF}ftDate, ftTime, ftDateTime:
         Result := ttFloat;
-      ftAutoInc, ftSmallInt, ftInteger, ftWord
-{$IFNDEF LEVEL3}, ftLargeInt{$ENDIF}:
+      ftAutoInc, ftSmallInt, ftInteger, {$IFDEF Delphi2009Up}ftShortint, {$ENDIF} ftWord: {added by fduenas: ftShortInt}
         Result := ttInteger;
+{$IFDEF LEVEL4}
+      ftLargeInt: Result := ttLargeInt;
+{$ENDIF}
       ftBoolean:
         Result := ttBoolean;
     End;
+End;
+
+Function SizeOfExprType( ExprType: TExprtype ):Integer ;
+begin
+ Result := SizeOf(Char);
+   Case ExprType Of
+    ttString: Result := SizeOf(AnsiChar);
+    {$IFDEF LEVEL4}
+    ttWideString: Result := SizeOf(WideChar);
+    {$ENDIF}
+    ttFloat: Result := SizeOf(Double);
+    ttLargeInt: Result := SizeOf(Int64);
+    ttInteger: Result := SizeOf(Integer);
+   End;
+end;
+
+Function SizeOfFieldType( FieldType: TFieldType ):Integer ;
+Begin
+  Case FieldType Of
+{$IFDEF LEVEL4}
+    ftFixedChar,
+{$ENDIF}
+    ftString:
+      Result := SizeOf(AnsiChar); { patched by fduenas }
+    // this fixes some Float field values displayed wrongly
+   {$IFDEF LEVEL4}
+    ftWideString, ftFixedWideChar:
+        Result := SizeOf(WideChar); { patched by fduenas }
+   {$ENDIF}
+    ftSmallInt:
+      Result := SizeOf(SmallInt);
+   {$IFDEF Delphi2009Up}
+    ftShortInt:
+      Result := SizeOf(ShortInt);
+   {$ENDIF}
+    ftInteger:
+      Result := SizeOf(Integer);
+{$IFDEF LEVEL4}
+    ftLargeint:
+      Result := SizeOf(Int64);
+{$ENDIF}
+    ftWord:
+      Result := SizeOf(Word);
+    ftBoolean:
+      Result := SizeOf(WordBool);
+    ftFloat:
+      Result := SizeOf(Double);
+    ftCurrency:
+      Result := SizeOf(Double);
+    ftDate:
+      Result := SizeOf(TDateTimeRec);
+    ftTime:
+      Result := SizeOf(TDateTimeRec);
+    ftDateTime:
+      Result := SizeOf(TDateTimeRec);
+    ftAutoInc:
+      Result := SizeOf(Integer);
+    ftBlob, ftMemo, ftGraphic, ftFmtMemo, ftParadoxOle, ftDBaseOle, {$IFDEF Delphi2009Up}ftStream, {$ENDIF}
+      ftTypedBinary, ftBytes, ftVarBytes {$IFDEF Delphi2006Up}, ftWideMemo  {$ENDIF}:
+      Result := SizeOf(Pointer);
+    ftBCD{$IFDEF LEVEL6}, ftFMTBcd {$ENDIF}:
+      Result := 34;
+  Else
+    Result := 0;
+  End;
 End;
 
 {
@@ -177,16 +222,21 @@ begin
   Move(S2[1], S1[1], N);
 end; }
 
-Procedure FreeObject( Var Obj );
-Begin
-  TObject( Obj ).Free;
-  Pointer( Obj ) := Nil;
-End;
+Procedure FreeObject( Var Obj ); {patched by fduenas: Make FreeObject Work as Standard FreeAndNil}
+var
+  Temp: TObject;
+begin
+  Temp := TObject(Obj);
+  Pointer(Obj) := nil;
+  if assigned(Temp) then
+     Temp.Free;
+end;
 
 Procedure ReplaceString( Var Work: String; Const Old, NNew: String );
 Var
   OldLen, p: Integer;
 Begin
+
   If AnsiCompareText( Old, NNew ) = 0 Then Exit;
   OldLen := Length( Old );
   p := AnsiPos( UpperCase(Old), UpperCase(Work) );
@@ -203,6 +253,7 @@ Begin
   result := Trim( s );
   ReplaceString( result, #13, '' );
   ReplaceString( result, #10, '' );
+  ReplaceString( result, #11, '' ); {added by fduenas}
 End;
 
 Function MessageToUser( Const Msg: String; Atype: TMsgDlgtype ): Word;
@@ -245,7 +296,7 @@ End;
 Function RemoveStrDelim( Const S: String ): String;
 Begin
   If ( Length( S ) >= 2 ) And
-    CharInSet( S[1], xqbase.SQuote ) And CharInSet( S[Length( S )], xqbase.SQuote ) Then
+    CharInSet( S[1], xqtypes.SQuote ) And CharInSet( S[Length( S )], xqtypes.SQuote ) Then
     Result := Copy( S, 2, Length( S ) - 2 )
   Else
     Result := S;
@@ -596,87 +647,7 @@ Begin
     Result:= AddSquareBrackets(Ident);
 End;
 
-{ saves the formatsettings from SysUtils }
-Function SaveFormatSettings: TSaveFormatSettings;         // Nonn ...
-Var
-  SFS: TSaveFormatSettings;
-  I: Integer;
-Begin
-  SFS.FS.CurrencyFormat        := {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyFormat;
-  SFS.FS.NegCurrFormat         := {$if RTLVersion >= 23}FormatSettings.{$ifend}NegCurrFormat;
-  SFS.FS.ThousandSeparator     := {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator;
-  SFS.FS.DecimalSeparator      := {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator;
-  SFS.FS.CurrencyDecimals      := {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyDecimals;
-  SFS.FS.DateSeparator         := {$if RTLVersion >= 23}FormatSettings.{$ifend}DateSeparator;
-  SFS.FS.TimeSeparator         := {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeSeparator;
-  SFS.FS.ListSeparator         := {$if RTLVersion >= 23}FormatSettings.{$ifend}ListSeparator;
-  SFS.FS.CurrencyString        := {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyString;
-  SFS.FS.ShortDateFormat       := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat;
-  SFS.FS.LongDateFormat        := {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDateFormat;
-  SFS.FS.TimeAMString          := {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeAMString;
-  SFS.FS.TimePMString          := {$if RTLVersion >= 23}FormatSettings.{$ifend}TimePMString;
-  SFS.FS.ShortTimeFormat       := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortTimeFormat;
-  SFS.FS.LongTimeFormat        := {$if RTLVersion >= 23}FormatSettings.{$ifend}LongTimeFormat;
-
-  For I := 1 To 12 Do
-    SFS.FS.ShortMonthNames[I] := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortMonthNames[I];
-  For I := 1 To 12 Do
-    SFS.FS.LongMonthNames[I] := {$if RTLVersion >= 23}FormatSettings.{$ifend}LongMonthNames[I];
-  For I := 1 To 7 Do
-    SFS.FS.ShortDayNames[I] := {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDayNames[I];
-  For I := 1 To 7 Do
-    SFS.FS.LongDayNames[I] :=  {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDayNames[I];
-
-  SFS.FS.TwoDigitYearCenturyWindow := {$if RTLVersion >= 23}FormatSettings.{$ifend}TwoDigitYearCenturyWindow;
-
-  SFS.SL.DefaultLCID := SysLocale.DefaultLCID;
-  SFS.SL.PriLangID   := SysLocale.PriLangID;
-  SFS.SL.SubLangID   := SysLocale.SubLangID;
-  SFS.SL.FarEast     := SysLocale.FarEast;
-  SFS.SL.MiddleEast  := SysLocale.MiddleEast;
-
-  Result := SFS;
-End;
-
-{ restores the formatsettings in SysUtils }
-Procedure RestoreFormatSettings(aSFS: TSaveFormatSettings);
-Var
-  I: Integer;
-Begin
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyFormat        := aSFS.FS.CurrencyFormat;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}NegCurrFormat         := aSFS.FS.NegCurrFormat;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}ThousandSeparator     := aSFS.FS.ThousandSeparator;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}DecimalSeparator      := aSFS.FS.DecimalSeparator;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyDecimals      := aSFS.FS.CurrencyDecimals;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}DateSeparator         := aSFS.FS.DateSeparator;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeSeparator         := aSFS.FS.TimeSeparator;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}ListSeparator         := aSFS.FS.ListSeparator;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}CurrencyString        := aSFS.FS.CurrencyString;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDateFormat       := aSFS.FS.ShortDateFormat;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDateFormat        := aSFS.FS.LongDateFormat;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}TimeAMString          := aSFS.FS.TimeAMString;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}TimePMString          := aSFS.FS.TimePMString;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortTimeFormat       := aSFS.FS.ShortTimeFormat;
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}LongTimeFormat        := aSFS.FS.LongTimeFormat;
-
-  For I := 1 To 12 Do
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortMonthNames[I] := aSFS.FS.ShortMonthNames[I];
-  For I := 1 To 12 Do
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}LongMonthNames[I] := aSFS.FS.LongMonthNames[I];
-  For I := 1 To 7 Do
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}ShortDayNames[I] := aSFS.FS.ShortDayNames[I];
-  For I := 1 To 7 Do
-    {$if RTLVersion >= 23}FormatSettings.{$ifend}LongDayNames[I] :=  aSFS.FS.LongDayNames[I];
-
-  {$if RTLVersion >= 23}FormatSettings.{$ifend}TwoDigitYearCenturyWindow := aSFS.FS.TwoDigitYearCenturyWindow;
-
-  SysLocale.DefaultLCID := aSFS.SL.DefaultLCID;
-  SysLocale.PriLangID   := aSFS.SL.PriLangID;
-  SysLocale.SubLangID   := aSFS.SL.SubLangID;
-  SysLocale.FarEast     := aSFS.SL.FarEast;
-  SysLocale.MiddleEast  := aSFS.SL.MiddleEast;
-End;                                                              // ...Nonn
-
 Initialization
 
 End.
+

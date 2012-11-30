@@ -11,19 +11,19 @@ object frmColorSettings: TfrmColorSettings
   Position = poScreenCenter
   OnDestroy = FormDestroy
   PixelsPerInch = 96
-  TextHeight = 13
+  TextHeight = 16
   object Label1: TLabel
     Left = 8
     Top = 8
-    Width = 45
-    Height = 13
+    Width = 55
+    Height = 16
     Caption = '&Element :'
   end
   object Label2: TLabel
     Left = 172
     Top = 8
-    Width = 32
-    Height = 13
+    Width = 39
+    Height = 16
     Caption = '&Color :'
   end
   object OKBtn: TButton
@@ -52,7 +52,7 @@ object frmColorSettings: TfrmColorSettings
     Top = 28
     Width = 153
     Height = 129
-    ItemHeight = 13
+    ItemHeight = 16
     Items.Strings = (
       'Whitespace'
       'Comment'

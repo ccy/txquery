@@ -1,65 +1,76 @@
-{**************************************************************************}
-{   TxQuery DataSet                                                        }
-{                                                                          }
-{   The contents of this file are subject to the Mozilla Public License    }
-{   Version 1.1 (the "License"); you may not use this file except in       }
-{   compliance with the License. You may obtain a copy of the License at   }
-{   http://www.mozilla.org/MPL/                                            }
-{                                                                          }
-{   Software distributed under the License is distributed on an "AS IS"    }
-{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the}
-{   License for the specific language governing rights and limitations     }
-{   under the License.                                                     }
-{                                                                          }
-{   The Original Code is xqbase.pas                                        }
-{                                                                          }
-{   The Initial Developer of the Original Code is Alfonso Moreno.          }
-{   Portions created by Alfonso Moreno are Copyright (C) Alfonso Moreno.   }
-{   All Rights Reserved.                                                   }
-{                                                                          }
-{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                            }
-{   email: luisarvayo@yahoo.com                                            }
-{     url: http://www.ezsoft.com                                           }
-{          http://www.sigmap.com/txquery.htm                               }
-{                                                                          }
-{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>          }
-{                   Sherlyn CHEW (Malaysia)                                }
-{              url: http://code.google.com/p/txquery/                      }
-{                   http://groups.google.com/group/txquery                 }
-{                                                                          }
-{**************************************************************************}
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: xqbase.pas                                          }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
 
-Unit xqbase;
+Unit XQBase;
 
 {$I XQ_FLAG.INC}
 Interface
 
 Uses
-  SysUtils, Windows, Classes, Dialogs, Db,
-  xqmiscel, SparsArr, Qbaseexpr, QExprYacc
+  Windows, Classes, Dialogs, Db, SysUtils,
+  xqmiscel, Sparsarr, Qbaseexpr, QExprYacc
 {$IFDEF WITHBDE}
   , DBTables, bde
 {$ENDIF}
-  ;
-
-Const
-  SQuote = ['''', '"'];
-  NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' );
+{$IF RTLVersion >= 20}
+    , Generics.Collections
+{$IFEND}
+  , xqtypes ;
+  {-------------------------------------------------------------------------------}
+  {                      These Definitions where moved to xqtypes.pas             }
+  {                                                                               }
+  { Const                                                                         }
+  {  SQuote = ['''', '"'];                                                        }
+  {  NBoolean: Array[Boolean] Of String = ( 'FALSE', 'TRUE' );                    }
+  {                                                                               }
+  { Type                                                                          }
+  {  ExQueryError = Class( Exception );                                           }
+  {  PFloat = ^Double;                                                            }
+  {  PInteger = ^Integer;                                                         }
+  {  PWordBool = ^WordBool;                                                       }
+  {                                                                               }
+  {-------------------------------------------------------------------------------}
+{$if RtlVersion = 20}
+type
+  TList<T> = class(Generics.Collections.TList<T>)
+  public
+    procedure Exchange(Index1, Index2: Integer);
+  end;
+{$ifend}
 
 Type
-  {-------------------------------------------------------------------------------}
-  {                          Main exception                                       }
-  {-------------------------------------------------------------------------------}
-
-  ExQueryError = Class( Exception );
-
-  {-------------------------------------------------------------------------------}
-  {                          Some base types needed                               }
-  {-------------------------------------------------------------------------------}
-
-  PFloat = ^Double;
-  PInteger = ^Integer;
-  PWordBool = ^WordBool;
 
   {-------------------------------------------------------------------------------}
   {                          Forward declarations                                 }
@@ -486,13 +497,20 @@ Type
   Protected
     Function GetAsString: String; Virtual; Abstract;
     Procedure SetAsString( Const Value: String ); Virtual; Abstract;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Virtual; Abstract;
+    Procedure SetAsWideString( Const Value: WideString ); Virtual; Abstract;
+   {$ENDIF}
     Function GetAsFloat: double; Virtual; Abstract;
     Procedure SetAsFloat( Value: double ); Virtual; Abstract;
     Function GetAsInteger: Longint; Virtual; Abstract;
     Procedure SetAsInteger( Value: Longint ); Virtual; Abstract;
+    function GetAsLargeInt: Int64; Virtual; Abstract; {added by fduenas: fix for ftLargeInt issues}
+    procedure SetAsLargeInt(const Value: Int64); Virtual; Abstract; {added by fduenas: fix for ftLargeInt issues}
     Function GetAsBoolean: Boolean; Virtual; Abstract;
     Procedure SetAsBoolean( Value: Boolean ); Virtual; Abstract;
     Procedure SetDataType( Value: TExprType );
+    function NativeExprTypeSize: integer; Virtual; { patched by ccy }
   Public
     Constructor Create( Fields: TSrtFields ); Virtual;
 
@@ -502,8 +520,12 @@ Type
     Property BufferOffset: Integer Read FBufferOffset Write FBufferOffset;
 
     Property AsString: String Read GetAsString Write SetAsString;
+   {$IFDEF LEVEL4}
+    Property AsWideString: WideString Read GetAsWideString Write SetAsWideString;
+   {$ENDIF}
     Property AsFloat: Double Read GetAsFloat Write SetAsFloat;
     Property AsInteger: Longint Read GetAsInteger Write SetAsInteger;
+    Property AsLargeInt: Int64 Read GetAsLargeInt Write SetAsLargeInt; {added by fduenas: fix for ftLargeInt issues}
     Property AsBoolean: Boolean Read GetAsBoolean Write SetAsBoolean;
   End;
 
@@ -514,19 +536,52 @@ Type
   TSrtStringField = Class( TSrtField )
   Private
     Function GetValue( Var Value: String ): Boolean;
+   {$IFDEF LEVEL4}
+    Function GetWideValue( Var Value: WideString ): Boolean;
+   {$ENDIF}
   Protected
     Function GetAsString: String; Override;
     Procedure SetAsString( Const Value: String ); Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString( Const Value: WideString ); Override;
+   {$ENDIF}
     Function GetAsFloat: double; Override;
     Procedure SetAsFloat( Value: double ); Override;
     Function GetAsInteger: Longint; Override;
     Procedure SetAsInteger( Value: Longint ); Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: fix for ftLargeInt issues}
+    Procedure SetAsLargeInt(const Value: Int64); Override; {added by fduenas: fix for ftLargeInt issues}
     Function GetAsBoolean: Boolean; Override;
     Procedure SetAsBoolean( Value: Boolean ); Override;
   Public
     Constructor Create( Fields: TSrtFields ); Override;
   End;
 
+  {-------------------------------------------------------------------------------}
+  {                  TSrtWideStringField                                          }
+  {-------------------------------------------------------------------------------}
+ {$IFDEF LEVEL4}
+  TSrtWideStringField = Class( TSrtStringField )
+  Private
+    Function GetValue( Var Value: WideString ): Boolean;
+  Protected
+    Function GetAsString: String; Override;
+    Procedure SetAsString( Const Value: String ); Override;
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString( Const Value: WideString ); Override;
+    Function GetAsFloat: double; Override;
+    Procedure SetAsFloat( Value: double ); Override;
+    Function GetAsInteger: Longint; Override;
+    Procedure SetAsInteger( Value: Longint ); Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: fix for ftLargeInt issues}
+    Procedure SetAsLargeInt(const Value: Int64); Override; {added by fduenas: fix for ftLargeInt issues}
+    Function GetAsBoolean: Boolean; Override;
+    Procedure SetAsBoolean( Value: Boolean ); Override;
+  Public
+    Constructor Create( Fields: TSrtFields ); Override;
+  End;
+ {$ENDIF}
   {-------------------------------------------------------------------------------}
   {                  Define TsrtFloatField                                        }
   {-------------------------------------------------------------------------------}
@@ -535,10 +590,16 @@ Type
   Protected
     Function GetAsString: String; Override;
     Procedure SetAsString( Const Value: String ); Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString( Const Value: WideString ); Override;
+   {$ENDIF}
     Function GetAsFloat: double; Override;
     Procedure SetAsFloat( Value: double ); Override;
     Function GetAsInteger: Longint; Override;
     Procedure SetAsInteger( Value: Longint ); Override;
+    Function GetAsLargeInt: Int64; Override; {added by fduenas: fix for ftLargeInt issues}
+    Procedure SetAsLargeInt(const Value: Int64); Override; {added by fduenas: fix for ftLargeInt issues}
     Function GetAsBoolean: Boolean; Override;
     Procedure SetAsBoolean( Value: Boolean ); Override;
   Public
@@ -553,8 +614,38 @@ Type
   Protected
     Function GetAsString: String; Override;
     Procedure SetAsString( Const Value: String ); Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString( Const Value: WideString ); Override;
+   {$ENDIF}
     Function GetAsInteger: Longint; Override;
     Procedure SetAsInteger( Value: Longint ); Override;
+    Function GetAsLargeInt: Largeint; Override; {added by fduenas: fix for ftLargeInt issues}
+    Procedure SetAsLargeInt(const Value: Largeint); Override; {added by fduenas: fix for ftLargeInt issues}
+    Function GetAsFloat: double; Override;
+    Procedure SetAsFloat( Value: double ); Override;
+    Function GetAsBoolean: Boolean; Override;
+    Procedure SetAsBoolean( Value: Boolean ); Override;
+  Public
+    Constructor Create( Fields: TSrtFields ); Override;
+  End;
+
+  {-------------------------------------------------------------------------------}
+  {                  Define TsrtLargeIntField                                     }
+  {-------------------------------------------------------------------------------}
+
+  TSrtLargeIntField = Class( TSrtField )   {added by fduenas: added LargeInt (Int64) support}
+  Protected
+    Function GetAsString: String; Override;
+    Procedure SetAsString( Const Value: String ); Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString( Const Value: WideString ); Override;
+   {$ENDIF}
+    Function GetAsInteger: Longint; Override;
+    Procedure SetAsInteger( Value: Longint ); Override;
+    Function GetAsLargeInt: Largeint; Override; {added by fduenas: fix for ftLargeInt issues}
+    Procedure SetAsLargeInt(const Value: Largeint); Override; {added by fduenas: fix for ftLargeInt issues}
     Function GetAsFloat: double; Override;
     Procedure SetAsFloat( Value: double ); Override;
     Function GetAsBoolean: Boolean; Override;
@@ -571,10 +662,16 @@ Type
   Protected
     Function GetAsString: String; Override;
     Procedure SetAsString( Const Value: String ); Override;
+   {$IFDEF LEVEL4}
+    Function GetAsWideString: WideString; Override;
+    Procedure SetAsWideString( Const Value: WideString ); Override;
+   {$ENDIF}
     Function GetAsBoolean: Boolean; Override;
     Procedure SetAsBoolean( Value: Boolean ); Override;
     Function GetAsInteger: Longint; Override;
     Procedure SetAsInteger( Value: Longint ); Override;
+    Function GetAsLargeInt: Largeint; Override; {added by fduenas: fix for ftLargeInt issues}
+    Procedure SetAsLargeInt(const Value: Largeint); Override; {added by fduenas: fix for ftLargeInt issues}
     Function GetAsFloat: double; Override;
     Procedure SetAsFloat( Value: double ); Override;
   Public
@@ -590,6 +687,9 @@ Type
     FItems: TList;
     Function GetCount: Integer;
     Function GetItem( Index: Integer ): TSrtField;
+  protected
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
   Public
     Constructor Create( SortList: TxqSortList );
     Destructor Destroy; Override;
@@ -616,11 +716,17 @@ Type
     FEofCrack: Boolean;
     FFilterRecno: Integer;
 
-    function ActiveBuffer: PAnsiChar; virtual; abstract;
+    function ActiveBuffer: TxBuffer; virtual; abstract;  {patched by fduenas}
+  {$IFNDEF XQ_FASTCOMPARE_FUNCTIONS}
     Function DoCompare( N: Integer; Const KeyValue: Variant ): Integer;
+  {$ELSE}
+    Function DoCompareFast( N: Integer; Const KeyValue: Variant ): Integer; {added by fduenas, obtimized}
+  {$ENDIF}
     Function Find( Const KeyValue: Variant; Var Index: Integer ): Boolean;
     procedure SetBookmarkedDataset(const Value: TDataset);
   Protected
+    fRuntimeFormatSettings: TFormatSettings;
+    fSystemFormatSettings: TFormatSettings;
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Virtual; Abstract;
     Procedure SetFieldData( Field: TSrtField; Buffer: Pointer ); Virtual; Abstract;
     Procedure SetRecno( Value: Integer );
@@ -633,7 +739,9 @@ Type
     procedure SetSourceBookmark(const Value: TBookmark); virtual; abstract; { patched by ccy }
     {$ifend}
   Public
-    Constructor Create( UsingBookmark: Boolean );
+    Constructor Create( UsingBookmark: Boolean;
+     aRuntimeSettings, aSystemSettings: TFormatSettings  );
+
     Destructor Destroy; Override;
     Procedure AddField( pDataType: TExprType; pDataSize: Integer;
       pDescending: Boolean );
@@ -664,8 +772,8 @@ Type
 
   TMemSortList = Class( TxqSortList )
   Private
-    FBufferList: TList;
-    function ActiveBuffer: PAnsiChar; override;
+    FBufferList: TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}; { patched by fduenas }
+    function ActiveBuffer: TxBuffer; override; {patched by fduenas}
   Protected
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Override;
     Procedure SetFieldData( Field: TSrtField; Buffer: Pointer ); Override;
@@ -677,7 +785,8 @@ Type
     procedure SetSourceBookmark(const Value: TBookmark); override;
     {$ifend}
   Public
-    Constructor Create( UsingBookmark: Boolean );
+    Constructor Create( UsingBookmark: Boolean;
+     aRuntimeSettings, aSystemSettings: TFormatSettings  );
     Destructor Destroy; Override;
     Procedure Insert; Override;
     Procedure Exchange( Recno1, Recno2: Integer ); Override;
@@ -686,11 +795,11 @@ Type
 
   TFileSortList = Class( TxqSortList )
   Private
-    FBufferList: TList;
+    FBufferList: TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}; { patched by fduenas }
     FMemMapFile: TMemMapFile;
     FTmpFile: String;
-    FBuffer: PAnsiChar;
-    function ActiveBuffer: PAnsiChar; override;
+    FBuffer: TxBuffer; {patched by fduenas}
+    function ActiveBuffer: TxBuffer; override; {patched by fduenas}
   Protected
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Override;
     Procedure SetFieldData( Field: TSrtField; Buffer: Pointer ); Override;
@@ -702,7 +811,8 @@ Type
     procedure SetSourceBookmark(const Value: TBookmark); override;
     {$ifend}
   Public
-    Constructor Create( UsingBookmark: Boolean; MapFileSize: Longint );
+    Constructor Create( UsingBookmark: Boolean; MapFileSize: Longint;
+     aRuntimeSettings, aSystemSettings: TFormatSettings  );
     Destructor Destroy; Override;
     Procedure Insert; Override;
     Procedure Exchange( Recno1, Recno2: Integer ); Override;
@@ -853,7 +963,18 @@ Uses
 {$IFDEF LEVEL6}
   , Variants
 {$ENDIF}
-  ;
+  , StrUtils, Math, CnvStrUtils;
+
+{$if RtlVersion = 20}
+procedure TList<T>.Exchange(Index1, Index2: Integer);
+var
+  temp: T;
+begin
+  temp := FItems[Index1];
+  FItems[Index1] := FItems[Index2];
+  FItems[Index2] := temp;
+end;
+{$ifend}
 
 {-------------------------------------------------------------------------------}
 {                  Implement TColumnItem                                        }
@@ -919,7 +1040,7 @@ Var
   I: Integer;
 Begin
   For I := 0 To FItems.Count - 1 Do
-    TColumnItem( FItems[I] ).Free;
+      TColumnItem( FItems[I] ).Free;
   FItems.Clear;
 End;
 
@@ -1507,6 +1628,11 @@ Begin
   Result := FFields.FSortList.GetFieldData( Self, Buffer );
 End;
 
+function TSrtField.NativeExprTypeSize: integer;
+begin
+ Result := SizeOfExprType( FDataType );
+end;
+
 Procedure TSrtField.SetData( Buffer: Pointer );
 Begin
   FFields.FSortList.SetFieldData( Self, Buffer );
@@ -1531,55 +1657,214 @@ Function TSrtStringField.GetValue( Var Value: String ): Boolean;
 Var
   Buffer: Array[0..dsMaxStringSize] Of Char;
 Begin
+  FillChar( Buffer, dsMaxStringSize, #0 ); {added by fduenas} {this prevents some DISTINCT errors}
   Result := GetData( @Buffer );
   If Result Then
     Value := Buffer;
 End;
+{$IFDEF LEVEL4}
+function TSrtStringField.GetWideValue(var Value: WideString): Boolean;
+Var
+  Buffer: Array[0..dsMaxStringSize] Of AnsiChar;
+Begin
+  FillChar( Buffer, dsMaxStringSize, #0 ); {added by fduenas} {this prevents some DISTINCT errors}
+  Result := GetData( @Buffer );
+  If Result Then
+    Value := Buffer;
+End;
+{$ENDIF}
 
 Function TSrtStringField.GetAsString: String;
 Begin
   If Not GetValue( Result ) Then
     Result := '';
 End;
-
+{$IFDEF LEVEL4}
+function TSrtStringField.GetAsWideString: WideString;
+begin
+ If Not GetWideValue( Result ) Then
+    Result := '';
+end;
+{$ENDIF}
 Procedure TSrtStringField.SetAsString( Const Value: String );
 Var
   Buffer: Array[0..dsMaxStringSize] Of Char;
-  L: Integer;
+  //AnsiBuffer: Array[0..dsMaxStringSize] Of AnsiChar;
+  //AnsiValue : AnsiString;
+  //L: Integer;
 Begin
-  FillChar( Buffer, FDataSize, 0 );
-  L := Length( Value );
-  StrLCopy( Buffer, PChar( Value ), L );
+  {FillChar( Buffer, FDataSize, 0 );}
+  FillChar( Buffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
+  //FillChar( AnsiBuffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
+  //AnsiValue := ansistring( Value );
+  //L := Length( Value );
+  {StrLCopy( Buffer, PChar( Value ), L );}
+  //StrLCopy(AnsiBuffer, PAnsiChar(AnsiValue), L);
+  CopyMemory(@Buffer[0], PChar(Value), Length( Value ) * SizeOf(Char) ); { changed by fduenas }
   SetData( @Buffer );
 End;
-
-Function TSrtStringField.GetAsFloat: double;
+{$IFDEF LEVEL4}
+procedure TSrtStringField.SetAsWideString(const Value: WideString);
+Var
+  Buffer: Array[0..dsMaxStringSize] Of WideChar;
+  //L: Integer;
 Begin
-  Result := 0;
+  {FillChar( Buffer, FDataSize, 0 );}
+  FillChar( Buffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
+  //L := Length( Value );
+  {StrLCopy( Buffer, PChar( Value ), L );}
+  CopyMemory(@Buffer[0], PChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
+  SetData( @Buffer );
+End;
+{$ENDIF}
+Function TSrtStringField.GetAsFloat: Double;
+Begin
+  Result := StrToFloat( GetAsString {$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} );
 End;
 
 Procedure TSrtStringField.SetAsFloat( Value: double );
 Begin
+ SetAsString( FloatToStr(Value{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF}) );
 End;
 
 Function TSrtStringField.GetAsInteger: Longint;
 Begin
-  Result := 0;
+  Result := StrToInt(GetAsString);
 End;
+
+function TSrtStringField.GetAsLargeInt: Int64;
+begin
+  Result := StrToInt64(GetAsString);
+end;
 
 Procedure TSrtStringField.SetAsInteger( Value: Longint );
 Begin
+ SetAsString( IntToStr(Value) );
 End;
 
+procedure TSrtStringField.SetAsLargeInt(const Value: Int64);
+begin
+ SetAsString( IntToStr(Value) );
+end;
+
 Function TSrtStringField.GetAsBoolean: Boolean;
+Var
+  S: String;
 Begin
-  Result := False;
+  S := GetAsString;
+  Result := (Length(S) > 0) And
+   (CharInSet(S[1], xqtypes.SBooleanValues) OR
+    SameText(Trim(S), xqtypes.NBoolean[True]) ) ;
 End;
 
 Procedure TSrtStringField.SetAsBoolean( Value: Boolean );
 Begin
+ SetAsWideString(Copy(xqtypes.NBoolean[Value], 1, 1));
+End;
+{$IFDEF LEVEL4}
+{ TSrtWideStringField }
+
+constructor TSrtWideStringField.Create(Fields: TSrtFields);
+Begin
+  Inherited Create( Fields );
+  SetDataType( ttWideString );
 End;
 
+function TSrtWideStringField.GetAsBoolean: Boolean;
+Var
+  S: WideString;
+Begin
+  S := GetAsWideString;
+  Result := (Length(S) > 0) And
+   (CharInSet(S[1], xqtypes.SBooleanValues) OR
+    WideSameText(Trim(S), xqtypes.NBoolean[True]) ) ;
+End;
+
+function TSrtWideStringField.GetAsFloat: double;
+begin
+ result := StrToFloat( GetAsWideString {$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF});
+end;
+
+function TSrtWideStringField.GetAsInteger: Longint;
+begin
+ result := StrToInt( GetAsWideString );
+end;
+
+function TSrtWideStringField.GetAsLargeInt: Int64;
+begin
+ result := StrToInt64( GetAsWideString );
+end;
+
+function TSrtWideStringField.GetAsString: String;
+var _result: WideString;
+begin
+ If Not GetValue( _result ) Then
+    _result := '';
+ Result := _result;
+end;
+
+function TSrtWideStringField.GetAsWideString: WideString;
+begin
+   If Not GetValue( Result ) Then
+    Result := '';
+end;
+
+function TSrtWideStringField.GetValue(var Value: WideString): Boolean;
+Var
+  Buffer: Array[0..dsMaxStringSize] Of WideChar;
+Begin
+  FillChar( Buffer, dsMaxStringSize, #0 ); {added by fduenas} {this prevents some DISTINCT errors}
+  Result := GetData( @Buffer );
+  If Result Then
+    Value := Buffer;
+End;
+
+procedure TSrtWideStringField.SetAsBoolean(Value: Boolean);
+begin
+  SetAsWideString(Copy(xqtypes.NBoolean[Value], 1, 1));
+end;
+
+procedure TSrtWideStringField.SetAsFloat(Value: double);
+begin
+ SetAsWideString( FloatToStr(Value{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF}) );
+end;
+
+procedure TSrtWideStringField.SetAsInteger(Value: Integer);
+begin
+ SetAsWideString( IntToStr(Value) );
+end;
+
+procedure TSrtWideStringField.SetAsLargeInt(const Value: Int64);
+begin
+ SetAsWideString( IntToStr(Value) );
+end;
+
+procedure TSrtWideStringField.SetAsString(const Value: String);
+Var
+  Buffer: Array[0..dsMaxStringSize] Of WideChar;
+  //L: Integer;
+Begin
+  {FillChar( Buffer, FDataSize, 0 );}
+  FillChar( Buffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
+  //L := Length( Value );
+  {StrLCopy( Buffer, PChar( Value ), L );}
+  CopyMemory(@Buffer[0], PWideChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
+  SetData( @Buffer );
+End;
+
+procedure TSrtWideStringField.SetAsWideString(const Value: WideString);
+Var
+  Buffer: Array[0..dsMaxStringSize] Of WideChar;
+  //L: Integer;
+Begin
+  {FillChar( Buffer, FDataSize, 0 );}
+  FillChar( Buffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
+  //L := Length( Value );
+  {StrLCopy( Buffer, PChar( Value ), L );}
+  CopyMemory(@Buffer[0], PWideChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
+  SetData( @Buffer );
+End;
+{$ENDIF}
 {-------------------------------------------------------------------------------}
 {                  implements TSrtFloatField                                        }
 {-------------------------------------------------------------------------------}
@@ -1606,9 +1891,14 @@ Var
   F: Double;
 Begin
   If GetData( @F ) Then
-    Result := FloatToStr( F )
+    Result := FloatToStr( F{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} )
   Else
     Result := '';
+End;
+
+function TSrtFloatField.GetAsWideString: WideString;
+begin
+ Result := GetAsString;
 End;
 
 Procedure TSrtFloatField.SetAsString( Const Value: String );
@@ -1619,28 +1909,57 @@ Begin
     SetAsFloat( 0 )
   Else
   Begin
-    If Not TextToFloat( PChar( Value ), F, fvExtended ) Then
-      EXQueryError.CreateFmt( SIsInvalidFloatValue, [Value] );
+    If Not TextToFloat( PChar( Value ), F, fvExtended{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} ) Then
+      raise EXQueryError.CreateFmt( SIsInvalidFloatValue, [Value] );
+    SetAsFloat( F );
+  End;
+End;
+
+procedure TSrtFloatField.SetAsWideString(const Value: WideString);
+Var
+  F: Extended;
+Begin
+  If Value = '' Then
+    SetAsFloat( 0 )
+  Else
+  Begin
+    If Not TextToFloat( {$IFDEF Delphi2009Up}PWideChar{$ELSE}PChar{$ENDIF}( Value ), F, fvExtended{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} ) Then
+      raise EXQueryError.CreateFmt( SIsInvalidFloatValue, [Value] );
     SetAsFloat( F );
   End;
 End;
 
 Function TSrtFloatField.GetAsInteger: Longint;
 Begin
-  Result := 0;
+ Result := Trunc( GetAsFloat );
 End;
+
+function TSrtFloatField.GetAsLargeInt: Largeint;
+begin
+ result := Trunc( GetAsFloat );
+end;
 
 Procedure TSrtFloatField.SetAsInteger( Value: Longint );
 Begin
+ SetAsFloat(Value);
 End;
+
+procedure TSrtFloatField.SetAsLargeInt(const Value: Largeint);
+begin
+ SetAsFloat(Value);
+end;
 
 Function TSrtFloatField.GetAsBoolean: Boolean;
 Begin
-  Result := False;
+ Result := (GetAsLargeInt<>0);
 End;
 
 Procedure TSrtFloatField.SetAsBoolean( Value: Boolean );
 Begin
+ if Value then
+    SetAsFloat(1)
+ else
+    SetAsFloat(0);
 End;
 
 {-------------------------------------------------------------------------------}
@@ -1659,10 +1978,21 @@ Begin
     Result := 0;
 End;
 
+function TSrtIntegerField.GetAsLargeInt: Int64;
+begin
+   If Not GetData( @Result ) Then
+    Result := 0;
+end;
+
 Procedure TSrtIntegerField.SetAsInteger( Value: Longint );
 Begin
   SetData( @Value );
 End;
+
+procedure TSrtIntegerField.SetAsLargeInt(const Value: Int64);
+begin
+ SetData( @Value );
+end;
 
 Function TSrtIntegerField.GetAsString: String;
 Var
@@ -1674,34 +2004,133 @@ Begin
     Result := '';
 End;
 
+function TSrtIntegerField.GetAsWideString: WideString;
+begin
+ result := GetAsString;
+end;
+
 Procedure TSrtIntegerField.SetAsString( Const Value: String );
 Var
   E: Integer;
-  L: Longint;
+  L: LongInt;
 Begin
   Val( Value, L, E );
   If E <> 0 Then
-    EXQueryError.CreateFmt( SIsInvalidIntegerValue, [Value] );
+     raise EXQueryError.CreateFmt( SIsInvalidIntegerValue, [Value] );
   SetAsInteger( L );
 End;
 
+procedure TSrtIntegerField.SetAsWideString(const Value: WideString);
+begin
+ SetAsString( Value );
+end;
+
 Function TSrtIntegerField.GetAsFloat: double;
 Begin
-  Result := 0;
+  Result := GetAsInteger;
 End;
 
 Procedure TSrtIntegerField.SetAsFloat( Value: double );
 Begin
+ SetAsInteger( Trunc(value) );
 End;
 
 Function TSrtIntegerField.GetAsBoolean: Boolean;
 Begin
-  Result := False;
+ Result := (GetAsInteger<>0);
 End;
 
 Procedure TSrtIntegerField.SetAsBoolean( Value: Boolean );
 Begin
+  if Value then
+     SetAsLargeInt(1)
+  else
+     SetAsLargeInt(0);
 End;
+
+{ TSrtLargeIntField }
+
+constructor TSrtLargeIntField.Create(Fields: TSrtFields);
+begin
+  Inherited Create( Fields );
+  SetDataType( ttLargeInt );
+end;
+
+function TSrtLargeIntField.GetAsBoolean: Boolean;
+begin
+ Result := (GetAsInteger<>0);
+end;
+
+function TSrtLargeIntField.GetAsFloat: double;
+begin
+ result := GetAsLargeInt;
+end;
+
+function TSrtLargeIntField.GetAsInteger: Longint;
+begin
+  If Not GetData( @Result ) Then
+     Result := 0;
+end;
+
+function TSrtLargeIntField.GetAsLargeInt: Int64;
+begin
+  If Not GetData( @Result ) Then
+     Result := 0;
+end;
+
+function TSrtLargeIntField.GetAsString: String;
+Var
+  L: Int64;
+Begin
+  If GetData( @L ) Then
+    Result := IntToStr(L)  { patched by ccy }
+  Else
+    Result := '';
+End;
+
+function TSrtLargeIntField.GetAsWideString: WideString;
+begin
+ result := GetAsString;
+end;
+
+procedure TSrtLargeIntField.SetAsBoolean(Value: Boolean);
+begin
+ if  Value then
+     SetAsLargeInt(1)
+ else
+    SetAsLargeInt(0);
+end;
+
+procedure TSrtLargeIntField.SetAsFloat(Value: double);
+begin
+ SetAsLargeInt(Trunc(Value));
+end;
+
+procedure TSrtLargeIntField.SetAsInteger(Value: Integer);
+begin
+  SetData( @Value );
+end;
+
+procedure TSrtLargeIntField.SetAsLargeInt(const Value: Largeint);
+begin
+ SetData( @Value );
+end;
+
+procedure TSrtLargeIntField.SetAsString(const Value: String);
+Var
+  E: Integer;
+  L: Int64;
+Begin
+  Val( Value, L, E );
+  If E <> 0 Then
+    raise EXQueryError.CreateFmt( SIsInvalidIntegerValue, [Value] );
+  SetAsLargeInt( L );
+End;
+
+procedure TSrtLargeIntField.SetAsWideString(const Value: WideString);
+begin
+ SetAsString(Value);
+end;
 
 {-------------------------------------------------------------------------------}
 {                  implements TSrtBooleanField                                      }
@@ -1739,10 +2168,15 @@ Var
   B: WordBool;
 Begin
   If GetData( @B ) Then
-    Result := Copy( xqbase.NBoolean[B], 1, 1 )
+    Result := Copy( xqtypes.NBoolean[B], 1, 1 )
   Else
     Result := '';
 End;
+
+function TSrtBooleanField.GetAsWideString: WideString;
+begin
+ Result := GetAsString;
+end;
 
 Procedure TSrtBooleanField.SetAsString( Const Value: String );
 Var
@@ -1755,31 +2189,54 @@ Begin
   End
   Else
   Begin
-    If AnsiCompareText( Value, Copy( xqbase.NBoolean[False], 1, L ) ) = 0 Then
+    If AnsiCompareText( Value, Copy( xqtypes.NBoolean[False], 1, L ) ) = 0 Then
       SetAsBoolean( False )
-    Else If AnsiCompareText( Value, Copy( xqbase.NBoolean[True], 1, L ) ) = 0 Then
+    Else If AnsiCompareText( Value, Copy( xqtypes.NBoolean[True], 1, L ) ) = 0 Then
       SetAsBoolean( True )
     Else
-      EXQueryError.CreateFmt( SIsInvalidBoolValue, [Value] );
+      raise EXQueryError.CreateFmt( SIsInvalidBoolValue, [Value] );
   End;
 End;
 
+procedure TSrtBooleanField.SetAsWideString(const Value: WideString);
+begin
+ SetAsString( Value );
+end;
+
 Function TSrtBooleanField.GetAsInteger: Longint;
 Begin
-  Result := 0;
+  if GetAsBoolean then
+     Result := 1
+  else
+     Result := 0;
 End;
+
+function TSrtBooleanField.GetAsLargeInt: Largeint;
+begin
+  if GetAsBoolean then
+     Result := 1
+  else
+     Result := 0;
+end;
 
 Procedure TSrtBooleanField.SetAsInteger( Value: Longint );
 Begin
+ SetAsBoolean( Value<>0 );
 End;
+
+procedure TSrtBooleanField.SetAsLargeInt(const Value: Largeint);
+begin
+ SetAsBoolean( Value<>0 );
+end;
 
 Function TSrtBooleanField.GetAsFloat: double;
 Begin
-  Result := 0;
+ Result := GetAsInteger;
 End;
 
 Procedure TSrtBooleanField.SetAsFloat( Value: double );
 Begin
+ SetAsBoolean( Trunc(Value) <> 0 );
 End;
 
 {-------------------------------------------------------------------------------}
@@ -1791,6 +2248,8 @@ Begin
   Inherited Create;
   FSortList := SortList;
   FItems := TList.Create;
+  fRuntimeFormatSettings := FSortList.fRuntimeFormatSettings;
+  fSystemFormatSettings  := FSortList.fSystemFormatSettings;
 End;
 
 Destructor TSrtFields.Destroy;
@@ -1815,8 +2274,12 @@ Begin
   Result := Nil;
   Case DataType Of
     ttString: Result := TSrtStringField.Create( Self );
+   {$IFDEF LEVEL4}
+    ttWideString: Result := TSrtWideStringField.Create( Self );
+   {$ENDIF}
     ttFloat: Result := TSrtFloatField.Create( Self );
     ttInteger: Result := TSrtIntegerField.Create( Self );
+    ttLargeInt: Result := TSrtLargeIntField.Create( Self );
     ttBoolean: Result := TSrtBooleanField.Create( Self );
   End;
   FItems.Add( Result );
@@ -1835,13 +2298,16 @@ End;
 {                  Define TxqSortList                                           }
 {-------------------------------------------------------------------------------}
 
-Constructor TxqSortList.Create( UsingBookmark: Boolean );
+Constructor TxqSortList.Create( UsingBookmark: Boolean;
+     aRuntimeSettings, aSystemSettings: TFormatSettings  );
 Begin
   Inherited Create;
   FFields := TSrtFields.Create( Self );
   FRecNo := -1;
   FRecordBufferSize := SizeOf( Integer ); { first data is the SourceRecNo property }
   FUsingBookmark := UsingBookmark;
+  fRuntimeFormatSettings := aRuntimeSettings;
+  fSystemFormatSettings := aSystemSettings;
 End;
 
 Destructor TxqSortList.Destroy;
@@ -1888,9 +2354,13 @@ Begin
     BufferOffset := FRecordBufferSize;
     DataType := pDataType;
     Case DataType Of
-      ttString: DataSize := (pDataSize + 1) * SizeOf(Char);  { patched by ccy}
+      ttString: DataSize := (pDataSize) * SizeOf(Char);  { patched by ccy} {patched by fduenas}
+     {$IFDEF LEVEL4}
+      ttWideString: DataSize := (pDataSize) * SizeOf(WideChar);  { patched by ccy} {patched by fduenas}
+     {$ENDIF}
       ttFloat: DataSize := SizeOf( Double );
-      ttInteger: DataSize := SizeOf( Integer );
+      ttInteger: DataSize := IMax( SizeOf( Integer ), pDataSize ); {added by fduenas: fix for ftLargeInt Issue}
+      ttLargeInt: DataSize := IMax( SizeOf( Int64 ), pDataSize ); {added by fduenas: fix for ftLargeInt Issue}
       ttBoolean: DataSize := SizeOf( WordBool );
     End;
     Desc := pDescending;
@@ -1900,38 +2370,104 @@ End;
 
 Function TxqSortList.IsEqual( Recno1, Recno2: Integer ): Boolean;
 Var
-  Buffer: PAnsiChar;
-  Buffer1: PAnsiChar;
-  Buffer2: PAnsiChar;
+  Buffer: TxBuffer; {patched by fduenas}
+  Buffer1: TxBuffer; {patched by fduenas}
+  Buffer2: TxBuffer; {patched by fduenas}
 Begin
   SetRecno( Recno1 );
   Buffer := ActiveBuffer;
+
+  {
   GetMem( Buffer1, FRecordBufferSize );
   Move( Buffer^, Buffer1^, FRecordBufferSize );
+  }
+
+ {$IF RtlVersion <= 18.5}
+  GetMem(Buffer1, FRecordBufferSize);
+  FillChar(Buffer1^, FRecordBufferSize, #0);
+ {$ELSE}
+   SetLength(Buffer1, FRecordBufferSize); { patched by fduenas }
+   FillChar(Buffer1[0], FRecordBufferSize, #0); { patched by fduenas }
+ {$IFEND}
+
+ {$IF RTLVersion <= 18.5}
+   Move( Buffer^, Buffer1^, FRecordBufferSize );
+ {$ELSE}
+   Move( Buffer[0], Buffer1[0], Length(Buffer)  ); { patched by fduenas }
+ {$IFEND}
 
   SetRecno( Recno2 );
   Buffer := ActiveBuffer;
+
+  {
   GetMem( Buffer2, FRecordBufferSize );
   Move( Buffer^, Buffer2^, FRecordBufferSize );
+  }
+
+ {$IF RtlVersion <= 18.5}
+  GetMem(Buffer2, FRecordBufferSize);
+  FillChar(Buffer2^, FRecordBufferSize, #0);
+ {$ELSE}
+   SetLength(Buffer2, FRecordBufferSize); { patched by fduenas }
+   FillChar(Buffer2[0], FRecordBufferSize, #0); { patched by fduenas }
+ {$IFEND}
+
+ {$IF RTLVersion <= 18.5}
+   Move( Buffer^, Buffer2^, FRecordBufferSize );
+ {$ELSE}
+   Move( Buffer[0], Buffer2[0], Length(Buffer)  ); { patched by fduenas }
+ {$IFEND}
 
   { the first SizeOf(Integer) bytes is the source recno and always is different }
-  Result := Comparemem( ( Buffer1 + SizeOf( Integer ) ),
-    ( Buffer2 + SizeOf( Integer ) ), FRecordBufferSize - SizeOf( Integer ) );
 
+ {$IF RTLVersion <= 18.5}
+   if FRecordBufferSize > SizeOf( Integer ) then
+      Result := Comparemem( ( Buffer1 + SizeOf( Integer ) ),
+                ( Buffer2 + SizeOf( Integer ) ), FRecordBufferSize - SizeOf( Integer ) ) { patched by fduenas }
+   Else
+      Result := True;
+ {$ELSE}
+   if FRecordBufferSize > SizeOf( Integer ) then
+      Result := CompareMem( @Buffer1[SizeOf( Integer )] ,
+                 @Buffer2[SizeOf( Integer )], FRecordBufferSize - SizeOf( Integer ) ) { patched by fduenas }
+   else
+      Result := True;
+ {$IFEND}
+
+ {$IF RTLVersion <= 18.5}
+//  FreeMem( Buffer, FRecordBufferSize );
   FreeMem( Buffer1, FRecordBufferSize );
   FreeMem( Buffer2, FRecordBufferSize );
+ {$ELSE}
+  SetLength(Buffer, 0); { patched by fduenas }
+  SetLength(Buffer1, 0); { patched by fduenas }
+  SetLength(Buffer2, 0); { patched by fduenas }
+ {$IFEND}
 
 End;
 
+{$IFNDEF XQ_FASTCOMPARE_FUNCTIONS}
 Function TxqSortList.DoCompare( N: Integer; Const KeyValue: Variant ): Integer;
 { returns -1, 0 or 1 for a<b, a=b, a>b}
 Var
   DataType: TExprType;
   s: String;
+ {$IFDEF LEVEL4}
+  ws: WideString;
+ {$ENDIF}
   f: Double;
   i: Integer;
+  li: Int64;
   b, cb: Boolean;
-  CompareValue: Variant;
+  CompareValueV: Variant;
+  CompareValueS: String;
+ {$IFDEF LEVEL4}
+  CompareValueWS: WideString;
+ {$ENDIF}
+  CompareValueF: Double;
+  CompareValueI: Integer;
+  CompareValueLI: Int64;
+  CompareValueB: Boolean;
 Begin
   Result := 0;
   SetRecno( N );
@@ -1940,54 +2476,96 @@ Begin
   Begin
     { solo por si se ofrece, se prueba tambien al recibir un valor NULL }
     Case DataType Of
-      ttString: CompareValue := '';
-      ttFloat, ttInteger: CompareValue := 0;
-      ttBoolean: CompareValue := False ;
+      ttString: CompareValueS := '';
+     {$IFDEF LEVEL4}
+      ttWideString: CompareValueWS := '';
+     {$ENDIF}
+      ttFloat: CompareValueF := 0;
+      ttInteger: CompareValueI := 0;
+      ttLargeInt: CompareValueLI := 0;
+      ttBoolean: CompareValueB := False ;
     End;
   End Else
-    CompareValue := KeyValue;
+  begin
+   CompareValueV := KeyValue;
+   Case DataType Of
+      ttString: CompareValueS := KeyValue;
+     {$IFDEF LEVEL4}
+      ttWideString: CompareValueWS := KeyValue;
+     {$ENDIF}
+      ttFloat: CompareValueF := KeyValue;
+      ttInteger: CompareValueI := KeyValue;
+      ttLargeInt: CompareValueLI := KeyValue;
+      ttBoolean: CompareValueB := KeyValue ;
+    End;
+  end;
   Case DataType Of
     ttString:
       Begin
         s := FFields[0].AsString;
-        If s = CompareValue Then
+        If s = CompareValueS Then
         Begin
           Result := 0;
           Exit;
         End;
         If FFields[0].Desc Then
         Begin
-          If s < CompareValue Then
+          If s < CompareValueS Then
             Result := 1
           Else
             Result := -1;
         End
         Else
         Begin
-          If s < CompareValue Then
+          If s < CompareValueS Then
             Result := -1
           Else
             Result := 1;
         End;
       End;
-    ttFloat:
+   {$IFDEF LEVEL4}
+    ttWideString:
       Begin
-        f := FFields[0].AsFloat;
-        If f = CompareValue Then
+        ws := FFields[0].AsWideString;
+        If ws = CompareValueWS Then
         Begin
           Result := 0;
           Exit;
         End;
         If FFields[0].Desc Then
         Begin
-          If f < CompareValue Then
+          If ws < CompareValueWS Then
             Result := 1
           Else
             Result := -1;
         End
         Else
         Begin
-          If f < CompareValue Then
+          If ws < CompareValueWS Then
+            Result := -1
+          Else
+            Result := 1;
+        End;
+      End;
+   {$ENDIF}
+    ttFloat:
+      Begin
+        f := FFields[0].AsFloat;
+        If f = CompareValueF Then
+        Begin
+          Result := 0;
+          Exit;
+        End;
+        If FFields[0].Desc Then
+        Begin
+          If f < CompareValueF Then
+            Result := 1
+          Else
+            Result := -1;
+        End
+        Else
+        Begin
+          If f < CompareValueF Then
             Result := -1
           Else
             Result := 1;
@@ -1996,21 +2574,44 @@ Begin
     ttInteger:
       Begin
         i := FFields[0].AsInteger;
-        If i = CompareValue Then
+        If i = CompareValueI Then
         Begin
           Result := 0;
           Exit;
         End;
         If FFields[0].Desc Then
         Begin
-          If i < CompareValue Then
+          If i < CompareValueI Then
             Result := 1
           Else
             Result := -1;
         End
         Else
         Begin
-          If i < CompareValue Then
+          If i < CompareValueI Then
+            Result := -1
+          Else
+            Result := 1;
+        End;
+      End;
+    ttLargeInt:
+      Begin
+        li := FFields[0].AsLargeInt;
+        If li = CompareValueLI Then
+        Begin
+          Result := 0;
+          Exit;
+        End;
+        If FFields[0].Desc Then
+        Begin
+          If li < CompareValueLI Then
+            Result := 1
+          Else
+            Result := -1;
+        End
+        Else
+        Begin
+          If li < CompareValueLI Then
             Result := -1
           Else
             Result := 1;
@@ -2019,7 +2620,7 @@ Begin
     ttBoolean:
       Begin
         b := FFields[0].AsBoolean;
-        cb := CompareValue;
+        cb := CompareValueB;
         If ord( b ) = ord( cb ) Then
         Begin
           Result := 0;
@@ -2042,7 +2643,92 @@ Begin
       End;
   End;
 End;
-
+{$ELSE ~XQ_FASTCOMPARE_FUNCTIONS}
+function TxqSortList.DoCompareFast(N: Integer;
+  const KeyValue: Variant): Integer;
+{ returns -1, 0 or 1 for a<b, a=b, a>b}
+Var
+  DataType: TExprType;
+  CompareValueS: String;
+ {$IFDEF LEVEL4}
+  CompareValueWS: WideString;
+ {$ENDIF}
+  CompareValueF: Double;
+  CompareValueI: Integer;
+  CompareValueLI: Int64;
+  CompareValueB: Boolean;
+Begin
+  Result := 0;
+  SetRecno( N );
+  DataType := FFields[0].DataType;
+  If VarIsNull( KeyValue ) Then
+  Begin
+    { solo por si se ofrece, se prueba tambien al recibir un valor NULL }
+    Case DataType Of
+      ttString: CompareValueS := '';
+     {$IFDEF LEVEL4}
+      ttWideString: CompareValueWS := '';
+     {$ENDIF}
+      ttFloat: CompareValueF := 0;
+      ttInteger: CompareValueI := 0;
+      ttLargeInt: CompareValueLI := 0;
+      ttBoolean: CompareValueB := False ;
+    End;
+  End Else
+  begin
+   Case DataType Of
+      ttString: CompareValueS := KeyValue;
+     {$IFDEF LEVEL4}
+      ttWideString: CompareValueWS := KeyValue;
+     {$ENDIF}
+      ttFloat: CompareValueF := KeyValue;
+      ttInteger: CompareValueI := KeyValue;
+      ttLargeInt: CompareValueLI := KeyValue;
+      ttBoolean: CompareValueB := KeyValue ;
+    End;
+  end;
+  Case DataType Of
+    ttString:
+      Begin
+        result := AnsiCompareStr(FFields[0].AsString, CompareValueS);
+        If FFields[0].Desc Then
+           Result := Result * -1;
+      End;
+   {$IFDEF LEVEL4}
+    ttWideString:
+      Begin
+        Result := WideCompareStr(FFields[0].AsWideString, CompareValueWS);
+        If FFields[0].Desc Then
+           Result := Result * -1;
+      End;
+   {$ENDIF}
+    ttFloat:
+      Begin
+        Result := CompareValue(FFields[0].AsFloat, CompareValueF);
+        If FFields[0].Desc Then
+           Result := Result * -1;
+      End;
+    ttInteger:
+      Begin
+        Result := CompareValue(FFields[0].AsInteger, CompareValueI);
+        If FFields[0].Desc Then
+           Result := Result * -1;
+      End;
+    ttLargeInt:
+      Begin
+        Result := CompareValue(FFields[0].AsLargeInt, CompareValueLI);
+        If FFields[0].Desc Then
+           Result := Result * -1;
+      End;
+    ttBoolean:
+      Begin
+        Result := CompareValue(Ord(FFields[0].AsBoolean), Ord(CompareValueB));
+        If FFields[0].Desc Then
+           Result := Result * -1;
+      End;
+  End;
+End;
+{$ENDIF ~XQ_FASTCOMPARE_FUNCTIONS}
 Function TxqSortList.Find( Const KeyValue: Variant; Var Index: Integer ): Boolean;
 Var
   L, H, I, C: Integer;
@@ -2053,7 +2739,7 @@ Begin
   While L <= H Do
   Begin
     I := ( L + H ) Shr 1;
-    C := DoCompare( I, KeyValue );
+    C := {$IFDEF XQ_FASTCOMPARE_FUNCTIONS}DoCompareFast{$ELSE}DoCompare{$ENDIF}( I, KeyValue );
     If C < 0 Then
       L := I + 1
     Else
@@ -2083,7 +2769,7 @@ Begin
   If Self.Find( KeyValue, Index ) Then
   Begin
     For I := Index To GetRecordCount Do
-      If DoCompare( I, KeyValue ) = 0 Then
+      If {$IFDEF XQ_FASTCOMPARE_FUNCTIONS}DoCompareFast{$ELSE}DoCompare{$ENDIF}( I, KeyValue ) = 0 Then
         FSelected.Add( Pointer( I ) )
       Else
         Break;
@@ -2163,32 +2849,19 @@ Var
   TempL, TempR: String;
 
   Function SortCompare_S( Recno: Integer; Const Value: String ): Integer;
-  Var
-    s: String;
   Begin
     SetRecno( Recno );
-    s := FFields[Idx].AsString;
-    If s = Value Then
-    Begin
-      Result := 0;
-      Exit;
-    End;
-    If IsDesc Then
-    Begin
-      If s < Value Then
-        Result := 1
-      Else
-        Result := -1;
-    End
-    Else
-    Begin
-      If s < Value Then
-        Result := -1
-      Else
-        Result := 1;
-    End;
+    Result := AnsiCompareStr(FFields[Idx].AsString, Value); {fduenas: should it stay as AnsiCompareStr or just CompareStr?}
+    if IsDesc then Result := - Result;
   End;
-
+ {$IFDEF LEVEL4}
+  Function SortCompare_W( Recno: Integer; Const Value: WideString ): Integer;
+  Begin
+    SetRecno( Recno );
+    Result := WideCompareStr(FFields[Idx].AsWideString, Value); {fduenas: should it stay as AnsiCompareStr or just CompareStr?}
+    if IsDesc then Result := - Result;
+  End;
+ {$ENDIF}
   Function SortCompare_F( Recno: Integer; Const Value: Double ): Integer;
   Var
     f: Double;
@@ -2243,6 +2916,33 @@ Var
     End;
   End;
 
+  Function SortCompare_LI( Recno: Int64; Value: Int64 ): Int64; {added by fduenas: added LargeInt (Int64) support}
+  Var
+    li: Int64;
+  Begin
+    SetRecno( Recno );
+    li := FFields[Idx].AsLargeInt;
+    If li = Value Then
+    Begin
+      Result := 0;
+      Exit;
+    End;
+    If IsDesc Then
+    Begin
+      If li < Value Then
+        Result := 1
+      Else
+        Result := -1;
+    End
+    Else
+    Begin
+      If li < Value Then
+        Result := -1
+      Else
+        Result := 1;
+    End;
+  End;
+
   Function SortCompare_B( Recno: Integer; Value: Boolean ): Integer;
   Var
     b: Boolean;
@@ -2274,8 +2974,10 @@ Var
   Var
     I, J, P: Integer;
     s1: String;
+    ws1: String;
     f1: Double;
     i1: Integer;
+    li1: Int64;
     b1: Boolean;
   Begin
     Repeat
@@ -2285,11 +2987,16 @@ Var
       SetRecno( P );
       f1 := 0;
       i1 := 0;
+      li1 := 0;
       b1 := False;
       Case DataType Of
         ttString: s1 := FFields[Idx].AsString;
+       {$IFDEF LEVEL4}
+        ttWideString: ws1 := FFields[Idx].AsWideString;
+       {$ENDIF}
         ttFloat: f1 := FFields[Idx].AsFloat;
         ttInteger: i1 := FFields[Idx].AsInteger;
+        ttLargeInt: li1 := FFields[Idx].AsLargeInt;
         ttBoolean: b1 := FFields[Idx].AsBoolean;
       End;
       Repeat
@@ -2299,6 +3006,13 @@ Var
               While SortCompare_S( I, s1 ) < 0 Do
                 Inc( I );
             End;
+       {$IFDEF LEVEL4}
+          ttWideString:
+            Begin
+              While SortCompare_W( I, ws1 ) < 0 Do
+                Inc( I );
+            End;
+       {$ENDIF}
           ttFloat:
             Begin
               While SortCompare_F( I, f1 ) < 0 Do
@@ -2307,6 +3021,11 @@ Var
           ttInteger:
             Begin
               While SortCompare_I( I, i1 ) < 0 Do
+                Inc( I );
+            End;
+          ttLargeInt:
+            Begin
+              While SortCompare_LI( I, li1 ) < 0 Do
                 Inc( I );
             End;
           ttBoolean:
@@ -2322,6 +3041,13 @@ Var
               While SortCompare_S( J, s1 ) > 0 Do
                 Dec( J );
             End;
+         {$IFDEF LEVEL4}
+          ttWideString:
+            Begin
+              While SortCompare_W( J, ws1 ) > 0 Do
+                Dec( J );
+            End;
+         {$ENDIF}
           ttFloat:
             Begin
               While SortCompare_F( J, f1 ) > 0 Do
@@ -2330,6 +3056,11 @@ Var
           ttInteger:
             Begin
               While SortCompare_I( J, i1 ) > 0 Do
+                Dec( J );
+            End;
+          ttLargeInt:
+            Begin
+              While SortCompare_LI( J, li1 ) > 0 Do
                 Dec( J );
             End;
           ttBoolean:
@@ -2394,10 +3125,11 @@ End;
 {                  implements TMemSortList                                      }
 {-------------------------------------------------------------------------------}
 
-Constructor TMemSortList.Create( UsingBookmark: Boolean );
+Constructor TMemSortList.Create( UsingBookmark: Boolean;
+     aRuntimeSettings, aSystemSettings: TFormatSettings  );
 Begin
-  Inherited Create( UsingBookmark );
-  FBufferList := TList.Create;
+  Inherited Create( UsingBookmark, aRuntimeSettings, aSystemSettings  );
+  FBufferList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
 End;
 
 Destructor TMemSortList.Destroy;
@@ -2410,7 +3142,7 @@ End;
 Procedure TMemSortList.Clear;
 Var
   I: Integer;
-  Buffer: PChar;
+  Buffer: TxBuffer;
 Begin
   inherited Clear();
   if(FBufferList<>nil)then
@@ -2422,8 +3154,11 @@ Begin
 //      if fUsingBookMark then
 //        Move( ( Buffer + 0 )^, L, SizeOf(L));
       // End Modified by CCY
-
-      FreeMem( Buffer, FRecordBufferSize );
+     {$IF RTLVersion <= 18.5}
+      FreeMem( Buffer, FRecordBufferSize ); { patched by fduenas }
+     {$ELSE}
+      SetLength( Buffer, 0);{ patched by fduenas }
+     {$IFEND}
     End;
     FBufferList.Clear();
   end;
@@ -2432,7 +3167,7 @@ Begin
   FRecNo := -1;
 End;
 
-function TMemSortList.ActiveBuffer: PAnsiChar;
+function TMemSortList.ActiveBuffer: TxBuffer; {patched by fduenas}
 Begin
   Result := Nil;
   If ( FRecNo < 1 ) Or ( FRecNo > FBufferList.Count ) Then Exit;
@@ -2441,30 +3176,47 @@ End;
 
 Function TMemSortList.GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean;
 Var
-  RecBuf: PAnsiChar;
+  RecBuf: TxBuffer; {patched by fduenas}
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
-  If RecBuf = Nil Then  Exit;
-  Move( ( RecBuf + Field.BufferOffset )^, Buffer^, Field.DataSize );
+  If (RecBuf = Nil) Or (Buffer = Nil) Then exit; {patched by fduenas}
+ {$IF RTLVersion <= 18.5}
+  Move((RecBuf + Field.BufferOffset)^, Buffer^, Field.DataSize);
+ {$ELSE}
+  Move(RecBuf[Field.BufferOffset], Buffer^, Field.DataSize);
+  { patched by fduenas }
+ {$IFEND}
+
   Result := True;
 End;
 
 Procedure TMemSortList.SetFieldData( Field: TSrtField; Buffer: Pointer );
 Var
-  RecBuf: PAnsiChar;
+  RecBuf: TxBuffer; {patched by fduenas}
 Begin
   RecBuf := ActiveBuffer;
   If ( RecBuf = Nil ) Or ( Buffer = Nil ) Then Exit;
+ {$IF RTLVersion <= 18.5}
   Move( Buffer^, ( RecBuf + Field.BufferOffset )^, Field.DataSize );
+ {$ELSE}
+  Move(Buffer^, RecBuf[Field.BufferOffset], Field.DataSize);
+  { patched by fduenas }
+ {$IFEND}
+
 End;
 
 Procedure TMemSortList.Insert;
 Var
-  Buffer: PChar;
+  Buffer: TxBuffer;
 Begin
-  GetMem( Buffer, FRecordBufferSize );
-  FillChar( Buffer^, FRecordBufferSize, 0 );
+{$IF RtlVersion <= 18.5}
+  GetMem(Buffer, FRecordBufferSize);
+  FillChar(Buffer^, FRecordBufferSize, #0); {patched by fduenas, added the '#' to the Null value '0', for better understanding}
+{$ELSE}
+  SetLength(Buffer, FRecordBufferSize); { patched by fduenas }
+  FillChar(Buffer[0], FRecordBufferSize, #0); { patched by fduenas }
+{$IFEND}
   FBufferList.Add( Buffer );
   FRecNo := FBufferList.Count;
 End;
@@ -2482,55 +3234,74 @@ End;
 {$if RtlVersion >= 20}
 function TMemSortList.GetSourceBookmark: TBookmark;
 Var
-  Buffer: PAnsiChar;
+  Buffer: TxBuffer; {patched by fduenas}
 Begin
   Result := nil;
   If ( fRecNo < 1 ) Or ( fRecNo > GetRecordCount ) Then
     Exit;
-  Buffer := PAnsiChar( fBufferList[fRecNo - 1] );
+  Buffer := TxBuffer( fBufferList[fRecNo - 1] );
+  {
   SetLength(Result, 20);
   Move( ( Buffer + 0 )^, Result[0], 20 );
+  }
+  SetLength(Result, Length(Buffer) );  {patched by fduenas}
+  Move(Buffer[0], Result[0], Length(Buffer) ); {patched by fduenas}
 End;
 {$ifend}
 
 Function TMemSortList.GetSourceRecno: Integer;
 Var
-  Buffer: PChar;
+  Buffer: TxBuffer; {patched by fduenas}
 Begin
   Result := 0;
   If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then Exit;
-  Buffer := PChar( FBufferList[FRecNo - 1] );
-  Move( ( Buffer + 0 )^, Result, SizeOf( Integer ) );
+{$IF RtlVersion <= 18.5}
+  Buffer := PAnsiChar( FBufferList[FRecNo - 1] );
+  Move( ( Buffer + 0 )^, Result, SizeOf( Integer ) ); {patched by fduenas}
+{$ELSE}
+  Buffer := FBufferList[FRecNo - 1] ;
+  Move( Buffer[0], Result, SizeOf( Integer ) ); {patched by fduenas}
+{$IFEND}
+
 End;
 
 {$if RtlVersion >= 20}
 procedure TMemSortList.SetSourceBookmark(const Value: TBookmark);
 Var
-  Buffer: PAnsiChar;
+  Buffer: TxBuffer;
 Begin
   If ( fRecNo < 1 ) Or ( fRecNo > GetRecordCount ) Then Exit;
-  Buffer := PAnsiChar( fBufferList[fRecNo - 1] );
-  Move( Value[0], ( Buffer + 0 )^, 20 );
+  Buffer := TxBuffer( fBufferList[fRecNo - 1] );
+  FillChar(Buffer[0], Length(Buffer), #0); { patched by fduenas }
+  Move( Value[0], Buffer[0], Length(Value) ); { patched by fduenas }
 End;
 {$ifend}
 
 Procedure TMemSortList.SetSourceRecno( Value: Integer );
 Var
-  Buffer: PChar;
+  Buffer: TxBuffer; {patched by fduenas}
 Begin
-  If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then Exit;
-  Buffer := PChar( FBufferList[FRecNo - 1] );
+ If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then Exit;
+
+{$IF RtlVersion <= 18.5}
+  Buffer := PAnsiChar( FBufferList[FRecNo - 1] );
   Move( Value, ( Buffer + 0 )^, SizeOf( Integer ) );
+{$ELSE}
+  Buffer := FBufferList[FRecNo - 1] ;
+  Move( Value, Buffer[0], SizeOf( Integer ) ); {patched by fduenas}
+{$IFEND}
+
 End;
 
 {-------------------------------------------------------------------------------}
 {                  implements TFileSortList                                     }
 {-------------------------------------------------------------------------------}
 
-Constructor TFileSortList.Create( UsingBookmark: Boolean; MapFileSize: Longint );
+Constructor TFileSortList.Create( UsingBookmark: Boolean; MapFileSize: Longint;
+     aRuntimeSettings, aSystemSettings: TFormatSettings  );
 Begin
-  Inherited Create( UsingBookmark );
-  FBufferList := TList.Create;
+  Inherited Create( UsingBookmark, aRuntimeSettings, aSystemSettings );
+  FBufferList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
   FTmpFile := GetTemporaryFileName( '~xq' );
   FMemMapFile := TMemMapFile.Create( FTmpFile, fmCreate, MapFileSize, True );
 End;
@@ -2541,67 +3312,152 @@ Begin
   FreeObject( FMemMapFile );
   SysUtils.DeleteFile( FTmpFile );
   FBufferList.Free;
-  If Assigned( FBuffer ) Then
-    FreeMem( FBuffer, FRecordBufferSize );
+
+  {$IF RtlVersion <= 18.5}
+  If Assigned(FBuffer) Then
+    FreeMem( FBuffer, FRecordBufferSize ); { patched by fduenas based on ccy }
+  {$ELSE}
+    SetLength(FBuffer, 0); { patched by fduenas based on ccy }
+  {$IFEND}
+
   Inherited Destroy;
 End;
 
 Procedure TFileSortList.Clear;
+var I: Integer;
+    Buffer : TxBuffer;
 Begin
+  inherited Clear;
+
+  if(FFields<>nil) then FFields.Clear();
+  FRecordBufferSize := SizeOf( Integer );
+  FRecNo := -1;
+
   FMemMapFile.Seek( 0, 0 );
-  FBufferList.Clear;
+
+  {added by fduenas, code to prevent memory leaks, taken from CCY}
+  if Assigned(FBufferList)then
+  begin
+    For I := 0 To FBufferList.Count - 1 Do
+    Begin
+     Buffer := FBufferList[I];
+      // Start Modified by CCY: Fixed memory leak. Free the Bookmark allocated
+//      if fUsingBookMark then
+//        Move( ( Buffer + 0 )^, L, SizeOf(L));
+      // End Modified by CCY
+     {$IF RTLVersion <= 18.5}
+      FreeMem( Buffer, FRecordBufferSize ); { patched by fduenas }
+     {$ELSE}
+      SetLength( Buffer, 0);{ patched by fduenas }
+     {$IFEND}
+    End;
+    FBufferList.Clear;
+  end;
+
   FFields.Clear;
   FRecordBufferSize := SizeOf( Integer );
   FRecNo := -1;
+
 End;
 
-function TFileSortList.ActiveBuffer: PAnsiChar;
+function TFileSortList.ActiveBuffer: TxBuffer;
 Begin
   Result := Nil;
   If ( FRecNo < 1 ) Or ( FRecNo > FBufferList.Count ) Then
     Exit;
-  If Not Assigned( FBuffer ) Then
-    GetMem( FBuffer, FRecordBufferSize );
-  FMemMapFile.Seek( Longint( FBufferList[FRecNo - 1] ), 0 );
-  FMemMapFile.Read( FBuffer^, FRecordBufferSize );
+
+{$IF RtlVersion <= 18.5}
+  If Not Assigned(FBuffer) Then
+    GetMem(FBuffer, FRecordBufferSize); { patched by fduenas based on ccy }
+{$ELSE}
+  SetLength(FBuffer, 0); { patched by fduenas based on ccy }
+  SetLength(FBuffer, FRecordBufferSize); { patched by fduenas based on ccy }
+{$IFEND}
+
+  FMemMapFile.Seek(LongInt(FBufferList[FRecNo - 1]), 0);
+
+{$IF RtlVersion <= 18.5}
+  FMemMapFile.Read(FBuffer^, FRecordBufferSize);
+  { patched by fduenas based on ccy }
+{$ELSE}
+  FMemMapFile.Read(FBuffer[0], FRecordBufferSize);
+  { patched by fduenas based on ccy }
+{$IFEND}
+
   Result := FBuffer;
 End;
 
 Function TFileSortList.GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean;
 Var
-  RecBuf: PAnsiChar;
+  RecBuf: TxBuffer;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
-  If RecBuf = Nil Then
+  If (RecBuf = Nil)  Or (Buffer = Nil) Then
     Exit;
-  Move( ( RecBuf + Field.BufferOffset )^, Buffer^, Field.DataSize );
+
+ {$IF RTLVersion <= 18.5}
+  Move((RecBuf + Field.BufferOffset)^, Buffer^,  Field.DataSize);
+{$ELSE}
+  Move(RecBuf[Field.BufferOffset], Buffer^, Field.DataSize);
+  { patched by ccy }
+{$IFEND}
+
   Result := True;
 End;
 
 Procedure TFileSortList.SetFieldData( Field: TSrtField; Buffer: Pointer );
 Var
-  RecBuf: PAnsiChar;
+  RecBuf: TxBuffer;
 Begin
   RecBuf := ActiveBuffer;
-  If RecBuf = Nil Then
-    Exit;
-  Move( Buffer^, ( RecBuf + Field.BufferOffset )^, Field.DataSize );
-  FMemMapFile.Seek( Longint( FBufferList[Recno - 1] ), 0 );
-  FMemMapFile.Write( RecBuf^, FRecordBufferSize );
+  If (RecBuf = Nil)  Or (Buffer = Nil) Then
+      Exit;
+
+{$IF RTLVersion <= 18.5}
+  Move(Buffer^, (RecBuf + Field.BufferOffset)^, Field.DataSize);
+{$ELSE}
+  Move(Buffer^, RecBuf[Field.BufferOffset], Field.DataSize);
+  { patched by fduenas based on ccy }
+{$IFEND}
+
+  FMemMapFile.Seek(LongInt(FBufferList[Recno - 1]), 0);
+
+{$IF RTLVersion <= 18.5}
+  FMemMapFile.Write(RecBuf^, FRecordBufferSize);
+{$ELSE}
+  FMemMapFile.Write(RecBuf[0], FRecordBufferSize);
+  { patched by fduenas based on ccy }
+{$IFEND}
+
 End;
 
 Procedure TFileSortList.Insert;
 Var
   Offset: Integer;
 Begin
-  If Not Assigned( FBuffer ) Then
-    GetMem( FBuffer, FRecordBufferSize );
-  FillChar( FBuffer^, FRecordBufferSize, 0 );
+
+{$IF RtlVersion <= 18.5}
+  If Not Assigned(FBuffer) Then
+    GetMem(FBuffer, FRecordBufferSize);
+  FillChar(FBuffer^, FRecordBufferSize, #0);
+{$ELSE}
+  SetLength(FBuffer, 0); { patched by fduenas based on ccy }
+  SetLength(FBuffer, FRecordBufferSize); { patched by fduenas }
+  FillChar(FBuffer[0], FRecordBufferSize, #0); { patched by fduenas }
+{$IFEND}
+
   Offset := FMemMapFile.VirtualSize;
-  FMemMapFile.Seek( Offset, 0 );
-  FMemMapFile.Write( FBuffer^, FRecordBufferSize );
-  FBufferList.Add( Pointer( Offset ) ); { the address in temp file is saved }
+
+  FMemMapFile.Seek(Offset, 0);
+
+{$IF RtlVersion <= 18.5}
+  FMemMapFile.Write(FBuffer^, FRecordBufferSize);
+{$ELSE}
+  FMemMapFile.Write(FBuffer[0], FRecordBufferSize);
+{$IFEND}
+
+  FBufferList.Add(TxBuffer(Offset)); { the address in temp file is saved }
   FRecNo := FBufferList.Count;
 End;
 
@@ -2626,19 +3482,24 @@ Procedure TFileSortList.SetSourceRecno( Value: Integer );
 Begin
   If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then
     Exit;
-  FMemMapFile.Seek( Longint( FBufferList[FRecNo - 1] ), 0 );
+  FMemMapFile.Seek( LongInt( FBufferList[FRecNo - 1] ), 0 );
   FMemMapFile.Write( Value, SizeOf( Integer ) );
 End;
 
 Function TFileSortList.GetSourceRecno: Integer;
 Var
-  RecBuf: PAnsiChar;
+  RecBuf: TxBuffer;
 Begin
   Result := -1;
   RecBuf := ActiveBuffer;
-  If RecBuf = Nil Then
+  If (RecBuf = Nil) Then
     Exit;
+{$IF RtlVersion <= 18.5}
   Move( ( RecBuf + 0 )^, Result, SizeOf( Integer ) );
+{$ELSE}
+  Move( RecBuf[0], Result, SizeOf( Integer ) );
+{$IFEND}
+
 End;
 
 {$if RtlVersion >= 20}
@@ -3117,7 +3978,7 @@ Begin
     Write(N,SizeOf(N));
     for I:= 0 to FList.Count-1 do
     Begin
-      Value:= Longint( FList[I] );
+      Value:= Integer( FList[I] );
       Write( Value, SizeOf(Value));
     End;
   end;
@@ -3184,19 +4045,19 @@ begin
   If FList.Count = 0 Then Exit;
   { it is needed to reindex with repeated values }
   n := 0;
-  Last := Longint( FList.Items[0] );
+  Last := Integer( FList.Items[0] );
   I := 0;
   While I <= FList.Count - 1 Do
   Begin
-    If Last <> Longint( FList.Items[I] ) Then
+    If Last <> Integer( FList.Items[I] ) Then
     Begin
       Inc( n );
-      Last := Longint( FList.Items[I] );
+      Last := Integer( FList.Items[I] );
     End;
     FList.Items[I] := Pointer( n );
     Inc( I );
   End;
 end;
 
-
 End.
+
