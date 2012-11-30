@@ -23,41 +23,29 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<DCC_BplOutput>bin</DCC_BplOutput>
+			<DCC_DcuOutput>lib</DCC_DcuOutput>
+			<DCC_DcpOutput>lib</DCC_DcpOutput>
 			<DllSuffix>_D2010</DllSuffix>
-			<DCC_DependencyCheckOutputName>..\..\..\..\..\Public\Documents\RAD Studio\7.0\Bpl\Xq_D2010.bpl</DCC_DependencyCheckOutputName>
+			<DCC_DependencyCheckOutputName>bin\Xq_D2010.bpl</DCC_DependencyCheckOutputName>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DesignOnlyPackage>false</DesignOnlyPackage>
-			<DCC_RangeChecking>true</DCC_RangeChecking>
 			<DCC_Description>TxQuery Runtime Component</DCC_Description>
 			<RuntimeOnlyPackage>true</RuntimeOnlyPackage>
-			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
 			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
 			<GenDll>true</GenDll>
-			<DCC_WriteableConstants>true</DCC_WriteableConstants>
-			<DCC_SymbolReferenceInfo>1</DCC_SymbolReferenceInfo>
 			<GenPackage>true</GenPackage>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
 			<Version>7.0</Version>
 			<DCC_DebugInformation>False</DCC_DebugInformation>
-			<DCC_WriteableConstants>True</DCC_WriteableConstants>
 			<DCC_LocalDebugSymbols>False</DCC_LocalDebugSymbols>
-			<DCC_IntegerOverflowCheck>True</DCC_IntegerOverflowCheck>
-			<DCC_RangeChecking>True</DCC_RangeChecking>
-			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
 			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
-			<DCC_DependencyCheckOutputName>bin\Xq_D2010.bpl</DCC_DependencyCheckOutputName>
+			<DCC_Define>Debug;$(DCC_Define)</DCC_Define>
+			<DCC_Optimize>false</DCC_Optimize>
 			<Version>7.0</Version>
-			<DCC_WriteableConstants>True</DCC_WriteableConstants>
-			<DCC_IntegerOverflowCheck>True</DCC_IntegerOverflowCheck>
-			<DCC_RangeChecking>True</DCC_RangeChecking>
-			<DCC_DcuOutput>lib</DCC_DcuOutput>
-			<DCC_ObjOutput>lib</DCC_ObjOutput>
-			<DCC_HppOutput>lib</DCC_HppOutput>
-			<DCC_BplOutput>bin</DCC_BplOutput>
-			<DCC_DcpOutput>lib</DCC_DcpOutput>
 		</PropertyGroup>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
@@ -68,7 +56,6 @@
 						<Parameters Name="UseLauncher">False</Parameters>
 						<Parameters Name="LoadAllSymbols">True</Parameters>
 						<Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
-						<Parameters Name="HostApplication">C:\Users\coder\Project\Components\Components.d11\TxQuery\Packages\D11\bin\XqTests.exe</Parameters>
 					</Parameters>
 					<VersionInfo>
 						<VersionInfo Name="IncludeVerInfo">True</VersionInfo>

@@ -23,41 +23,30 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_UnitSearchPath>lib;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DcuOutput>lib</DCC_DcuOutput>
+			<DCC_BplOutput>bin</DCC_BplOutput>
+			<DCC_DcpOutput>lib</DCC_DcpOutput>
 			<DllSuffix>_D2009</DllSuffix>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DesignOnlyPackage>true</DesignOnlyPackage>
-			<DCC_DependencyCheckOutputName>..\..\..\..\..\Public\Documents\RAD Studio\6.0\Bpl\dclXq_D2009.bpl</DCC_DependencyCheckOutputName>
-			<DCC_RangeChecking>true</DCC_RangeChecking>
+			<DCC_DependencyCheckOutputName>bin\dclXq_D2009.bpl</DCC_DependencyCheckOutputName>
 			<DCC_Description>TxQuery Design Time Component</DCC_Description>
-			<DCC_WriteableConstants>true</DCC_WriteableConstants>
 			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
 			<GenDll>true</GenDll>
-			<DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
-			<DCC_SymbolReferenceInfo>1</DCC_SymbolReferenceInfo>
 			<GenPackage>true</GenPackage>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">
 			<Version>7.0</Version>
 			<DCC_DebugInformation>False</DCC_DebugInformation>
-			<DCC_WriteableConstants>True</DCC_WriteableConstants>
 			<DCC_LocalDebugSymbols>False</DCC_LocalDebugSymbols>
-			<DCC_IntegerOverflowCheck>True</DCC_IntegerOverflowCheck>
-			<DCC_RangeChecking>True</DCC_RangeChecking>
-			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
 			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
-			<DCC_DependencyCheckOutputName>bin\dclXq_D2009.bpl</DCC_DependencyCheckOutputName>
 			<Version>7.0</Version>
-			<DCC_WriteableConstants>True</DCC_WriteableConstants>
-			<DCC_IntegerOverflowCheck>True</DCC_IntegerOverflowCheck>
-			<DCC_RangeChecking>True</DCC_RangeChecking>
-			<DCC_DcuOutput>lib</DCC_DcuOutput>
 			<DCC_ObjOutput>lib</DCC_ObjOutput>
 			<DCC_HppOutput>lib</DCC_HppOutput>
-			<DCC_BplOutput>bin</DCC_BplOutput>
-			<DCC_DcpOutput>lib</DCC_DcpOutput>
-			<DCC_UnitSearchPath>lib;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
 			<DCC_ResourcePath>lib;$(DCC_ResourcePath)</DCC_ResourcePath>
 			<DCC_ObjPath>lib;$(DCC_ObjPath)</DCC_ObjPath>
 			<DCC_IncludePath>lib;$(DCC_IncludePath)</DCC_IncludePath>
@@ -100,8 +89,8 @@
 						<VersionInfoKeys Name="Comments"/>
 					</VersionInfoKeys>
 					<Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dcloffice2k100.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-						<Excluded_Packages Name="$(BDS)\bin\dclofficexp100.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dcloffice2k120.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+						<Excluded_Packages Name="$(BDS)\bin\dclofficexp120.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
 					</Excluded_Packages>
 					<Source>
 						<Source Name="MainSource">dclXq.dpk</Source>
