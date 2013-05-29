@@ -1011,8 +1011,11 @@ Type
     Function GetFieldData(Field: TField; Buffer: Pointer): Boolean; Override;
     Procedure SetBlockReadSize(Value: Integer); Override;
 {$ENDIF}
-{$ifdef DelphiXE3Up}
+{$ifdef DelphiXE3}
     function GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean; overload; override;
+{$endif}
+{$ifdef DelphiXE4Up}
+    function GetFieldData(Field: TField; var Buffer: TValueBuffer): Boolean; overload; override;
 {$endif}
     Function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; Override;
     Function IsSequenced: Boolean; Override;
@@ -8618,8 +8621,13 @@ Begin
      FillChar(Buffer[StartCalculated], CalcFieldsSize, #0);
 End;
 
-{$ifdef DelphiXE3Up}
+{$ifdef DelphiXE3}
 function TCustomxQuery.GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean;
+{$endif}
+{$ifdef DelphiXE4Up}
+function TCustomxQuery.GetFieldData(Field: TField; var Buffer: TValueBuffer): Boolean;
+{$endif}
+{$ifdef DelphiXE3Up}
 Var
   vFieldOffset: Integer;
   vxqField: TxqField;
@@ -8959,18 +8967,18 @@ Begin
       If IsEmpty Then
         Result := Nil
       Else
-        Result := ActiveBuffer;
+        Result := TRecordBuffer(ActiveBuffer);
     dsCalcFields:
-      Result := CalcBuffer;
+      Result := TRecordBuffer(CalcBuffer);
     dsFilter:
-      Result := FFilterBuffer;
+      Result := TRecordBuffer(FFilterBuffer);
     dsEdit, dsInsert:
-      Result := ActiveBuffer;
+      Result := TRecordBuffer(ActiveBuffer);
     dsNewValue, dsOldValue, dsCurValue:
-      Result := ActiveBuffer;
+      Result := TRecordBuffer(ActiveBuffer);
 {$IFDEF level5}
     dsBlockRead:
-      Result := ActiveBuffer;
+      Result := TRecordBuffer(ActiveBuffer);
 {$ENDIF}
   Else
     Result := Nil;

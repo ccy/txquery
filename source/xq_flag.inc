@@ -285,6 +285,30 @@
   {$DEFINE DELPHI}
 {$ENDIF}
 
+{$IFDEF VER250}      // Delphi 18, XE4
+  {$DEFINE LEVEL4}
+  {$DEFINE LEVEL5}
+  {$DEFINE LEVEL6}
+  {$DEFINE LEVEL7}
+  {$DEFINE LEVEL10}
+  {$DEFINE LEVEL11}
+  {$DEFINE LEVEL12}
+  {$DEFINE LEVEL14}
+  {$DEFINE LEVEL15}
+  {$DEFINE LEVEL16}
+  {$DEFINE LEVEL17}
+  {$DEFINE LEVEL18}
+  {$DEFINE BDS}
+  {$DEFINE BDS10}
+  {$IFDEF BCB}
+    {$DEFINE BCB17}
+  {$ENDIF}
+  {$DEFINE DELPHI17}
+  {$DEFINE DELPHI18}
+  {$DEFINE DELPHIXE4}
+  {$DEFINE DELPHI}
+{$ENDIF}
+
 {$IFDEF LEVEL1}       {$DEFINE Delphi1Up}       {$ENDIF}
 {$IFDEF LEVEL2}       {$DEFINE Delphi2Up}       {$ENDIF}
 {$IFDEF LEVEL3}       {$DEFINE Delphi3Up}       {$ENDIF}
@@ -302,6 +326,7 @@
 {$IFDEF LEVEL15}      {$DEFINE DelphiXEUp}      {$ENDIF}
 {$IFDEF LEVEL16}      {$DEFINE DelphiXE2Up}     {$ENDIF}
 {$IFDEF LEVEL17}      {$DEFINE DelphiXE3Up}     {$ENDIF}
+{$IFDEF LEVEL18}      {$DEFINE DelphiXE4Up}     {$ENDIF}
 
 //***********************************************************************
 
