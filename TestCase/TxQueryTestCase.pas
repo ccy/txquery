@@ -191,6 +191,7 @@ type{$M+}
     procedure Test_Memo_Fields;
     procedure Test_OrderBy_WideString_Field;
     procedure Test_String_Fields;
+    procedure Test_Is_Null;
   end;
 
   TTest_CalculatedFields = class(TTest_TxQuery)
@@ -1752,6 +1753,20 @@ begin
 
   CheckTrue(FMainDataSet.Locate('DocNo', 'IV-0001', []));
   CheckEquals('XYZ', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
+end;
+
+procedure TTest_Fields.Test_Is_Null;
+var i: integer;
+    S: string;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  for i := 0 to FMainDataSet.Fields.Count - 1 do begin
+    S := Format('SELECT * FROM Main WHERE (%s IS NULL) AND (%s IS NOT NULL)', [FMainDataSet.Fields[i].FieldName, FMainDataSet.Fields[i].FieldName]);
+    FQuery.SQL.Text := S;
+    FQuery.Open;
+    FQuery.Close;
+  end;
 end;
 
 procedure TTest_Fields.Test_LargeInteger_Fields;

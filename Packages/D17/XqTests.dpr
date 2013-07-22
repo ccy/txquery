@@ -21,7 +21,8 @@ uses
   TestFramework,
   GUITestRunner,
   TextTestRunner,
-  TxQueryTestCase in '..\..\TestCase\TxQueryTestCase.pas';
+  TxQueryTestCase in '..\..\TestCase\TxQueryTestCase.pas',
+  TxQueryUnicodeTestCase in '..\..\TestCase\TxQueryUnicodeTestCase.pas';
 
 {$R *.RES}
 
