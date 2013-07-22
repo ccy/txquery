@@ -895,13 +895,13 @@ var _errorMsg: string;
 begin
  result := (ParameterCount >=1) and (ParameterCount <=2);
  If not Result then
-    _errorMsg:= SEXPR_WRONGPARAMETERCOUNT
- else if (ParameterCount=2) then
+    _errorMsg:= SEXPR_WRONGPARAMETERCOUNT;
+ {else if (ParameterCount=2) then
  begin
   result := (Param[0].ExprType = Param[1].ExprType);
   if not result then
      _errorMsg:= SEXPR_PARAMETERSTYPEDIFFERENT
- end;
+ end;}
 
  If Not result Then
     raise EExpression.CreateFmt( _errorMsg,
@@ -1005,7 +1005,7 @@ end;
 function TISNULLExpr.GetExprType: TExprtype;
 Begin
  if (ParameterCount=2) then
-     result := Param[0].ExprType
+     result := Param[1].ExprType
  else
      result := ttBoolean;
 End;
