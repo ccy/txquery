@@ -587,7 +587,7 @@ begin
               ttFloat  :  SortList.Fields[0].AsFloat     := FRightField.AsFloat;
               ttInteger:  SortList.Fields[0].AsInteger   := FRightField.AsInteger;
               ttLargeInt:
-               {$IFDEF Delphi2009Up}
+               {$IFDEF Delphi2010Up}
                 SortList.Fields[0].AsLargeInt := FRightField.AsLargeInt;
                {$ELSE}
                 SortList.Fields[0].AsFloat := FRightField.AsFloat;

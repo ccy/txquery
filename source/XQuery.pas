@@ -3377,7 +3377,7 @@ Begin
                             InsertItem.DataSet.Fields[J].AsInteger :=
                               TmpAnalizer.ResultSet.Fields[J].AsInteger;
                           ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
-                           {$IFDEF Delphi2009Up}
+                           {$IFDEF Delphi2010Up}
                             InsertItem.DataSet.Fields[J].AsLargeInt :=
                               TmpAnalizer.ResultSet.Fields[J].AsLargeInt;
                            {$ELSE}
@@ -3439,7 +3439,7 @@ Begin
                       ttInteger:
                         AsInteger := TmpField.AsInteger;
                       ttLargeInt:
-                        {$IFDEF Delphi2009Up}
+                        {$IFDEF Delphi2010Up}
                           AsLargeInt := TmpField.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                         {$ELSE}
                           AsFloat := TmpField.AsFloat; {added by fduenas: added LargeInt (Int64) support}
@@ -3497,7 +3497,7 @@ Begin
                     ttInteger:
                       AsInteger := Resolver.Expression.AsInteger;
                     ttLargeInt:
-                      {$IFDEF Delphi2009Up}
+                      {$IFDEF Delphi2010Up}
                         AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                       {$ELSE}
                          AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
@@ -3548,7 +3548,7 @@ Begin
                   ttInteger:
                     AsInteger := Resolver.Expression.AsInteger;
                   ttLargeInt:  {added by fduenas: added LargeInt (Int64) support}
-                    {$IFDEF Delphi2009Up}
+                    {$IFDEF Delphi2010Up}
                      AsLargeInt := Resolver.Expression.AsLargeInt;
                     {$ELSE}
                      AsFloat := Resolver.Expression.AsLargeInt;
@@ -3609,7 +3609,7 @@ Begin
             ttInteger:
               Field.AsInteger := xqField.AsInteger;
             ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
-              {$IFDEF Delphi2009Up}
+              {$IFDEF Delphi2010Up}
                 Field.AsLargeInt := xqField.AsLargeInt;
               {$ELSE}
                 Field.AsFloat := xqField.AsLargeInt;
@@ -3644,7 +3644,7 @@ Begin
            {$ENDIF}
             ttFloat: Field.AsFloat := Resolver.Expression.AsFloat;
             ttInteger: Field.AsInteger := Resolver.Expression.AsInteger;
-            {$IFDEF Delphi2009Up}
+            {$IFDEF Delphi2010Up}
              ttLargeInt: Field.AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
             {$ELSE}
              ttLargeInt: Field.AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
@@ -5041,7 +5041,7 @@ Begin
         Begin
           If CanOptimize Then
           Begin
-            If Not((AnsiPos('(Subquery', RangeStart) > 0) Or 
+            If Not((AnsiPos('(Subquery', RangeStart) > 0) Or
               (AnsiPos('(Subquery', RangeEnd) > 0)) Then { patched by fduenas: Changed AnsiPos to ComparePos }
             Begin
               TempBool := CanOptimize;
@@ -6818,7 +6818,7 @@ Type
     OnValidate: TFieldNotifyEvent;
   End;
 Var
-  BookmarkList: TList;
+  BookmarkList: {$if RTLVersion >= 20}TList<TBookmark>{$else}TList{$ifend};
   bm: TBookmark;
   I: Integer;
   DisabledState: array of Boolean;
@@ -6951,7 +6951,7 @@ Var
 Begin
   If Assigned(FxQuery.FOnBeforeQuery) Then
     FxQuery.FOnBeforeQuery(Self);
-  BookmarkList := TList.Create;
+  BookmarkList := {$if RTLVersion >= 20}TList<TBookmark>{$else}TList{$ifend}.Create;
   SetLength(DisabledState, FxQuery.DataSets.Count);
   SetLength(DataSetState, FxQuery.DataSets.Count);
   SetLength(DataSetEvents, FxQuery.DataSets.Count);
@@ -8839,7 +8839,7 @@ Begin
              {$IFNDEF DelphiXe3Up}
               Integer(Buffer^) := DateTimeToTimeStamp(d).Time
              {$Else}
-              TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer); {added patch for XE3, by ccy}
+              TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer) {added patch for XE3, by ccy}
              {$EndIf}
            else
              {$IFNDEF DelphiXe3Up}
@@ -9983,13 +9983,13 @@ Procedure TCustomxQuery.SetFieldData(Field: TField; Buffer: PxqSetFieldDataBuffe
 Var
   Offset: Integer;
   RecBuffer: TRecordBuffer;
-  TempDouble: Double;
   Data: TDateTimeRec;
   ts: TTimeStamp;
-  TempBool: WordBool;
   //HasData: TxFieldBoolSep;
   HasCalcData: TxCalcFieldBoolSep;
   xqField: TxqField;
+  TempDateTime: TDateTime;
+  TempTimeStamp: TSQLTimeStamp;
 Begin
   If Not Active Then
     Exit;
@@ -10016,15 +10016,15 @@ Begin
     if Field.DataType in [ftString, ftFixedChar] then
     begin
      //CopyMemory(@RecBuffer[StartCalculated + Field.Offset+1], Buffer, Size );
-     Move({$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], IMin( Length(PAnsiChar(Buffer)), Field.Size ));
+     Move(Pointer(Buffer)^, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], IMin( Length(PAnsiChar(Buffer)), Field.Size ));
     end
     else if Field.DataType in [ftWideString, ftFixedWideChar] then
     begin
-     Move({$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}],  IMin(Length(PWideChar(Buffer)), Field.Size) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF}  )
+     Move(Pointer(Buffer)^, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}],  IMin(Length(PWideChar(Buffer)), Field.Size) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF}  )
     end
     else
     begin
-      Move({$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], SizeOfFieldType( Field.DataType ) { GetFieldSize(Field.DataType, Field.Size)} );
+      Move(Pointer(Buffer)^, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], SizeOfFieldType( Field.DataType ) { GetFieldSize(Field.DataType, Field.Size)} );
     end;
     //CopyMemory(@RecBuffer[StartCalculated + Field.Offset + SizeOf(WordBool)], Buffer, GetFieldSize(field.DataType, Field.Size)); {modified by fduenas: fixed Calculated field issues}
   End
@@ -10038,19 +10038,18 @@ Begin
     Case Field.DataType Of
       ftLargeInt: { changed by fduenas: fix for ftLargeInt Issue }
         Begin
-          Move(Int64(Buffer^), (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
-          {FResultSet.Fields[Field.FieldNo - 1]}xqField.AsLargeInt := Int64(Buffer^);
+          Move(Pointer(Buffer)^, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
+          {FResultSet.Fields[Field.FieldNo - 1]}xqField.AsLargeInt := PInt64(Buffer)^;
         End;
       ftInteger, ftWord, {$IFDEF Delphi2009Up} ftLongWord, ftShortInt, {$ENDIF} ftSmallInt:
         Begin
-          Move(Integer(Buffer^), (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF});
-          xqField.AsInteger := Integer(Buffer^);
+          Move(Pointer(Buffer)^, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF});
+          xqField.AsInteger := PInteger(Buffer)^;
         End;
       ftBoolean:
         Begin
-          Move(WordBool(Buffer^), TempBool, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF});
-          Move(TempBool, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF});
-          xqField.AsBoolean := WordBool(Buffer^);
+          Move(Pointer(Buffer)^, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF});
+          xqField.AsBoolean := PBoolean(Buffer)^;
         End;
       ftString, ftFixedChar: { patched by fduenas added ftWideString }
         Begin
@@ -10076,44 +10075,45 @@ Begin
           if Field.DataType = ftDate then
           Begin
             ts.Time := 0;
-            ts.Date := Integer(Buffer^);
+            ts.Date := PInteger(Buffer)^;
           End
           Else
           Begin
-            ts.Time := Integer(Buffer^);
+            ts.Time := PInteger(Buffer)^;
             ts.Date := Trunc(Now);
           End;
-          TempDouble := TimeStampToDateTime(ts);
-          Move(TempDouble, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
-          xqField.AsFloat := TempDouble;
+          TempDateTime := TimeStampToDateTime(ts);
+          Move(TempDateTime, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
+          xqField.AsFloat := TempDateTime;
         End;
       ftDateTime {ftTimeStamp added 2013-04-25}:
         Begin
-          Data := TDateTimeRec(Buffer^);
+          Move(Pointer(Buffer)^, Data, SizeOf(Data));
           ts := MSecsToTimeStamp(Data.DateTime);
-          TempDouble := TimeStampToDateTime(ts);
-          Move(TempDouble, (RecBuffer + Offset)^, SizeOf(TempDouble));
-          xqField.AsFloat := TempDouble;
+          TempDateTime := TimeStampToDateTime(ts);
+          Move(TempDateTime, (RecBuffer + Offset)^, SizeOf(TempDateTime));
+          xqField.AsFloat := TempDateTime;
         End;
       ftTimeStamp {ftTimeStamp added 2013-04-25}:
         Begin
-          Data.Date := trunc(EncodeDate( TSQLTimeStamp(Buffer^).Year,
-                                   TSQLTimeStamp(Buffer^).Month,
-                                   TSQLTimeStamp(Buffer^).day ));
-          Data.Time := trunc(EncodeTime( TSQLTimeStamp(Buffer^).Hour,
-                                   TSQLTimeStamp(Buffer^).Minute,
-                                   TSQLTimeStamp(Buffer^).Second,
-                                   TSQLTimeStamp(Buffer^).Fractions ));
+          Move(Pointer(Buffer)^, TempTimeStamp, SizeOf(TempTimeStamp));
+          Data.Date := trunc(EncodeDate( TempTimeStamp.Year,
+                                   TempTimeStamp.Month,
+                                   TempTimeStamp.day ));
+          Data.Time := trunc(EncodeTime( TempTimeStamp.Hour,
+                                   TempTimeStamp.Minute,
+                                   TempTimeStamp.Second,
+                                   TempTimeStamp.Fractions ));
 
           ts := MSecsToTimeStamp( Data.DateTime);
-          TempDouble := TimeStampToDateTime(ts);
-          Move(TempDouble, (RecBuffer + Offset)^, SizeOf(TempDouble));
-          xqField.AsFloat := TempDouble;
+          TempDateTime := TimeStampToDateTime(ts);
+          Move(TempDateTime, (RecBuffer + Offset)^, SizeOf(TempDateTime));
+          xqField.AsFloat := TempDateTime;
         End;
       ftFloat, ftCurrency, ftBCD, ftFMTBcd:
         Begin
-          Move(double(Buffer^), (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
-          xqField.AsFloat := double(Buffer^);
+          Move(Pointer(Buffer)^, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
+          xqField.AsFloat := PDouble(Buffer)^;
         End;
     End;
   End;
@@ -10248,3 +10248,4 @@ begin
 end;
 
 End.
+

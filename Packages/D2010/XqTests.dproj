@@ -24,11 +24,11 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_Optimize>false</DCC_Optimize>
-			<DCC_ExeOutput>bin\</DCC_ExeOutput>
-			<DCC_UnitSearchPath>lib\;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_DcuOutput>lib\</DCC_DcuOutput>
+			<DCC_ExeOutput>..\..\bin\D2010</DCC_ExeOutput>
+			<DCC_UnitSearchPath>..\..\lib\D2010;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DcuOutput>..\..\lib\D2010</DCC_DcuOutput>
 			<UsePackages>true</UsePackages>
-			<DCC_DependencyCheckOutputName>bin\XqTests.exe</DCC_DependencyCheckOutputName>
+			<DCC_DependencyCheckOutputName>..\..\bin\D2010\XqTests.exe</DCC_DependencyCheckOutputName>
 			<DCC_UsePackage>Xq</DCC_UsePackage>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_1)'!=''">

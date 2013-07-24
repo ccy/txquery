@@ -638,7 +638,7 @@ Begin
   Result := 0;
   If FxQuery.IsDataSetDisabled( fField.DataSet ) Then
     Exit;
-  Result := {$IFDEF Delphi2009Up}fField.AsLargeInt{$ELSE}Trunc(fField.AsFloat){$ENDIF};
+  Result := {$IFDEF Delphi2010Up}fField.AsLargeInt{$ELSE}Trunc(fField.AsFloat){$ENDIF};
 
 End;
 
@@ -1237,7 +1237,7 @@ End;
 
 function TFilterFieldExpr.GetAsLargeInt: Int64;
 begin
-  Result := fField.{$IFDEF Delphi2009Up}AsLargeInt{$ELSE}Value{$ENDIF};
+  Result := fField.{$IFDEF Delphi2010}AsLargeInt{$ELSE}Value{$ENDIF};
 end;
 
 Function TFilterFieldExpr.GetAsBoolean: Boolean;
@@ -1382,7 +1382,7 @@ Begin
     if DataSet.Active = False Then DataSet.Open;
     fld := DataSet.FindField(fParam.Name);
     if fld = nil then Exit;
-    Result := fld.{$IFDEF Delphi2009Up}AsLargeInt{$ELSE}Value{$ENDIF};
+    Result := fld.{$IFDEF Delphi2010Up}AsLargeInt{$ELSE}Value{$ENDIF};
   end else
     Result := fParam.{$IFDEF Delphi2009Up}AsLargeInt{$ELSE}Value{$ENDIF};
 End;

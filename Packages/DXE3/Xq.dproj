@@ -120,22 +120,22 @@
         </DelphiCompile>
         <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="vcl.dcp"/>
-        <DCCReference Include="..\..\source\CnvStrUtils.pas"/>
-        <DCCReference Include="..\..\source\Sparsarr.pas"/>
-        <DCCReference Include="..\..\source\QLEXLIB.pas"/>
-        <DCCReference Include="..\..\source\QYACCLIB.pas"/>
+        <DCCReference Include="..\..\source\QCnvStrUtils.pas"/>
+        <DCCReference Include="..\..\source\XQSparseArray.pas"/>
+        <DCCReference Include="..\..\source\QFormatSettings.pas"/>
+        <DCCReference Include="..\..\source\QLexLib.pas"/>
+        <DCCReference Include="..\..\source\QYaccLib.pas"/>
         <DCCReference Include="..\..\source\XQMiscel.pas"/>
-        <DCCReference Include="..\..\source\qbaseexpr.pas"/>
+        <DCCReference Include="..\..\source\QBaseExpr.pas"/>
         <DCCReference Include="..\..\source\QExprYacc.pas"/>
         <DCCReference Include="..\..\source\QExprLex.pas"/>
-        <DCCReference Include="..\..\source\xqconsts.pas"/>
+        <DCCReference Include="..\..\source\XQConsts.pas"/>
         <DCCReference Include="..\..\source\XQJoins.pas"/>
-        <DCCReference Include="..\..\source\xqbase.pas"/>
-        <DCCReference Include="..\..\source\xqYacc.pas"/>
-        <DCCReference Include="..\..\source\xquery.pas"/>
-        <DCCReference Include="..\..\source\xqLex.pas"/>
+        <DCCReference Include="..\..\source\XQBase.pas"/>
+        <DCCReference Include="..\..\source\XQYacc.pas"/>
+        <DCCReference Include="..\..\source\XQuery.pas"/>
+        <DCCReference Include="..\..\source\XQLex.pas"/>
         <DCCReference Include="..\..\source\XQTypes.pas"/>
-        <DCCReference Include="..\..\source\QFormatSettings.pas"/>
         <RcCompile Include="..\..\source\QExprYacc.rc">
             <Form>QExprYacc.res</Form>
         </RcCompile>

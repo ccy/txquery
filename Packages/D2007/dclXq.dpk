@@ -12,18 +12,18 @@ package dclXq;
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
 {$OPTIMIZATION OFF}
-{$OVERFLOWCHECKS ON}
-{$RANGECHECKS ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
 {$REFERENCEINFO ON}
 {$SAFEDIVIDE OFF}
 {$STACKFRAMES OFF}
 {$TYPEDADDRESS OFF}
 {$VARSTRINGCHECKS ON}
-{$WRITEABLECONST ON}
+{$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'TxQuery Design Time Component'}
-{$LIBSUFFIX '_D2007'}
+{$LIBSUFFIX '_D11'}
 {$DESIGNONLY}
 {$IMPLICITBUILD OFF}
 
@@ -32,8 +32,8 @@ requires
   Xq;
 
 contains
-  SyntaxHi in '..\..\source\SyntaxHi.pas',
-  COLORSET in '..\..\source\COLORSET.PAS' {frmColorSettings},
-  XQREG in '..\..\source\XQREG.pas';
+  XQSyntaxHi in '..\..\source\XQSyntaxHi.pas',
+  XQColorSet in '..\..\source\XQColorSet.pas' {frmColorSettings},
+  XQReg in '..\..\source\XQReg.pas';
 
 end.

@@ -26,7 +26,7 @@ package Xq;
 {$DEFINE Debug}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'TxQuery Runtime Component'}
-{$LIBSUFFIX '_D18'}
+{$LIBSUFFIX '_D16'}
 {$RUNONLY}
 {$IMPLICITBUILD OFF}
 

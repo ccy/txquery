@@ -34,7 +34,9 @@
 {*****************************************************************************}
 
 unit TxQueryTestCase;
-{$I XQ_FLAG.INC}
+
+{$I ..\source\xq_flag.inc}
+
 interface
 
 uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery, QFormatSettings;
@@ -158,10 +160,10 @@ type{$M+}
 
   TTest_Insert = class(TTest_TxQuery)
   published
+    procedure Test_Insert_AllFields;
     procedure Test_Insert_BlankDataSet;
     procedure Test_Insert_WithSelectSQL;
     procedure Test_Insert_WithValues;
-    procedure Test_Insert_AllFields;
   end;
 
   TTest_Min = class(TTest_TxQuery)
@@ -215,7 +217,10 @@ type{$M+}
     procedure Test_Hardcode_String_Select;
   end;
 
-var TxQueryTestSuite: TTestSuite;
+  TTest_Select = class(TTest_TxQuery)
+  published
+    procedure Test_HasEmptyDataSet;
+  end;
 
 implementation
 
@@ -228,6 +233,8 @@ uses StrUtils, DateUtils, Variants,
 type THackDataSet = Class(TDataSet); {Hack class needed to add calculated fields at runtime}
 
 const SglEps = 1.1920928955e-07;
+
+var TxQueryTestSuite: TTestSuite;
 
 function GetDataPacket(DataSet: TDataSet): OleVariant;
 var P: TDataSetProvider;
@@ -1636,6 +1643,45 @@ begin
   CheckFalse(FMainDataSet.Locate('DocKey', 7, []), 'Record DocKey = 7 still exists even has been deleted');
 end;
 
+procedure TTest_Insert.Test_Insert_AllFields;
+var D: TClientDataSet;
+begin
+  D := TClientDataSet.Create(nil);
+  try
+    D.FieldDefs.Assign(FMainDataSet.FieldDefs);
+    D.CreateDataSet;
+
+    FQuery.DataSets.Clear;
+    FQuery.AddDataSet(FMainDataSet, 'Main');
+    FQuery.AddDataSet(D, 'Data');
+
+    with FQuery.SQL do begin
+      Clear;
+      Add('INSERT INTO Data (*)');
+      Add('(SELECT DocKey, "" Code, "" DocNo, DocDate, 0 DocTime,');
+      Add(        '0 DocDateTime, 0 DocTimeStamp, "" Agent, 0 Qty, 0 UnitPrice, 0 Amount,');
+      Add(        '"" WDocNo, "" Memo, "" WMemo, 0 LargeKey, false RecordActive' );
+      Add( 'FROM Main)');
+    end;
+    FQuery.ExecSQL;
+
+    FMainDataSet.Append;
+    FMainDataSet.FindField('DocKey').AsInteger := 11;
+    FMainDataSet.FindField('DocDate').AsDateTime := Date;
+    FMainDataSet.FindField('DocDate').AsFloat;
+    FMainDataSet.Post;
+
+    FQuery.ExecSQL;
+    CheckEquals(10 + FMainDataSet.RecordCount, D.RecordCount );
+
+    D.Last;
+    CheckEquals(Date, D.FindField('DocDate').AsDateTime);
+    CheckEquals(11, D.FindField('DocKey').AsInteger);
+  finally
+    D.Free;
+  end;
+end;
+
 procedure TTest_Insert.Test_Insert_BlankDataSet;
 var D1, D2: TClientDataSet;
 begin
@@ -1683,45 +1729,6 @@ begin
   end;
   FQuery.ExecSQL;
   CheckEquals(13, FMainDataSet.RecordCount, 'FMainDataSet RecordCount incorrect');
-end;
-
-procedure TTest_Insert.Test_Insert_AllFields;
-var D: TClientDataSet;
-begin
-  D := TClientDataSet.Create(nil);
-  try
-    D.FieldDefs.Assign(FMainDataSet.FieldDefs);
-    D.CreateDataSet;
-
-    FQuery.DataSets.Clear;
-    FQuery.AddDataSet(FMainDataSet, 'Main');
-    FQuery.AddDataSet(D, 'Data');
-
-    with FQuery.SQL do begin
-      Clear;
-      Add('INSERT INTO Data (*)');
-      Add('(SELECT DocKey, "" Code, "" DocNo, DocDate, 0 DocTime,');
-      Add(        '0 DocDateTime, 0 DocTimeStamp, "" Agent, 0 Qty, 0 UnitPrice, 0 Amount,');
-      Add(        '"" WDocNo, "" Memo, "" WMemo, 0 LargeKey, false RecordActive' );
-      Add( 'FROM Main)');
-    end;
-    FQuery.ExecSQL;
-
-    FMainDataSet.Append;
-    FMainDataSet.FindField('DocKey').AsInteger := 11;
-    FMainDataSet.FindField('DocDate').AsDateTime := Date;
-    FMainDataSet.FindField('DocDate').AsFloat;
-    FMainDataSet.Post;
-
-    FQuery.ExecSQL;
-    CheckEquals(10 + FMainDataSet.RecordCount, D.RecordCount );
-
-    D.Last;
-    CheckEquals(Date, D.FindField('DocDate').AsDateTime);
-    CheckEquals(11, D.FindField('DocKey').AsInteger);
-  finally
-    D.Free;
-  end;
 end;
 
 procedure TTest_Insert.Test_Insert_WithValues;
@@ -1930,7 +1937,7 @@ begin
                     FormatDateTime('yyyy-mm-dd HH:nn:ss', fld.AsDateTime, GetUSFormatSettings) , testMsg );
     if fld.DataType in [ftFloat, ftFMTBcd] then
        CheckEquals( Fields[i].AsFloat, fld.AsFloat, testMsg );
-    {$IFDEF Delphi2009Up}
+    {$IFDEF Delphi2010Up}
     if fld.DataType in [ftInteger, ftShortInt] then
        CheckEquals( Fields[i].AsInteger, fld.AsInteger, testMsg );
     if fld.DataType in [ftLargeint] then
@@ -1960,7 +1967,7 @@ end;
 
 procedure TTest_Fields.Test_LargeInteger_Fields;
 begin
-{$IFDEF Delphi2009Up}
+{$IFDEF Delphi2010Up}
  CreateTestData;
  FQuery.DataSets.Clear;
  FQuery.AddDataSet(FMainDataSet, 'Main');
@@ -2146,6 +2153,27 @@ begin
   CheckEquals(FMainDataSet.RecordCount, FQuery.RecordCount);
 end;
 
+procedure TTest_Select.Test_HasEmptyDataSet;
+var D: TClientDataSet;
+begin
+  D := TClientDataSet.Create(nil);
+  try
+    D.FieldDefs.Assign(FMainDataSet.FieldDefs);
+    D.CreateDataSet;
+
+    FQuery.DataSets.Clear;
+    FQuery.AddDataSet(FMainDataSet, 'Main');
+    FQuery.AddDataSet(D, 'Data');
+    FQuery.SQL.Clear;
+    FQuery.SQL.Add('SELECT * FROM Main');
+    FQuery.Open;
+
+    CheckTrue(FQuery.Active);
+  finally
+    D.Free;
+  end;
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -2174,6 +2202,7 @@ initialization
 
     AddSuite(TTest_DateTime.Suite);
     AddSuite(TTest_Hardcode_String.Suite);
+    AddSuite(TTest_Select.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);

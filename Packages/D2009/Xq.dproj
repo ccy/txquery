@@ -24,11 +24,11 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
-			<DCC_DcuOutput>lib</DCC_DcuOutput>
-			<DCC_DcpOutput>lib</DCC_DcpOutput>
-			<DCC_BplOutput>bin</DCC_BplOutput>
-			<DllSuffix>_D2009</DllSuffix>
-			<DCC_DependencyCheckOutputName>bin\Xq_D2009.bpl</DCC_DependencyCheckOutputName>
+			<DCC_DcuOutput>..\..\lib\D2009</DCC_DcuOutput>
+			<DCC_DcpOutput>..\..\lib\D2009</DCC_DcpOutput>
+			<DCC_BplOutput>..\..\bin\D2009</DCC_BplOutput>
+			<DllSuffix>_D12</DllSuffix>
+			<DCC_DependencyCheckOutputName>..\..\bin\D2009\Xq_D12.bpl</DCC_DependencyCheckOutputName>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DesignOnlyPackage>false</DesignOnlyPackage>
 			<DCC_Description>TxQuery Runtime Component</DCC_Description>
@@ -45,9 +45,48 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
 			<Version>7.0</Version>
-			<DCC_ObjOutput>lib</DCC_ObjOutput>
-			<DCC_HppOutput>lib</DCC_HppOutput>
 		</PropertyGroup>
+		<ItemGroup>
+			<DelphiCompile Include="Xq.dpk">
+				<MainSource>MainSource</MainSource>
+			</DelphiCompile>
+			<DCCReference Include="dbrtl.dcp"/>
+			<DCCReference Include="vcl.dcp"/>
+			<DCCReference Include="..\..\source\QCnvStrUtils.pas"/>
+			<DCCReference Include="..\..\source\XQSparseArray.pas"/>
+			<DCCReference Include="..\..\source\QFormatSettings.pas"/>
+			<DCCReference Include="..\..\source\QLexLib.pas"/>
+			<DCCReference Include="..\..\source\QYaccLib.pas"/>
+			<DCCReference Include="..\..\source\XQMiscel.pas"/>
+			<DCCReference Include="..\..\source\QBaseExpr.pas"/>
+			<DCCReference Include="..\..\source\QExprYacc.pas"/>
+			<DCCReference Include="..\..\source\QExprLex.pas"/>
+			<DCCReference Include="..\..\source\XQConsts.pas"/>
+			<DCCReference Include="..\..\source\XQJoins.pas"/>
+			<DCCReference Include="..\..\source\XQBase.pas"/>
+			<DCCReference Include="..\..\source\XQYacc.pas"/>
+			<DCCReference Include="..\..\source\XQuery.pas"/>
+			<DCCReference Include="..\..\source\XQLex.pas"/>
+			<DCCReference Include="..\..\source\XQTypes.pas"/>
+			<RcCompile Include="..\..\source\QExprYacc.rc">
+				<Form>QExprYacc.res</Form>
+			</RcCompile>
+			<RcCompile Include="..\..\source\xqyacc.rc">
+				<Form>xqyacc.res</Form>
+			</RcCompile>
+			<BuildConfiguration Include="Base">
+				<Key>Base</Key>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Release">
+				<Key>Cfg_1</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+		</ItemGroup>
+		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
@@ -96,45 +135,4 @@
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<ItemGroup>
-			<DelphiCompile Include="Xq.dpk">
-				<MainSource>MainSource</MainSource>
-			</DelphiCompile>
-			<DCCReference Include="dbrtl.dcp"/>
-			<DCCReference Include="vcl.dcp"/>
-			<DCCReference Include="..\..\source\CnvStrUtils.pas"/>
-			<DCCReference Include="..\..\source\Sparsarr.pas"/>
-			<DCCReference Include="..\..\source\QLEXLIB.pas"/>
-			<DCCReference Include="..\..\source\QYACCLIB.pas"/>
-			<DCCReference Include="..\..\source\XQMiscel.pas"/>
-			<DCCReference Include="..\..\source\qbaseexpr.pas"/>
-			<DCCReference Include="..\..\source\QExprYacc.pas"/>
-			<DCCReference Include="..\..\source\QExprLex.pas"/>
-			<DCCReference Include="..\..\source\xqconsts.pas"/>
-			<DCCReference Include="..\..\source\XQJoins.pas"/>
-			<DCCReference Include="..\..\source\xqbase.pas"/>
-			<DCCReference Include="..\..\source\xqYacc.pas"/>
-			<DCCReference Include="..\..\source\xquery.pas"/>
-			<DCCReference Include="..\..\source\xqLex.pas"/>
-			<DCCReference Include="..\..\source\XQTypes.pas"/>
-			<DCCReference Include="..\..\source\QFormatSettings.pas"/>
-			<RcCompile Include="..\..\source\QExprYacc.rc">
-				<Form>QExprYacc.res</Form>
-			</RcCompile>
-			<RcCompile Include="..\..\source\xqyacc.rc">
-				<Form>xqyacc.res</Form>
-			</RcCompile>
-			<BuildConfiguration Include="Base">
-				<Key>Base</Key>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Debug">
-				<Key>Cfg_2</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Release">
-				<Key>Cfg_1</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-		</ItemGroup>
-		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
 	</Project>

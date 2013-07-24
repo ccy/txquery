@@ -24,14 +24,14 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
 			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
-			<DCC_UnitSearchPath>lib;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_DcuOutput>lib</DCC_DcuOutput>
-			<DCC_BplOutput>bin</DCC_BplOutput>
-			<DCC_DcpOutput>lib</DCC_DcpOutput>
-			<DllSuffix>_D2009</DllSuffix>
+			<DCC_UnitSearchPath>..\..\lib\D2009;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DcuOutput>..\..\lib\D2009</DCC_DcuOutput>
+			<DCC_BplOutput>..\..\bin\D2009</DCC_BplOutput>
+			<DCC_DcpOutput>..\..\lib\D2009</DCC_DcpOutput>
+			<DllSuffix>_D12</DllSuffix>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DesignOnlyPackage>true</DesignOnlyPackage>
-			<DCC_DependencyCheckOutputName>bin\dclXq_D2009.bpl</DCC_DependencyCheckOutputName>
+			<DCC_DependencyCheckOutputName>..\..\bin\D2009\dclXq_D12.bpl</DCC_DependencyCheckOutputName>
 			<DCC_Description>TxQuery Design Time Component</DCC_Description>
 			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
 			<GenDll>true</GenDll>
@@ -45,12 +45,31 @@
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Cfg_2)'!=''">
 			<Version>7.0</Version>
-			<DCC_ObjOutput>lib</DCC_ObjOutput>
-			<DCC_HppOutput>lib</DCC_HppOutput>
-			<DCC_ResourcePath>lib;$(DCC_ResourcePath)</DCC_ResourcePath>
-			<DCC_ObjPath>lib;$(DCC_ObjPath)</DCC_ObjPath>
-			<DCC_IncludePath>lib;$(DCC_IncludePath)</DCC_IncludePath>
 		</PropertyGroup>
+		<ItemGroup>
+			<DelphiCompile Include="dclXq.dpk">
+				<MainSource>MainSource</MainSource>
+			</DelphiCompile>
+			<DCCReference Include="designide.dcp"/>
+			<DCCReference Include="Xq.dcp"/>
+			<DCCReference Include="..\..\source\XQSyntaxHi.pas"/>
+			<DCCReference Include="..\..\source\XQColorSet.pas">
+				<Form>frmColorSettings</Form>
+			</DCCReference>
+			<DCCReference Include="..\..\source\XQReg.pas"/>
+			<BuildConfiguration Include="Base">
+				<Key>Base</Key>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Release">
+				<Key>Cfg_1</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+		</ItemGroup>
+		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
 		<ProjectExtensions>
 			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
 			<Borland.ProjectType>Package</Borland.ProjectType>
@@ -99,28 +118,4 @@
 			</BorlandProject>
 			<ProjectFileVersion>12</ProjectFileVersion>
 		</ProjectExtensions>
-		<ItemGroup>
-			<DelphiCompile Include="dclXq.dpk">
-				<MainSource>MainSource</MainSource>
-			</DelphiCompile>
-			<DCCReference Include="designide.dcp"/>
-			<DCCReference Include="Xq.dcp"/>
-			<DCCReference Include="..\..\source\SyntaxHi.pas"/>
-			<DCCReference Include="..\..\source\COLORSET.PAS">
-				<Form>frmColorSettings</Form>
-			</DCCReference>
-			<DCCReference Include="..\..\source\XQREG.pas"/>
-			<BuildConfiguration Include="Base">
-				<Key>Base</Key>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Debug">
-				<Key>Cfg_2</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-			<BuildConfiguration Include="Release">
-				<Key>Cfg_1</Key>
-				<CfgParent>Base</CfgParent>
-			</BuildConfiguration>
-		</ItemGroup>
-		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
 	</Project>

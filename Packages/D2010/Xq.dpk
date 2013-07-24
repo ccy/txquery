@@ -23,7 +23,7 @@ package Xq;
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
 {$DESCRIPTION 'TxQuery Runtime Component'}
-{$LIBSUFFIX '_D2010'}
+{$LIBSUFFIX '_D14'}
 {$RUNONLY}
 {$IMPLICITBUILD OFF}
 
@@ -32,21 +32,21 @@ requires
   vcl;
 
 contains
-  CnvStrUtils in '..\..\source\CnvStrUtils.pas',
-  Sparsarr in '..\..\source\Sparsarr.pas',
-  QLEXLIB in '..\..\source\QLEXLIB.pas',
-  QYACCLIB in '..\..\source\QYACCLIB.pas',
+  QCnvStrUtils in '..\..\source\QCnvStrUtils.pas',
+  XQSparseArray in '..\..\source\XQSparseArray.pas',
+  QFormatSettings in '..\..\source\QFormatSettings.pas',
+  QLexLib in '..\..\source\QLexLib.pas',
+  QYaccLib in '..\..\source\QYaccLib.pas',
   XQMiscel in '..\..\source\XQMiscel.pas',
-  qbaseexpr in '..\..\source\qbaseexpr.pas',
+  QBaseExpr in '..\..\source\QBaseExpr.pas',
   QExprYacc in '..\..\source\QExprYacc.pas',
   QExprLex in '..\..\source\QExprLex.pas',
-  xqconsts in '..\..\source\xqconsts.pas',
+  XQConsts in '..\..\source\XQConsts.pas',
   XQJoins in '..\..\source\XQJoins.pas',
-  xqbase in '..\..\source\xqbase.pas',
-  xqYacc in '..\..\source\xqYacc.pas',
-  xquery in '..\..\source\xquery.pas',
-  xqLex in '..\..\source\xqLex.pas',
-  XQTypes in '..\..\source\XQTypes.pas',
-  QFormatSettings in '..\..\source\QFormatSettings.pas';
+  XQBase in '..\..\source\XQBase.pas',
+  XQYacc in '..\..\source\XQYacc.pas',
+  XQuery in '..\..\source\XQuery.pas',
+  XQLex in '..\..\source\XQLex.pas',
+  XQTypes in '..\..\source\XQTypes.pas';
 
 end.

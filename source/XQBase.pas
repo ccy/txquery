@@ -763,7 +763,7 @@ Type
 
   TMemSortList = Class( TxqSortList )
   Private
-    FBufferList: TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}; { patched by fduenas }
+    FBufferList: TList{$IF RtlVersion>20}<TxBuffer>{$IFEND}; { patched by fduenas }
     function ActiveBuffer: TxBuffer; override; {patched by fduenas}
   Protected
     Function GetFieldData( Field: TSrtField; Buffer: Pointer ): Boolean; Override;
@@ -786,7 +786,7 @@ Type
 
   TFileSortList = Class( TxqSortList )
   Private
-    FBufferList: TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}; { patched by fduenas }
+    FBufferList: TList{$IF RtlVersion>20}<TxBuffer>{$IFEND}; { patched by fduenas }
     FMemMapFile: TMemMapFile;
     FTmpFile: String;
     FBuffer: TxBuffer; {patched by fduenas}
@@ -3004,7 +3004,7 @@ Constructor TMemSortList.Create( UsingBookmark: Boolean;
      aRuntimeSettings, aSystemSettings: TFormatSettings  );
 Begin
   Inherited Create( UsingBookmark, aRuntimeSettings, aSystemSettings  );
-  FBufferList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
+  FBufferList := TList{$IF RtlVersion>20}<TxBuffer>{$IFEND}.Create;
 End;
 
 Destructor TMemSortList.Destroy;
@@ -3176,7 +3176,7 @@ Constructor TFileSortList.Create( UsingBookmark: Boolean; MapFileSize: Longint;
      aRuntimeSettings, aSystemSettings: TFormatSettings  );
 Begin
   Inherited Create( UsingBookmark, aRuntimeSettings, aSystemSettings );
-  FBufferList := TList{$IF RtlVersion>=20}<TxBuffer>{$IFEND}.Create;
+  FBufferList := TList{$IF RtlVersion>20}<TxBuffer>{$IFEND}.Create;
   FTmpFile := GetTemporaryFileName( '~xq' );
   FMemMapFile := TMemMapFile.Create( FTmpFile, fmCreate, MapFileSize, True );
 End;

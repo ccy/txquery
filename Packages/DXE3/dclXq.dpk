@@ -35,8 +35,8 @@ requires
   Xq;
 
 contains
-  SyntaxHi in '..\..\source\SyntaxHi.pas',
-  COLORSET in '..\..\source\COLORSET.PAS' {frmColorSettings},
-  XQREG in '..\..\source\XQREG.pas';
+  XQSyntaxHi in '..\..\source\XQSyntaxHi.pas',
+  XQColorSet in '..\..\source\XQColorSet.pas' {frmColorSettings},
+  XQReg in '..\..\source\XQReg.pas';
 
 end.

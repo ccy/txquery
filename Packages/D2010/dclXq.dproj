@@ -23,14 +23,14 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
-			<DCC_DcuOutput>lib</DCC_DcuOutput>
-			<DCC_UnitSearchPath>lib;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-			<DCC_DcpOutput>lib</DCC_DcpOutput>
-			<DCC_BplOutput>bin</DCC_BplOutput>
-			<DllSuffix>_D2010</DllSuffix>
+			<DCC_DcuOutput>..\..\lib\D2010</DCC_DcuOutput>
+			<DCC_UnitSearchPath>..\..\lib\D2010;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+			<DCC_DcpOutput>..\..\lib\D2010</DCC_DcpOutput>
+			<DCC_BplOutput>..\..\bin\D2010</DCC_BplOutput>
+			<DllSuffix>_D14</DllSuffix>
 			<DCC_ImageBase>00400000</DCC_ImageBase>
 			<DesignOnlyPackage>true</DesignOnlyPackage>
-			<DCC_DependencyCheckOutputName>bin\dclXq_D2010.bpl</DCC_DependencyCheckOutputName>
+			<DCC_DependencyCheckOutputName>..\..\bin\D2010\dclXq_D14.bpl</DCC_DependencyCheckOutputName>
 			<DCC_Description>TxQuery Design Time Component</DCC_Description>
 			<DCC_OutputNeverBuildDcps>true</DCC_OutputNeverBuildDcps>
 			<GenDll>true</GenDll>
@@ -104,11 +104,11 @@
 			</DelphiCompile>
 			<DCCReference Include="designide.dcp"/>
 			<DCCReference Include="Xq.dcp"/>
-			<DCCReference Include="..\..\source\SyntaxHi.pas"/>
-			<DCCReference Include="..\..\source\COLORSET.PAS">
+			<DCCReference Include="..\..\source\XQSyntaxHi.pas"/>
+			<DCCReference Include="..\..\source\XQColorSet.pas">
 				<Form>frmColorSettings</Form>
 			</DCCReference>
-			<DCCReference Include="..\..\source\XQREG.pas"/>
+			<DCCReference Include="..\..\source\XQReg.pas"/>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>
 			</BuildConfiguration>
