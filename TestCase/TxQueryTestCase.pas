@@ -157,6 +157,7 @@ type{$M+}
   TTest_Insert = class(TTest_TxQuery)
   published
     procedure Test_Insert_BlankDataSet;
+    procedure Test_Insert_AllFields;
     procedure Test_Insert_WithSelectSQL;
     procedure Test_Insert_WithValues;
   end;
@@ -1605,6 +1606,45 @@ begin
   end;
 end;
 
+procedure TTest_Insert.Test_Insert_AllFields;
+var D: TClientDataSet;
+begin
+  D := TClientDataSet.Create(nil);
+  try
+    D.FieldDefs.Assign(FMainDataSet.FieldDefs);
+    D.CreateDataSet;
+
+    FQuery.DataSets.Clear;
+    FQuery.AddDataSet(FMainDataSet, 'Main');
+    FQuery.AddDataSet(D, 'Data');
+
+    with FQuery.SQL do begin
+      Clear;
+      Add('INSERT INTO Data (*)');
+      Add('(SELECT DocKey, "" Code, "" DocNo, DocDate, 0 DocTime,');
+      Add(        '0 DocDateTime, 0 DocTimeStamp, "" Agent, 0 Qty, 0 UnitPrice, 0 Amount,');
+      Add(        '"" WDocNo, "" Memo, "" WMemo, 0 LargeKey, false RecordActive' );
+      Add( 'FROM Main)');
+    end;
+    FQuery.ExecSQL;
+
+    FMainDataSet.Append;
+    FMainDataSet.FindField('DocKey').AsInteger := 11;
+    FMainDataSet.FindField('DocDate').AsDateTime := Date;
+    FMainDataSet.FindField('DocDate').AsFloat;
+    FMainDataSet.Post;
+
+    FQuery.ExecSQL;
+    CheckEquals(10 + FMainDataSet.RecordCount, D.RecordCount );
+
+    D.Last;
+    CheckEquals(Date, D.FindField('DocDate').AsDateTime);
+    CheckEquals(11, D.FindField('DocKey').AsInteger);
+  finally
+    D.Free;
+  end;
+end;
+
 procedure TTest_Insert.Test_Insert_WithSelectSQL;
 begin
   FQuery.DataSets.Clear;
@@ -1783,6 +1823,8 @@ begin
     FQuery.Next;
     FMainDataSet.Prior;
   end;
+{$else}
+  Check(True);
 {$ifend}
 end;
 
@@ -1880,7 +1922,7 @@ begin
   FQuery.DataSets.Clear;
   FQuery.AddDataSet(FMainDataSet, 'Main');
 
-   with FQuery.SQL do begin
+  with FQuery.SQL do begin
     Clear;
     Add(         'SELECT ''P'' || EXTRACT(YEAR FROM DocDate) || ''_'' || EXTRACT(MONTH FROM DocDate) AS Period');
     Add(           'FROM Main');
