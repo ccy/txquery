@@ -34,32 +34,34 @@
 {*****************************************************************************}
 
 unit TxQueryTestCase;
-
+{$I XQ_FLAG.INC}
 interface
 
-uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery;
+uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery, QFormatSettings;
 
 type{$M+}
   TTest_TxQuery = class(TTestCase)
-  const
-    SglEps = 1.1920928955e-07;
-  type
-    THackDataSet = class(TDataSet);
-  strict private
-    procedure CreateTestData;
-    procedure OnCalcFieldsEvent(ADataset: TDataset);
-    procedure SetupDataSets(const aUseCalcFields: Boolean);
+  public
+   procedure Test_OnCalcFieldsEvent( ADataset: TDataset ); virtual;
   protected
     FDate: TDateTime;
-    FDetailDataSet: TClientDataSet;
     FMainDataSet: TClientDataSet;
+    FDetailDataSet: TClientDataSet;
     FQuery: TxQuery;
+    function CanCreateTestData: boolean; virtual;
+    function CanCreateCalcFields: boolean; virtual;
     procedure SetUp; override;
     procedure TearDown; override;
-    function UseCalcFields: boolean; virtual;
+    procedure SetupDataSets(AppendTestData:Boolean=true; UseCalcFields:Boolean=false); virtual;
+    procedure CreateTestData(UseCalcFields: Boolean=false); virtual;
   end;
 
   TTest_Between = class(TTest_TxQuery)
+  private
+    FShortDateFormat: string;
+  protected
+    procedure SetUp; override;
+    procedure TearDown; override;
   published
     procedure TTest_Between_SQL;
   end;
@@ -157,9 +159,9 @@ type{$M+}
   TTest_Insert = class(TTest_TxQuery)
   published
     procedure Test_Insert_BlankDataSet;
-    procedure Test_Insert_AllFields;
     procedure Test_Insert_WithSelectSQL;
     procedure Test_Insert_WithValues;
+    procedure Test_Insert_AllFields;
   end;
 
   TTest_Min = class(TTest_TxQuery)
@@ -186,27 +188,26 @@ type{$M+}
   end;
 
   TTest_Fields = class(TTest_TxQuery)
+  public
   published
-    procedure Test_LargeInteger_Fields;
-    procedure Test_MaxString;
-    procedure Test_Memo_Fields;
-    procedure Test_OrderBy_WideString_Field;
+    procedure Test_Boolean_Fields_False;
+    procedure Test_Boolean_Fields_True;
     procedure Test_String_Fields;
+    procedure Test_MaxString;
+    procedure Test_OrderBy_WideString_Field;
+    procedure Test_Memo_Fields;
+    procedure Test_LargeInteger_Fields;
+    procedure Test_Calculated_Fields;
     procedure Test_Is_Null;
-  end;
-
-  TTest_CalculatedFields = class(TTest_TxQuery)
-  protected
-    function UseCalcFields: boolean; override;
-  published
-    procedure Test;
   end;
 
   TTest_DateTime = class(TTest_TxQuery)
   published
+    procedure Test_SelectAll;
     procedure Test_ExtractDate;
     procedure Test_FormatDateTime1;
     procedure Test_FormatDateTime2;
+    function CanCreateCalcFields: boolean; override;
   end;
 
   TTest_Hardcode_String = class(TTest_TxQuery)
@@ -214,9 +215,19 @@ type{$M+}
     procedure Test_Hardcode_String_Select;
   end;
 
+var TxQueryTestSuite: TTestSuite;
+
 implementation
 
-uses StrUtils, DateUtils, Variants, Provider;
+uses StrUtils, DateUtils, Variants,
+{$IFDEF LEVEL4}
+    SqlTimSt,
+{$ENDIF}
+ Provider;
+
+type THackDataSet = Class(TDataSet); {Hack class needed to add calculated fields at runtime}
+
+const SglEps = 1.1920928955e-07;
 
 function GetDataPacket(DataSet: TDataSet): OleVariant;
 var P: TDataSetProvider;
@@ -244,12 +255,103 @@ begin
   Result.ThousandSeparator := ',';
 end;
 
-procedure TTest_TxQuery.CreateTestData;
+procedure TTest_TxQuery.SetupDataSets(AppendTestData:Boolean;
+ UseCalcFields:Boolean);
 var i: integer;
 begin
-  FMainDataSet.Active := True;
-  FMainDataSet.EmptyDataSet;
+ //Main Data
+  if not assigned(FMainDataSet) then
+     FMainDataSet := TClientDataSet.Create(nil)
+  else
+     FMainDataSet.Active := false;
+  with FMainDataSet do begin
+    FMaindataset.Name := 'MainDataSet';
+    Fields.Clear;
+    FieldDefs.Clear;
+    FieldDefs.Add('DocKey',    ftInteger, 0);
+    FieldDefs.Add('Code',      ftString, 10);
+    FieldDefs.Add('DocNo',     ftString, 20);
+    FieldDefs.Add('DocDate',   ftDate,    0);
+    FieldDefs.Add('DocTime',   ftTime,    0);
+    FieldDefs.Add('DocDateTime',ftDateTime,    0);
+    {$IFDEF LEVEL4}
+     FieldDefs.Add('DocTimeStamp',ftTimeStamp,  0);
+    {$ENDIF}
+    FieldDefs.Add('Agent',     ftString, 10);
+    FieldDefs.Add('Qty',       ftFmtBCD,  8);
+    FieldDefs.Add('UnitPrice', ftFmtBCD,  8);
+    FieldDefs.Add('Amount',    ftFmtBCD,  8);
+    FieldDefs.Add('WDocNo',    ftWideString, 10);
+    FieldDefs.Add('Memo',      ftMemo,     80);
+    FieldDefs.Add('WMemo',     ftWideMemo, 80);
+    FieldDefs.Add('LargeKey',  ftLargeint, 0);
+    FieldDefs.Add('RecordActive',    ftBoolean, 0);
+    {Calculated fields}
+    if UseCalcFields then
+    begin
+     THackDataSet(FMainDataSet).CreateFields;
+     for i  := 0 to FieldDefs.Count-1 do
+     begin
+      if (FieldDefs[i].InternalCalcField) or (FieldDefs[i].DataType in ftNonTextTypes) or
+         (FieldDefs[i].DataType = ftWideMemo) then
+         continue;
+      with FieldDefs[i].FieldClass.Create( FMainDataSet ) do
+      begin
+       Name := FMainDataSet.Name+'CALC_'+FieldDefs[i].DisplayName;
+       FieldName := 'CALC_'+FieldDefs[i].DisplayName;
+       FieldKind := fkCalculated;
+       Size := FieldDefs[i].Size;
+       DataSet := FMainDataSet
+      end;
+     end;
+     FMainDataSet.OnCalcFields := Test_OnCalcFieldsEvent;
+     FMainDataSet.AutoCalcFields := true;
+    end
+    else
+    begin
+     FMainDataSet.OnCalcFields := nil;
+     FMainDataSet.AutoCalcFields := false;
+    end;
+    CreateDataSet;
+  end;
 
+  //Detail Data
+  if not assigned(FDetailDataSet) then
+     FDetailDataSet := TClientDataSet.Create(nil)
+  else
+     FDetailDataSet.Active := false;
+
+  with FDetailDataSet do begin
+    FieldDefs.Clear;
+    FieldDefs.Add('DocKey',   ftInteger, 0);
+    FieldDefs.Add('ItemCode', ftString, 30);
+    CreateDataSet;
+  end;
+
+  if AppendTestData then
+     CreateTestData( UseCalcFields );
+end;
+
+function TTest_TxQuery.CanCreateTestData: boolean;
+begin
+ result := true;
+end;
+
+function TTest_TxQuery.CanCreateCalcFields: boolean;
+begin
+ result := false;
+end;
+
+procedure TTest_TxQuery.CreateTestData(UseCalcFields: Boolean);
+ var i: integer;
+begin
+  FMainDataSet.Active := true;
+  FMainDataSet.EmptyDataSet;
+  FMainDataSet.AutoCalcFields := UseCalcFields;
+  if UseCalcFields then
+   FMainDataSet.OnCalcFields := Test_OnCalcFieldsEvent
+  else
+    FMainDataSet.OnCalcFields := nil;
   for i := 1 to 10 do begin
     FMainDataSet.Append;
     FMainDataSet['DocKey'] := i;
@@ -257,8 +359,11 @@ begin
     FMainDataSet['DocNo'] := Format('IV-%.4d', [i]);
     FMainDataSet['WDocNo'] := Format('IV-%.4d', [i]);
     FMainDataSet['DocDate'] := IncDay(FDate, i);
-    FMainDataSet['DocTime'] := IncHour(EncodeTime(1, 1, 1, 1), i);
-    FMainDataSet['DocDateTime'] := IncDay(Now, i);
+    FMainDataSet['DocTime'] := IncHour(Fdate, i);
+    FMainDataSet['DocDateTime'] := IncDay( IncHour(Fdate, i), i);
+    {$IFDEF LEVEL4}
+     FMainDataSet.FieldByName('DocTimeStamp').AsSQLTimeStamp := DateTimeToSQLTimeStamp( IncDay( IncHour(Fdate, i), i) );
+    {$ENDIF}
     FMainDataSet['LargeKey'] := 123456789012345670+i;
     if i <= 3 then
        FMainDataSet['Agent'] := 'ABC'
@@ -269,6 +374,7 @@ begin
     FMainDataSet['Qty'] := i;
     FMainDataSet['UnitPrice'] := i * 2;
     FMainDataSet['Amount'] := FMainDataSet['Qty'] * FMainDataSet['UnitPrice'];
+    FMainDataSet['RecordActive'] := (i Mod 2)=0;
     FMainDataSet.Post;
   end;
 
@@ -287,103 +393,60 @@ begin
   end;
 end;
 
-procedure TTest_TxQuery.OnCalcFieldsEvent(ADataset: TDataset);
-var i: integer;
-    F: TField;
-begin
-  with ADataSet do begin
-    for i := 0 to Fields.Count - 1 do begin
-      if not (Fields[i].FieldKind = fkData) then
-        Continue;
-
-      F := FindField('CALC_' + Fields[i].FieldName);
-      if not Assigned(F) then
-        Continue;
-
-      F.Value := Fields[i].Value;
-    end;
-  end;
-end;
-
 procedure TTest_TxQuery.SetUp;
 begin
   inherited;
   FDate := EncodeDate(2005, 5, 5);
   FQuery := TxQuery.Create(nil);
-  SetupDataSets(UseCalcFields);
-end;
-
-procedure TTest_TxQuery.SetupDataSets(const aUseCalcFields: Boolean);
-var i: integer;
-begin
-  // Main Data
-  FMainDataSet := TClientDataSet.Create(nil);
-  with FMainDataSet do begin
-    FMaindataset.Name := 'MainDataSet';
-    FieldDefs.Add('DocKey',      ftInteger,    0);
-    FieldDefs.Add('Code',        ftString,     10);
-    FieldDefs.Add('DocNo',       ftString,     20);
-    FieldDefs.Add('DocDate',     ftDate,       0);
-    FieldDefs.Add('DocTime',     ftTime,       0);
-    FieldDefs.Add('DocDateTime', ftDateTime,   0);
-    FieldDefs.Add('Agent',       ftString,     10);
-    FieldDefs.Add('Qty',         ftFmtBCD,     8);
-    FieldDefs.Add('UnitPrice',   ftFmtBCD,     8);
-    FieldDefs.Add('Amount',      ftFmtBCD,     8);
-    FieldDefs.Add('WDocNo',      ftWideString, 10);
-    FieldDefs.Add('Memo',        ftMemo,       80);
-    FieldDefs.Add('WMemo',       ftWideMemo,   80);
-    FieldDefs.Add('LargeKey',    ftLargeint,   0);
-
-    if aUseCalcFields then begin
-      THackDataSet(FMainDataSet).CreateFields;
-      for i := 0 to FieldDefs.Count - 1 do begin
-        if (FieldDefs[i].InternalCalcField) or
-           (FieldDefs[i].DataType in ftNonTextTypes) or
-           (FieldDefs[i].DataType = ftWideMemo) then
-          Continue;
-        with FieldDefs[i].FieldClass.Create(FMainDataSet) do begin
-          Name := FMainDataSet.Name + 'CALC_' + FieldDefs[i].DisplayName;
-          FieldName := 'CALC_' + FieldDefs[i].DisplayName;
-          FieldKind := fkCalculated;
-          Size := FieldDefs[i].Size;
-          DataSet := FMainDataSet;
-        end;
-      end;
-      FMainDataSet.OnCalcFields := OnCalcFieldsEvent;
-    end;
-    FMainDataSet.AutoCalcFields := aUseCalcFields;
-
-    CreateDataSet;
-  end;
-
-  // Detail Data
-  FDetailDataSet := TClientDataSet.Create(nil);
-  with FDetailDataSet do begin
-    FieldDefs.Add('DocKey',   ftInteger, 0);
-    FieldDefs.Add('ItemCode', ftString,  30);
-    CreateDataSet;
-  end;
-
-  CreateTestData;
+  SetupDataSets(CanCreateTestData, CanCreateCalcFields);
 end;
 
 procedure TTest_TxQuery.TearDown;
 begin
   inherited;
+  FMainDataSet.OnCalcFields := nil;
   FMainDataSet.Free;
   FMainDataSet := nil;
-
   FDetailDataSet.Free;
   FDetailDataSet := nil;
-
   FQuery.Free;
   FQuery := nil;
 end;
 
-function TTest_TxQuery.UseCalcFields: boolean;
+procedure TTest_TxQuery.Test_OnCalcFieldsEvent(ADataset: TDataset);
+var i: integer;
+    fld: TField;
 begin
-  Result := False;
+ with ADataSet do
+ begin
+  for I := 0 to  Fields.Count-1 do
+  begin
+   if not (Fields[i].FieldKind=fkData) then
+      continue;
+   fld := FindField('CALC_'+Fields[i].FieldName);
+   if not Assigned(fld) then
+      Continue;
+   fld.Value := Fields[i].Value;
+  end;
+ end;
+end;
+
+procedure TTest_Between.SetUp;
+begin
+  inherited;
+  FShortDateFormat := FQuery.DateFormat;
+  FQuery.DateFormat := 'dd/mm/yyyy';
+  FQuery.DateSeparator := '/';
+  FQuery.FormatSettings.Parser.ShortDateFormat := 'dd/mm/yyyy';
+  FQuery.FormatSettings.System.ShortDateFormat := 'dd/mm/yyyy';
+  FQuery.FormatSettings.Parser.DateSeparator := '/';
+  FQuery.FormatSettings.System.DateSeparator := '/';
+end;
+
+procedure TTest_Between.TearDown;
+begin
+ FQuery.DateFormat := FShortDateFormat;
+ inherited;
 end;
 
 procedure TTest_Between.TTest_Between_SQL;
@@ -399,7 +462,7 @@ begin
       Clear;
       Add(      'SELECT *');
       Add(        'FROM Main');
-      Add(Format('WHERE DocDate BETWEEN #%s# AND #%s#', [FormatDateTime(FQuery.DateFormat, IncDay(FDate, 3)) , FormatDateTime(FQuery.DateFormat, IncDay(FDate, 6))]));
+      Add(Format('WHERE DocDate BETWEEN #%s# AND #%s#', [FormatDateTime('dd/mm/yyyy', IncDay(FDate, 3)) , FormatDateTime('dd/mm/yyyy', IncDay(FDate, 6))]));
       Add(       'ORDER BY DocKey');
     end;
     lDataSet.Data := GetDataPacket(FQuery);
@@ -417,10 +480,10 @@ begin
         for i := 0 to lDataSet.FieldCount - 1 do begin
           if lDataSet.Fields[i] is TStringField then
             CheckEquals(FMainDataSet.FindField(lDataSet.Fields[i].FieldName).AsString, lDataSet.Fields[i].AsString)
-         {$if RtlVersion >= 12}
+         {$IFDEF LEVEL4}
           else if lDataSet.Fields[i] is TWideStringField then
             CheckEquals(FMainDataSet.FindField(lDataSet.Fields[i].FieldName).AsWideString, lDataSet.Fields[i].AsWideString)
-         {$ifend}
+         {$ENDIF}
           else if lDataSet.Fields[i] is TIntegerField then
             CheckEquals(FMainDataSet.FindField(lDataSet.Fields[i].FieldName).AsInteger, lDataSet.Fields[i].AsInteger)
           else if lDataSet.Fields[i] is TFmtBCDField then
@@ -1110,7 +1173,7 @@ begin
       Add(  'FROM D1 A INNER JOIN D2 B ON (A.Test1=B.Test2)');
     end;
     D.Data := GetDataPacket(FQuery);
-    CheckEquals(3,         D.RecordCount);
+    CheckEquals(3,         D.RecordCount); {null values at left side are discarded automatically}
     D.First;
     CheckTrue(VarIsNull(D['Test1']));
     CheckEquals('Item1',   D['ItemCode']);
@@ -1606,6 +1669,22 @@ begin
   end;
 end;
 
+procedure TTest_Insert.Test_Insert_WithSelectSQL;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('INSERT INTO Main (Code, DocNo, Agent, Amount)');
+    Add('(SELECT Code, DocNo, Agent, Amount');
+    Add(  'FROM Main');
+    Add( 'WHERE Agent=''ABC'')');
+  end;
+  FQuery.ExecSQL;
+  CheckEquals(13, FMainDataSet.RecordCount, 'FMainDataSet RecordCount incorrect');
+end;
+
 procedure TTest_Insert.Test_Insert_AllFields;
 var D: TClientDataSet;
 begin
@@ -1643,22 +1722,6 @@ begin
   finally
     D.Free;
   end;
-end;
-
-procedure TTest_Insert.Test_Insert_WithSelectSQL;
-begin
-  FQuery.DataSets.Clear;
-  FQuery.AddDataSet(FMainDataSet, 'Main');
-
-  with FQuery.SQL do begin
-    Clear;
-    Add('INSERT INTO Main (Code, DocNo, Agent, Amount)');
-    Add('(SELECT Code, DocNo, Agent, Amount');
-    Add(  'FROM Main');
-    Add( 'WHERE Agent=''ABC'')');
-  end;
-  FQuery.ExecSQL;
-  CheckEquals(13, FMainDataSet.RecordCount, 'FMainDataSet RecordCount incorrect');
 end;
 
 procedure TTest_Insert.Test_Insert_WithValues;
@@ -1795,6 +1858,92 @@ begin
   CheckEquals('XYZ', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
 end;
 
+procedure TTest_Fields.Test_Boolean_Fields_False;
+begin
+ CreateTestData;
+ FQuery.DataSets.Clear;
+ FQuery.AddDataSet(FMainDataSet, 'Main');
+ FQuery.SQL.Text := 'SELECT * From Main WHERE RecordActive=False';
+ FQuery.Open;
+ FQuery.First;
+ CheckEquals(FQuery.RecordCount,5, 'RecordCount Where RecordActive=False');
+ CheckEquals(Ord(ftBoolean), Ord(FQuery.FindField('RecordActive').DataType),'RecordCount Where Active=False');
+ while not FQuery.Eof do
+ begin
+  CheckEquals(false, FQuery.FindField('RecordActive').AsBoolean, 'Record '+Inttostr(FQuery.Recno)+': [Boolean] Field Value');
+  FQuery.Next;
+ end;
+end;
+
+procedure TTest_Fields.Test_Boolean_Fields_True;
+begin
+ CreateTestData;
+ FQuery.DataSets.Clear;
+ FQuery.AddDataSet(FMainDataSet, 'Main');
+ FQuery.SQL.Text := 'SELECT * From Main WHERE RecordActive';
+ FQuery.Open;
+ FQuery.First;
+ CheckEquals(FQuery.RecordCount,5, 'RecordCount Where RecordActive=True');
+ while not FQuery.Eof do
+ begin
+  CheckEquals(true, FQuery.FindField('RecordActive').AsBoolean, 'Record '+Inttostr(FQuery.Recno)+': [Boolean] Field Value');
+  FQuery.Next;
+ end;
+end;
+
+procedure TTest_Fields.Test_Calculated_Fields;
+var i: integer;
+    fld: TField;
+    testMsg: string;
+begin
+ SetupDataSets(true, true);
+ //CreateTestData(True);
+ with FQuery do
+ begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := 'SELECT * From Main';
+  FQuery.Open;
+  First;
+  while  not eof do
+  begin
+   for I := 0 to  Fields.Count-1 do
+   begin
+    if not (Fields[i].FieldKind=fkData) then
+       continue;
+    fld := FindField('CALC_'+Fields[i].FieldName);
+    if not Assigned(fld) then
+       Continue;
+    testMsg := 'Record '+IntToStr(FQuery.RecNo)+ ': Comparing Fields ['+Fields[i].FieldName+']  Vs.  ['+fld.FieldName+']';
+    if fld.DataType in [ftString, ftFixedChar] then
+       CheckEquals( Fields[i].AsString, fld.AsString, testMsg );
+    if fld.DataType in [ftWideString, ftFixedWideChar] then
+       CheckEquals( Fields[i].AsWideString, fld.AsWideString, testMsg );
+    if fld.DataType = ftDate then
+       CheckEquals( FormatDateTime('yyyy-mm-dd', Fields[i].AsDateTime, GetUSFormatSettings),
+                    FormatDateTime('yyyy-mm-dd', fld.AsDateTime, GetUSFormatSettings) , testMsg );
+    if fld.DataType = ftTime then
+       CheckEquals( FormatDateTime('HH:nn:ss', Fields[i].AsDateTime, GetUSFormatSettings),
+                    FormatDateTime('HH:nn:ss', fld.AsDateTime, GetUSFormatSettings) , testMsg );
+    if fld.DataType = ftDateTime then
+       CheckEquals( FormatDateTime('yyyy-mm-dd HH:nn:ss', Fields[i].AsDateTime, GetUSFormatSettings),
+                    FormatDateTime('yyyy-mm-dd HH:nn:ss', fld.AsDateTime, GetUSFormatSettings) , testMsg );
+    if fld.DataType in [ftFloat, ftFMTBcd] then
+       CheckEquals( Fields[i].AsFloat, fld.AsFloat, testMsg );
+    {$IFDEF Delphi2009Up}
+    if fld.DataType in [ftInteger, ftShortInt] then
+       CheckEquals( Fields[i].AsInteger, fld.AsInteger, testMsg );
+    if fld.DataType in [ftLargeint] then
+       CheckEquals( Fields[i].AsLargeInt, fld.AsLargeInt, testMsg );
+    {$ENDIF }
+   end;
+   Next;
+  end;
+ end;
+ FMainDataSet.AutoCalcFields := false;
+ FMainDataSet.OnCalcFields := nil;
+end;
+
 procedure TTest_Fields.Test_Is_Null;
 var i: integer;
     S: string;
@@ -1811,21 +1960,21 @@ end;
 
 procedure TTest_Fields.Test_LargeInteger_Fields;
 begin
-{$if RTLVersion >= 21}
-  FQuery.DataSets.Clear;
-  FQuery.AddDataSet(FMainDataSet, 'Main');
-  FQuery.SQL.Text := 'SELECT LargeKey From Main ORDER BY LargeKey DESC';
-  FQuery.Open;
-  FQuery.First;
-  FMainDataSet.Last;
-  while not FQuery.Eof do begin
-    CheckEquals(FMainDataSet.FindField('LargeKey').AsLargeInt, FQuery.Fields[0].AsLargeInt);
-    FQuery.Next;
-    FMainDataSet.Prior;
-  end;
-{$else}
-  Check(True);
-{$ifend}
+{$IFDEF Delphi2009Up}
+ CreateTestData;
+ FQuery.DataSets.Clear;
+ FQuery.AddDataSet(FMainDataSet, 'Main');
+ FQuery.SQL.Text := 'SELECT LargeKey From Main ORDER BY LargeKey DESC';
+ FQuery.Open;
+ FQuery.First;
+ FMainDataSet.Last;
+ while not FQuery.Eof do
+ begin
+  CheckEquals(FMainDataSet.FindField('LargeKey').AsLargeInt, FQuery.Fields[0].AsLargeInt, 'Record '+Inttostr(FQuery.recno)+': [LargeKey] Field Value');
+  FQuery.Next;
+  FMainDataSet.Prior;
+ end;
+ {$ENDIF}
 end;
 
 procedure TTest_Fields.Test_MaxString;
@@ -1842,7 +1991,6 @@ begin
   FQuery.AddDataSet(FMainDataSet, 'Main');
   FQuery.SQL.Text := 'SELECT Code, Agent, DocNo, WDocNo From Main';
   FQuery.Open;
-
   CheckEquals(FMainDataSet.FindField('Code').AsString, FQuery.Fields[0].AsString);
   CheckEquals(FMainDataSet.FindField('Agent').AsString, FQuery.Fields[1].AsString);
   CheckEquals(FMainDataSet.FindField('DocNo').AsString, FQuery.Fields[2].AsString);
@@ -1917,12 +2065,16 @@ begin
   CheckEquals(F1.DataSize, F2.DataSize, 'WDocNo DataSize');
 end;
 
+function TTest_DateTime.CanCreateCalcFields: boolean;
+begin
+ result := true;
+end;
+
 procedure TTest_DateTime.Test_ExtractDate;
 begin
   FQuery.DataSets.Clear;
   FQuery.AddDataSet(FMainDataSet, 'Main');
-
-  with FQuery.SQL do begin
+   with FQuery.SQL do begin
     Clear;
     Add(         'SELECT ''P'' || EXTRACT(YEAR FROM DocDate) || ''_'' || EXTRACT(MONTH FROM DocDate) AS Period');
     Add(           'FROM Main');
@@ -1964,6 +2116,22 @@ begin
   CheckEquals(1, FQuery.RecordCount);
 end;
 
+procedure TTest_DateTime.Test_SelectAll;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add(         'SELECT Main.*, FormatDateTime("yyyymmddHHnnsszzz", DocTimeStamp) as DocTimeStampFMT' ) ;
+    Add(           'FROM Main');
+    Add(Format(   'WHERE FormatDateTime("yyyymmdd", DocTimeStamp) < %s', [FormatDateTime('yyyymmdd', IncDay(FDate, 2), GetUSFormatSettings)]));
+  end;
+  FQuery.Open;
+  CheckEquals(1, FQuery.RecordCount);
+  CheckEquals(FQuery.FieldByName('DocTimeStamp').AsFloat, FQuery.FieldByName('CALC_DocTimeStamp').AsFloat);
+end;
+
 procedure TTest_Hardcode_String.Test_Hardcode_String_Select;
 begin
   FQuery.DataSets.Clear;
@@ -1977,69 +2145,6 @@ begin
   FQuery.Open;
   CheckEquals(FMainDataSet.RecordCount, FQuery.RecordCount);
 end;
-
-procedure TTest_CalculatedFields.Test;
-var i: integer;
-    qFld, cFld: TField;
-    testMsg: string;
-begin
-  CheckEquals(True, FMainDataSet.AutoCalcFields, 'Calculated fields not triggered');
-  FQuery.DataSets.Clear;
-  FQuery.AddDataSet(FMainDataSet, 'Main');
-  FQuery.SQL.Text := 'SELECT * From Main';
-  FQuery.Open;
-  FQuery.First;
-  while not FQuery.Eof do begin
-    for I := 0 to FQuery.Fields.Count - 1 do begin
-      qFld := FQuery.Fields[i];
-      if not (qFld.FieldKind = fkData) then
-        Continue;
-
-      cFld := FQuery.FindField('CALC_' + qFld.FieldName);
-      if not Assigned(cFld) then
-        Continue;
-
-      testMsg := 'Record ' + IntToStr(FQuery.RecNo) + ': Comparing Fields [' + qFld.FieldName + ']  Vs.  [' + cFld.FieldName + ']';
-
-      if cFld.DataType in [ftString, ftFixedChar] then
-        CheckEquals(qFld.AsString, cFld.AsString, testMsg);
-
-      if cFld.DataType in [ftWideString, ftFixedWideChar] then
-        CheckEquals(qFld.AsWideString, cFld.AsWideString, testMsg);
-
-      if cFld.DataType = ftDate then
-        CheckEquals(FormatDateTime('yyyy-mm-dd', qFld.AsDateTime, GetUSFormatSettings),
-                    FormatDateTime('yyyy-mm-dd', cFld.AsDateTime, GetUSFormatSettings), testMsg);
-
-      if cFld.DataType = ftTime then
-        CheckEquals(FormatDateTime('HH:nn:ss', qFld.AsDateTime, GetUSFormatSettings),
-                    FormatDateTime('HH:nn:ss', cFld.AsDateTime, GetUSFormatSettings), testMsg);
-
-      if cFld.DataType = ftDateTime then
-        CheckEquals(FormatDateTime('yyyy-mm-dd HH:nn:ss', qFld.AsDateTime, GetUSFormatSettings),
-                    FormatDateTime('yyyy-mm-dd HH:nn:ss', cFld.AsDateTime, GetUSFormatSettings) , testMsg);
-
-      if cFld.DataType in [ftFloat, ftFMTBcd] then
-        CheckEquals(qFld.AsFloat, cFld.AsFloat, testMsg);
-
-      {$if RtlVersion >= 21}
-      if cFld.DataType in [ftInteger, ftShortint] then
-        CheckEquals(qFld.AsInteger, cFld.AsInteger, testMsg);
-
-      if qFld.DataType in [ftLargeint] then
-        CheckEquals(qFld.AsLargeInt, cFld.AsLargeInt, testMsg);
-      {$ifend}
-    end;
-    FQuery.Next;
-  end;
-end;
-
-function TTest_CalculatedFields.UseCalcFields: boolean;
-begin
-  Result := True;
-end;
-
-var TxQueryTestSuite: TTestSuite;
 
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
@@ -2066,7 +2171,6 @@ initialization
     AddSuite(TTest_Extract.Suite);
     AddSuite(TTest_ParamByName.Suite);
     AddSuite(TTest_Fields.Suite);
-    AddSuite(TTest_CalculatedFields.Suite);
 
     AddSuite(TTest_DateTime.Suite);
     AddSuite(TTest_Hardcode_String.Suite);

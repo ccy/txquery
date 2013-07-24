@@ -1,13 +1,13 @@
 object frmTest: TfrmTest
   Left = 89
   Top = 137
-  Width = 783
-  Height = 527
   Caption = 'TxQuery v1.86 Demo'
+  ClientHeight = 538
+  ClientWidth = 780
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -14
+  Font.Height = -11
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   Menu = MainMenu1
@@ -16,54 +16,80 @@ object frmTest: TfrmTest
   WindowState = wsMaximized
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  PixelsPerInch = 120
-  TextHeight = 16
+  PixelsPerInch = 96
+  TextHeight = 13
   object PageControl1: TPageControl
     Left = 0
     Top = 0
-    Width = 775
-    Height = 462
+    Width = 780
+    Height = 538
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     ActivePage = TabSheet1
     Align = alClient
     HotTrack = True
     MultiLine = True
-    TabIndex = 0
     TabOrder = 0
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'SQL statements'
       object StatusBar1: TStatusBar
         Left = 0
-        Top = 412
-        Width = 767
+        Top = 491
+        Width = 772
         Height = 19
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Panels = <>
         SimplePanel = True
       end
       object PageControlSQLExamples: TPageControl
         Left = 0
         Top = 0
-        Width = 767
-        Height = 412
+        Width = 772
+        Height = 491
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         ActivePage = TabSheetSQLString
         Align = alClient
-        TabIndex = 0
         TabOrder = 1
         OnChange = PageControlSQLExamplesChange
         object TabSheetSQLString: TTabSheet
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Caption = 'SQL String'
           object Panel8: TPanel
             Left = 0
-            Top = 38
-            Width = 209
-            Height = 343
+            Top = 31
+            Width = 170
+            Height = 432
+            Margins.Left = 2
+            Margins.Top = 2
+            Margins.Right = 2
+            Margins.Bottom = 2
             Align = alLeft
             TabOrder = 0
             object TreeView1: TTreeView
               Left = 1
               Top = 1
-              Width = 207
-              Height = 341
+              Width = 168
+              Height = 430
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Align = alClient
               Indent = 19
               TabOrder = 0
@@ -74,49 +100,65 @@ object frmTest: TfrmTest
           object PanelSideButtons: TPanel
             Left = 0
             Top = 0
-            Width = 759
-            Height = 38
+            Width = 764
+            Height = 31
+            Margins.Left = 2
+            Margins.Top = 2
+            Margins.Right = 2
+            Margins.Bottom = 2
             Align = alTop
             TabOrder = 1
             object Button2: TButton
-              Left = 238
-              Top = 4
-              Width = 104
-              Height = 30
+              Left = 193
+              Top = 3
+              Width = 85
+              Height = 25
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Caption = 'Color &settings...'
               TabOrder = 0
               OnClick = Button2Click
             end
             object Button5: TButton
-              Left = 353
-              Top = 4
-              Width = 105
-              Height = 30
+              Left = 287
+              Top = 3
+              Width = 85
+              Height = 25
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Caption = '&Meanings...'
               TabOrder = 1
               OnClick = Button5Click
             end
             object BtnQBuilder: TButton
-              Left = 122
-              Top = 4
-              Width = 104
-              Height = 30
+              Left = 99
+              Top = 3
+              Width = 85
+              Height = 25
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Caption = 'Query Builder...'
               TabOrder = 2
               OnClick = BtnQBuilderClick
             end
             object ButtonRunSQL: TBitBtn
-              Left = 6
-              Top = 4
-              Width = 105
-              Height = 30
+              Left = 10
+              Top = 3
+              Width = 85
+              Height = 25
               Hint = 'Run SQL with Open method'
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Caption = 'Run SQL'
               Enabled = False
-              ParentShowHint = False
-              ShowHint = True
-              TabOrder = 3
-              OnClick = ButtonRunSQLClick
               Glyph.Data = {
                 2E060000424D2E06000000000000360400002800000015000000150000000100
                 080000000000F801000000000000000000000001000000010000000000000000
@@ -168,47 +210,82 @@ object frmTest: TfrmTest
                 000000FDFDFDFD00AA00FDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFD02
                 F102FDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFDFD000600FDFDFDFDFDFD
                 FDFDFDFDFDFDFDFDFDFDFDFDFDFDFD74B681}
+              ParentShowHint = False
+              ShowHint = True
+              TabOrder = 3
+              OnClick = ButtonRunSQLClick
             end
             object ChkParse: TCheckBox
-              Left = 528
-              Top = 9
-              Width = 169
-              Height = 16
+              Left = 429
+              Top = 7
+              Width = 137
+              Height = 13
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Caption = '&Parse SQL'
               TabOrder = 4
               OnClick = ChkParseClick
             end
           end
           object Panel11: TPanel
-            Left = 209
-            Top = 38
-            Width = 550
-            Height = 343
+            Left = 170
+            Top = 31
+            Width = 594
+            Height = 432
+            Margins.Left = 2
+            Margins.Top = 2
+            Margins.Right = 2
+            Margins.Bottom = 2
             Align = alClient
             TabOrder = 2
             object Splitter1: TSplitter
               Left = 1
-              Top = 157
-              Width = 548
+              Top = 280
+              Width = 592
               Height = 4
               Cursor = crVSplit
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Align = alBottom
               Visible = False
             end
             object RichEdit1: TRichEdit
               Left = 1
               Top = 1
-              Width = 548
-              Height = 156
+              Width = 592
+              Height = 279
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Align = alClient
               Font.Charset = ANSI_CHARSET
               Font.Color = clNavy
-              Font.Height = -15
+              Font.Height = -12
               Font.Name = 'Verdana'
               Font.Style = [fsBold]
               Lines.Strings = (
                 ' '
-                '  '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
+                ' '
                 ' '
                 ' '
                 ' '
@@ -276,21 +353,29 @@ object frmTest: TfrmTest
             end
             object Panel12: TPanel
               Left = 1
-              Top = 161
-              Width = 548
-              Height = 181
+              Top = 284
+              Width = 592
+              Height = 147
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Align = alBottom
               TabOrder = 1
               Visible = False
               object MemoParse: TMemo
-                Left = 169
+                Left = 137
                 Top = 1
-                Width = 378
-                Height = 179
+                Width = 454
+                Height = 145
+                Margins.Left = 2
+                Margins.Top = 2
+                Margins.Right = 2
+                Margins.Bottom = 2
                 Align = alClient
                 Font.Charset = ANSI_CHARSET
                 Font.Color = clMaroon
-                Font.Height = -18
+                Font.Height = -15
                 Font.Name = 'Courier New'
                 Font.Style = []
                 ParentFont = False
@@ -300,8 +385,12 @@ object frmTest: TfrmTest
               object TreeView2: TTreeView
                 Left = 1
                 Top = 1
-                Width = 168
-                Height = 179
+                Width = 136
+                Height = 145
+                Margins.Left = 2
+                Margins.Top = 2
+                Margins.Right = 2
+                Margins.Bottom = 2
                 Align = alLeft
                 Indent = 19
                 TabOrder = 1
@@ -311,25 +400,37 @@ object frmTest: TfrmTest
           end
         end
         object TabSheetResultDataSet: TTabSheet
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Caption = 'Result Set'
           object Panel9: TPanel
             Left = 0
             Top = 0
-            Width = 934
-            Height = 490
+            Width = 764
+            Height = 463
+            Margins.Left = 2
+            Margins.Top = 2
+            Margins.Right = 2
+            Margins.Bottom = 2
             Align = alClient
             Caption = 'Panel9'
             TabOrder = 0
             object DBGrid1: TDBGrid
               Left = 1
               Top = 1
-              Width = 932
-              Height = 461
+              Width = 762
+              Height = 439
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Align = alClient
               DataSource = DataSource1
               Font.Charset = ANSI_CHARSET
               Font.Color = clBlack
-              Font.Height = -15
+              Font.Height = -12
               Font.Name = 'MS Sans Serif'
               Font.Style = []
               Options = [dgEditing, dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgConfirmDelete, dgCancelOnExit, dgMultiSelect]
@@ -343,16 +444,24 @@ object frmTest: TfrmTest
             end
             object Panel10: TPanel
               Left = 1
-              Top = 462
-              Width = 932
-              Height = 27
+              Top = 440
+              Width = 762
+              Height = 22
+              Margins.Left = 2
+              Margins.Top = 2
+              Margins.Right = 2
+              Margins.Bottom = 2
               Align = alBottom
               TabOrder = 1
               object SpeedButton1: TSpeedButton
-                Left = 256
+                Left = 208
                 Top = 1
-                Width = 119
-                Height = 26
+                Width = 97
+                Height = 21
+                Margins.Left = 2
+                Margins.Top = 2
+                Margins.Right = 2
+                Margins.Bottom = 2
                 Caption = 'To &HTML...'
                 Flat = True
                 OnClick = SpeedButton1Click
@@ -360,37 +469,51 @@ object frmTest: TfrmTest
               object DBNavigator1: TDBNavigator
                 Left = 1
                 Top = 1
-                Width = 251
-                Height = 25
+                Width = 204
+                Height = 20
+                Margins.Left = 2
+                Margins.Top = 2
+                Margins.Right = 2
+                Margins.Bottom = 2
                 DataSource = DataSource1
                 VisibleButtons = [nbFirst, nbPrior, nbNext, nbLast, nbInsert, nbPost, nbCancel, nbRefresh]
                 Align = alLeft
                 TabOrder = 0
               end
               object Panel1: TPanel
-                Left = 443
+                Left = 365
                 Top = 1
-                Width = 487
-                Height = 25
+                Width = 396
+                Height = 20
+                Margins.Left = 2
+                Margins.Top = 2
+                Margins.Right = 2
+                Margins.Bottom = 2
                 Align = alRight
                 BevelOuter = bvNone
                 TabOrder = 1
                 object Bar1: TProgressBar
                   Left = 0
                   Top = 0
-                  Width = 487
-                  Height = 25
+                  Width = 396
+                  Height = 20
+                  Margins.Left = 2
+                  Margins.Top = 2
+                  Margins.Right = 2
+                  Margins.Bottom = 2
                   Align = alClient
-                  Min = 0
-                  Max = 100
                   TabOrder = 0
                   Visible = False
                 end
                 object Button1: TButton
-                  Left = 28
+                  Left = 23
                   Top = 0
-                  Width = 75
-                  Height = 25
+                  Width = 61
+                  Height = 20
+                  Margins.Left = 2
+                  Margins.Top = 2
+                  Margins.Right = 2
+                  Margins.Bottom = 2
                   Caption = 'Delete'
                   TabOrder = 1
                   OnClick = Button1Click
@@ -402,43 +525,64 @@ object frmTest: TfrmTest
       end
     end
     object TabSheet2: TTabSheet
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'Filtering and Finding'
       object Panel2: TPanel
         Left = 0
         Top = 0
-        Width = 767
-        Height = 78
+        Width = 772
+        Height = 63
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
         TabOrder = 0
         object Label1: TLabel
-          Left = 118
-          Top = 20
-          Width = 104
-          Height = 16
+          Left = 96
+          Top = 16
+          Width = 81
+          Height = 13
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
           Caption = 'Filter expression :'
         end
         object Label3: TLabel
-          Left = 118
-          Top = 48
-          Width = 101
-          Height = 16
+          Left = 96
+          Top = 39
+          Width = 79
+          Height = 13
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
           Caption = 'Find &expression :'
         end
         object Button3: TButton
-          Left = 4
-          Top = 4
-          Width = 94
-          Height = 30
+          Left = 3
+          Top = 3
+          Width = 77
+          Height = 25
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Caption = 'Filter'
           TabOrder = 0
           OnClick = Button3Click
         end
         object ComboBox1: TComboBox
-          Left = 222
-          Top = 10
-          Width = 473
-          Height = 24
-          ItemHeight = 16
+          Left = 180
+          Top = 8
+          Width = 385
+          Height = 21
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           TabOrder = 1
           Items.Strings = (
             '(CustNo >= 1500) And (CustNo <= 3000)'
@@ -456,18 +600,26 @@ object frmTest: TfrmTest
             'LastInvoiceDate > StrToDate('#39'12/31/94'#39')')
         end
         object Edit1: TEdit
-          Left = 222
-          Top = 38
-          Width = 473
+          Left = 180
+          Top = 31
+          Width = 385
           Height = 21
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           TabOrder = 2
           Text = 'Addr1 = '#39'32 Main St.'#39
         end
         object Button6: TButton
-          Left = 4
-          Top = 38
-          Width = 94
-          Height = 31
+          Left = 3
+          Top = 31
+          Width = 77
+          Height = 25
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Caption = '&Find'
           TabOrder = 3
           OnClick = Button6Click
@@ -475,14 +627,18 @@ object frmTest: TfrmTest
       end
       object DBGrid2: TDBGrid
         Left = 0
-        Top = 78
-        Width = 767
-        Height = 353
+        Top = 63
+        Width = 772
+        Height = 447
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alClient
         DataSource = DataSource1
         Font.Charset = ANSI_CHARSET
         Font.Color = clBlack
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'Verdana'
         Font.Style = []
         ParentFont = False
@@ -495,17 +651,25 @@ object frmTest: TfrmTest
       end
     end
     object TabSheet3: TTabSheet
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'Extended identifiers and blob fields'
       object DBGrid3: TDBGrid
         Left = 0
-        Top = 296
-        Width = 767
-        Height = 135
+        Top = 400
+        Width = 772
+        Height = 110
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alBottom
         DataSource = DataSource2
         Font.Charset = ANSI_CHARSET
         Font.Color = clBlack
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'Verdana'
         Font.Style = []
         ParentFont = False
@@ -518,25 +682,37 @@ object frmTest: TfrmTest
       end
       object Panel3: TPanel
         Left = 0
-        Top = 78
-        Width = 767
-        Height = 36
+        Top = 63
+        Width = 772
+        Height = 30
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
         TabOrder = 1
         object DBNavigator2: TDBNavigator
-          Left = 10
-          Top = 10
-          Width = 276
-          Height = 22
+          Left = 8
+          Top = 8
+          Width = 224
+          Height = 18
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           DataSource = DataSource2
           VisibleButtons = [nbFirst, nbPrior, nbNext, nbLast]
           TabOrder = 0
         end
         object Button4: TButton
-          Left = 295
-          Top = 4
-          Width = 174
-          Height = 30
+          Left = 240
+          Top = 3
+          Width = 141
+          Height = 25
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Caption = 'Create result set'
           TabOrder = 1
           OnClick = Button4Click
@@ -544,25 +720,33 @@ object frmTest: TfrmTest
       end
       object Panel4: TPanel
         Left = 0
-        Top = 114
-        Width = 331
-        Height = 182
+        Top = 93
+        Width = 269
+        Height = 307
         Hint = 'Scroll grid below to see other fish'
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alLeft
         ParentShowHint = False
         ShowHint = True
         TabOrder = 2
         object DBLabel1: TDBText
           Left = 1
-          Top = 277
-          Width = 329
-          Height = 29
+          Top = 282
+          Width = 267
+          Height = 24
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Align = alBottom
           DataField = 'Common_Name'
           DataSource = DataSource2
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clRed
-          Font.Height = -23
+          Font.Height = -19
           Font.Name = 'MS Serif'
           Font.Style = [fsBold, fsItalic]
           ParentFont = False
@@ -570,9 +754,13 @@ object frmTest: TfrmTest
         object DBImage1: TDBImage
           Left = 1
           Top = 1
-          Width = 329
-          Height = 276
+          Width = 267
+          Height = 281
           Hint = 'Scroll grid below to see other fish'
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Align = alClient
           DataField = 'Graphic'
           DataSource = DataSource2
@@ -580,19 +768,27 @@ object frmTest: TfrmTest
         end
       end
       object Panel6: TPanel
-        Left = 331
-        Top = 114
-        Width = 549
-        Height = 182
+        Left = 269
+        Top = 93
+        Width = 446
+        Height = 307
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alLeft
         BevelOuter = bvLowered
         Caption = 'Panel6'
         TabOrder = 3
         object DBMemo1: TDBMemo
           Left = 1
-          Top = 28
-          Width = 547
-          Height = 278
+          Top = 23
+          Width = 444
+          Height = 283
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Align = alClient
           BorderStyle = bsNone
           Color = clSilver
@@ -601,7 +797,7 @@ object frmTest: TfrmTest
           DataSource = DataSource2
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clBlack
-          Font.Height = -15
+          Font.Height = -12
           Font.Name = 'MS Sans Serif'
           Font.Style = []
           ParentCtl3D = False
@@ -612,34 +808,45 @@ object frmTest: TfrmTest
         object Panel5: TPanel
           Left = 1
           Top = 1
-          Width = 547
-          Height = 27
+          Width = 444
+          Height = 22
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Align = alTop
           TabOrder = 1
           object Label2: TLabel
-            Left = 9
-            Top = 5
-            Width = 66
-            Height = 16
+            Left = 7
+            Top = 4
+            Width = 56
+            Height = 13
+            Margins.Left = 2
+            Margins.Top = 2
+            Margins.Right = 2
             Caption = 'About the'
             Font.Charset = DEFAULT_CHARSET
             Font.Color = clBlue
-            Font.Height = -15
+            Font.Height = -12
             Font.Name = 'MS Sans Serif'
             Font.Style = [fsBold]
             ParentFont = False
           end
           object DBLabel2: TDBText
-            Left = 82
-            Top = 5
-            Width = 69
-            Height = 16
+            Left = 67
+            Top = 4
+            Width = 56
+            Height = 13
+            Margins.Left = 2
+            Margins.Top = 2
+            Margins.Right = 2
+            Margins.Bottom = 2
             AutoSize = True
             DataField = 'Common_Name'
             DataSource = DataSource2
             Font.Charset = DEFAULT_CHARSET
             Font.Color = clBlue
-            Font.Height = -15
+            Font.Height = -12
             Font.Name = 'MS Sans Serif'
             Font.Style = [fsBold]
             ParentFont = False
@@ -649,12 +856,16 @@ object frmTest: TfrmTest
       object RichEdit2: TRichEdit
         Left = 0
         Top = 0
-        Width = 767
-        Height = 78
+        Width = 772
+        Height = 63
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
-        Font.Charset = DEFAULT_CHARSET
+        Font.Charset = ANSI_CHARSET
         Font.Color = clNavy
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'Verdana'
         Font.Style = []
         Lines.Strings = (
@@ -670,30 +881,44 @@ object frmTest: TfrmTest
       end
     end
     object TabSheet4: TTabSheet
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'Params'
       object Label4: TLabel
-        Left = 5
-        Top = 42
-        Width = 120
-        Height = 16
+        Left = 4
+        Top = 34
+        Width = 98
+        Height = 13
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
         Caption = 'LOWRANGE value :'
       end
       object Label5: TLabel
-        Left = 276
-        Top = 42
-        Width = 123
-        Height = 16
+        Left = 224
+        Top = 34
+        Width = 100
+        Height = 13
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
         Caption = 'HIGHRANGE value :'
       end
       object RichEdit3: TRichEdit
         Left = 0
         Top = 0
-        Width = 767
-        Height = 30
+        Width = 772
+        Height = 24
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
-        Font.Charset = DEFAULT_CHARSET
+        Font.Charset = ANSI_CHARSET
         Font.Color = clWindowText
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'Verdana'
         Font.Style = []
         Lines.Strings = (
@@ -706,14 +931,18 @@ object frmTest: TfrmTest
       end
       object DBGrid4: TDBGrid
         Left = 0
-        Top = -27
-        Width = 767
-        Height = 458
+        Top = 137
+        Width = 772
+        Height = 373
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alBottom
         DataSource = DataSource3
         Font.Charset = ANSI_CHARSET
         Font.Color = clBlack
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'Verdana'
         Font.Style = []
         ParentFont = False
@@ -725,13 +954,17 @@ object frmTest: TfrmTest
         TitleFont.Style = []
       end
       object Edit2: TEdit
-        Left = 138
-        Top = 32
-        Width = 104
+        Left = 112
+        Top = 26
+        Width = 85
         Height = 21
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clMaroon
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'MS Sans Serif'
         Font.Style = []
         ParentFont = False
@@ -739,13 +972,17 @@ object frmTest: TfrmTest
         Text = '1000'
       end
       object Edit3: TEdit
-        Left = 409
-        Top = 32
-        Width = 104
+        Left = 332
+        Top = 26
+        Width = 85
         Height = 21
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clMaroon
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'MS Sans Serif'
         Font.Style = []
         ParentFont = False
@@ -753,29 +990,40 @@ object frmTest: TfrmTest
         Text = '3000'
       end
       object Button7: TButton
-        Left = 539
-        Top = 32
-        Width = 134
-        Height = 26
+        Left = 438
+        Top = 26
+        Width = 109
+        Height = 21
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Caption = 'Create result set'
         TabOrder = 4
         OnClick = Button7Click
       end
     end
     object TabSheet5: TTabSheet
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
       Caption = 'DataSource property'
       object Label6: TLabel
         Left = 0
-        Top = 309
-        Width = 767
-        Height = 16
+        Top = 251
+        Width = 772
+        Height = 13
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
         Align = alTop
         Caption = 
           'In this query, the lowest DBGrid is connected to a TxQuery that ' +
           'is linked to Customers Table with DataSource property.'
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clNavy
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'MS Sans Serif'
         Font.Style = []
         ParentFont = False
@@ -783,15 +1031,23 @@ object frmTest: TfrmTest
       object Panel7: TPanel
         Left = 0
         Top = 0
-        Width = 767
-        Height = 121
+        Width = 772
+        Height = 98
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
         TabOrder = 0
         object Button8: TButton
-          Left = 692
-          Top = 5
-          Width = 90
-          Height = 31
+          Left = 562
+          Top = 4
+          Width = 73
+          Height = 25
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Caption = 'Open query'
           TabOrder = 0
           OnClick = Button8Click
@@ -799,12 +1055,16 @@ object frmTest: TfrmTest
         object RichEdit4: TRichEdit
           Left = 1
           Top = 1
-          Width = 687
-          Height = 119
+          Width = 558
+          Height = 96
+          Margins.Left = 2
+          Margins.Top = 2
+          Margins.Right = 2
+          Margins.Bottom = 2
           Align = alLeft
-          Font.Charset = DEFAULT_CHARSET
+          Font.Charset = ANSI_CHARSET
           Font.Color = clBlack
-          Font.Height = -15
+          Font.Height = -12
           Font.Name = 'Verdana'
           Font.Style = []
           Lines.Strings = (
@@ -815,14 +1075,18 @@ object frmTest: TfrmTest
       end
       object DBGrid5: TDBGrid
         Left = 0
-        Top = 121
-        Width = 767
-        Height = 188
+        Top = 98
+        Width = 772
+        Height = 153
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alTop
         DataSource = DataSource4
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clNavy
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'MS Sans Serif'
         Font.Style = []
         ParentFont = False
@@ -835,14 +1099,18 @@ object frmTest: TfrmTest
       end
       object DBGrid6: TDBGrid
         Left = 0
-        Top = 347
-        Width = 767
-        Height = 84
+        Top = 282
+        Width = 772
+        Height = 228
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         Align = alClient
         DataSource = DataSource5
         Font.Charset = ANSI_CHARSET
         Font.Color = clNavy
-        Font.Height = -15
+        Font.Height = -12
         Font.Name = 'Verdana'
         Font.Style = []
         ParentFont = False
@@ -855,9 +1123,13 @@ object frmTest: TfrmTest
       end
       object DBNavigator3: TDBNavigator
         Left = 0
-        Top = 325
-        Width = 767
-        Height = 22
+        Top = 264
+        Width = 772
+        Height = 18
+        Margins.Left = 2
+        Margins.Top = 2
+        Margins.Right = 2
+        Margins.Bottom = 2
         DataSource = DataSource4
         VisibleButtons = [nbFirst, nbPrior, nbNext, nbLast, nbRefresh]
         Align = alTop
@@ -867,10 +1139,35 @@ object frmTest: TfrmTest
   end
   object XQuery1: TxQuery
     ParamCheck = False
-    About = 'TxQuery Version 1.86.1 (Aug 2003)'
+    About = 'TxQuery Version 2.0 (Ene 2009)'
     AutoDisableControls = False
-    DateFormat = 'm/d/yyyy'
     ParamsAsFields = <>
+    FormatSettings.Parser.DateSeparator = '/'
+    FormatSettings.Parser.TimeSeparator = ':'
+    FormatSettings.Parser.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.Parser.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.Parser.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.Parser.TimeAMString = 'a.m.'
+    FormatSettings.Parser.TimePMString = 'p.m.'
+    FormatSettings.Parser.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.Parser.ThousandSeparator = ','
+    FormatSettings.Parser.DecimalSeparator = '.'
+    FormatSettings.System.CurrencyString = '$'
+    FormatSettings.System.CurrencyFormat = 0
+    FormatSettings.System.CurrencyDecimals = 2
+    FormatSettings.System.DateSeparator = '/'
+    FormatSettings.System.TimeSeparator = ':'
+    FormatSettings.System.ListSeparator = ','
+    FormatSettings.System.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.System.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.System.TimeAMString = 'a.m.'
+    FormatSettings.System.TimePMString = 'p.m.'
+    FormatSettings.System.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.System.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.System.ThousandSeparator = ','
+    FormatSettings.System.DecimalSeparator = '.'
+    FormatSettings.System.TwoDigitYearCenturyWindow = 50
+    FormatSettings.System.NegCurrFormat = 1
     OnUDFCheck = XQuery1UDFCheck
     OnUDFSolve = XQuery1UDFSolve
     OnProgress = XQuery1Progress
@@ -914,10 +1211,35 @@ object frmTest: TfrmTest
   object XQuery2: TxQuery
     SQL.Strings = (
       'SELECT * FROM Biolife;')
-    About = 'TxQuery Version 1.86.1 (Aug 2003)'
+    About = 'TxQuery Version 2.0 (Ene 2009)'
     AutoDisableControls = False
-    DateFormat = 'm/d/yyyy'
     ParamsAsFields = <>
+    FormatSettings.Parser.DateSeparator = '/'
+    FormatSettings.Parser.TimeSeparator = ':'
+    FormatSettings.Parser.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.Parser.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.Parser.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.Parser.TimeAMString = 'a.m.'
+    FormatSettings.Parser.TimePMString = 'p.m.'
+    FormatSettings.Parser.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.Parser.ThousandSeparator = ','
+    FormatSettings.Parser.DecimalSeparator = '.'
+    FormatSettings.System.CurrencyString = '$'
+    FormatSettings.System.CurrencyFormat = 0
+    FormatSettings.System.CurrencyDecimals = 2
+    FormatSettings.System.DateSeparator = '/'
+    FormatSettings.System.TimeSeparator = ':'
+    FormatSettings.System.ListSeparator = ','
+    FormatSettings.System.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.System.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.System.TimeAMString = 'a.m.'
+    FormatSettings.System.TimePMString = 'p.m.'
+    FormatSettings.System.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.System.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.System.ThousandSeparator = ','
+    FormatSettings.System.DecimalSeparator = '.'
+    FormatSettings.System.TwoDigitYearCenturyWindow = 50
+    FormatSettings.System.NegCurrFormat = 1
     DataSets = <
       item
         Alias = 'Biolife'
@@ -1021,9 +1343,6 @@ object frmTest: TfrmTest
     object Table1LastInvoiceDate: TDateTimeField
       FieldName = 'LastInvoiceDate'
     end
-    object Table1_Campo: TIntegerField
-      FieldName = '_Campo'
-    end
   end
   object Table2: TTable
     DatabaseName = 'DBDEMOS'
@@ -1042,8 +1361,8 @@ object frmTest: TfrmTest
       FieldName = 'CustNo'
       Required = True
       DisplayFormat = 'CN 0000'
-      MaxValue = 9999
-      MinValue = 1000
+      MaxValue = 9999.000000000000000000
+      MinValue = 1000.000000000000000000
     end
     object Table2SaleDate: TDateTimeField
       FieldName = 'SaleDate'
@@ -1111,7 +1430,7 @@ object frmTest: TfrmTest
     object Table2TaxRate: TFloatField
       FieldName = 'TaxRate'
       DisplayFormat = '0.00%'
-      MaxValue = 100
+      MaxValue = 100.000000000000000000
     end
     object Table2Freight: TCurrencyField
       FieldName = 'Freight'
@@ -1144,7 +1463,7 @@ object frmTest: TfrmTest
     object Table3Discount: TFloatField
       FieldName = 'Discount'
       DisplayFormat = '#%'
-      MaxValue = 100
+      MaxValue = 100.000000000000000000
     end
   end
   object Table4: TTable
@@ -1163,8 +1482,8 @@ object frmTest: TfrmTest
       ConstraintErrorMessage = 'Vendor No has to be between 1000 and 9999'
       FieldName = 'VendorNo'
       DisplayFormat = 'VN 0000'
-      MaxValue = 9999
-      MinValue = 1000
+      MaxValue = 9999.000000000000000000
+      MinValue = 1000.000000000000000000
     end
     object Table4Description: TStringField
       FieldName = 'Description'
@@ -1224,9 +1543,19 @@ object frmTest: TfrmTest
     Top = 318
   end
   object SyntaxHighlighter1: TSyntaxHighlighter
-    UpdateMode = umCharacter
+    UpdateMode = umLine
     Editor = RichEdit1
     XQuery = XQuery1
+    FormatSettings.Parser.DateSeparator = '/'
+    FormatSettings.Parser.TimeSeparator = ':'
+    FormatSettings.Parser.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.Parser.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.Parser.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.Parser.TimeAMString = 'a.m.'
+    FormatSettings.Parser.TimePMString = 'p.m.'
+    FormatSettings.Parser.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.Parser.ThousandSeparator = ','
+    FormatSettings.Parser.DecimalSeparator = '.'
     OnPosChange = SyntaxHighlighter1PosChange
     Left = 655
     Top = 218
@@ -1236,10 +1565,35 @@ object frmTest: TfrmTest
       
         'SELECT * FROM CUSTOMER WHERE CustNo BETWEEN :LOWRANGE AND  :HIGH' +
         'RANGE;')
-    About = 'TxQuery Version 1.86.1 (Aug 2003)'
+    About = 'TxQuery Version 2.0 (Ene 2009)'
     AutoDisableControls = False
-    DateFormat = 'm/d/yyyy'
     ParamsAsFields = <>
+    FormatSettings.Parser.DateSeparator = '/'
+    FormatSettings.Parser.TimeSeparator = ':'
+    FormatSettings.Parser.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.Parser.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.Parser.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.Parser.TimeAMString = 'a.m.'
+    FormatSettings.Parser.TimePMString = 'p.m.'
+    FormatSettings.Parser.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.Parser.ThousandSeparator = ','
+    FormatSettings.Parser.DecimalSeparator = '.'
+    FormatSettings.System.CurrencyString = '$'
+    FormatSettings.System.CurrencyFormat = 0
+    FormatSettings.System.CurrencyDecimals = 2
+    FormatSettings.System.DateSeparator = '/'
+    FormatSettings.System.TimeSeparator = ':'
+    FormatSettings.System.ListSeparator = ','
+    FormatSettings.System.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.System.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.System.TimeAMString = 'a.m.'
+    FormatSettings.System.TimePMString = 'p.m.'
+    FormatSettings.System.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.System.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.System.ThousandSeparator = ','
+    FormatSettings.System.DecimalSeparator = '.'
+    FormatSettings.System.TwoDigitYearCenturyWindow = 50
+    FormatSettings.System.NegCurrFormat = 1
     DataSets = <
       item
         Alias = 'Customer'
@@ -1267,10 +1621,35 @@ object frmTest: TfrmTest
     DataSource = DataSource4
     SQL.Strings = (
       'SELECT * FROM Orders WHERE CustNo = :CustNo')
-    About = 'TxQuery Version 1.86.1 (Aug 2003)'
+    About = 'TxQuery Version 2.0 (Ene 2009)'
     AutoDisableControls = False
-    DateFormat = 'm/d/yyyy'
     ParamsAsFields = <>
+    FormatSettings.Parser.DateSeparator = '/'
+    FormatSettings.Parser.TimeSeparator = ':'
+    FormatSettings.Parser.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.Parser.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.Parser.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.Parser.TimeAMString = 'a.m.'
+    FormatSettings.Parser.TimePMString = 'p.m.'
+    FormatSettings.Parser.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.Parser.ThousandSeparator = ','
+    FormatSettings.Parser.DecimalSeparator = '.'
+    FormatSettings.System.CurrencyString = '$'
+    FormatSettings.System.CurrencyFormat = 0
+    FormatSettings.System.CurrencyDecimals = 2
+    FormatSettings.System.DateSeparator = '/'
+    FormatSettings.System.TimeSeparator = ':'
+    FormatSettings.System.ListSeparator = ','
+    FormatSettings.System.ShortDateFormat = 'm/d/yyyy'
+    FormatSettings.System.LongDateFormat = 'dddd, dd'#39' de '#39'MMMM'#39' de '#39'yyyy'
+    FormatSettings.System.TimeAMString = 'a.m.'
+    FormatSettings.System.TimePMString = 'p.m.'
+    FormatSettings.System.ShortTimeFormat = 'hh:mm AMPM'
+    FormatSettings.System.LongTimeFormat = 'hh:mm:ss AMPM'
+    FormatSettings.System.ThousandSeparator = ','
+    FormatSettings.System.DecimalSeparator = '.'
+    FormatSettings.System.TwoDigitYearCenturyWindow = 50
+    FormatSettings.System.NegCurrFormat = 1
     BeforeInsert = xQuery4BeforeInsert
     DataSets = <
       item

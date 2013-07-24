@@ -3,34 +3,34 @@ object frmColorSettings: TfrmColorSettings
   Top = 123
   BorderStyle = bsDialog
   Caption = 'Color settings'
-  ClientHeight = 197
-  ClientWidth = 415
+  ClientHeight = 242
+  ClientWidth = 511
   Color = clBtnFace
   ParentFont = True
   OldCreateOrder = True
   Position = poScreenCenter
   OnDestroy = FormDestroy
-  PixelsPerInch = 96
+  PixelsPerInch = 120
   TextHeight = 16
   object Label1: TLabel
-    Left = 8
-    Top = 8
+    Left = 10
+    Top = 10
     Width = 55
     Height = 16
     Caption = '&Element :'
   end
   object Label2: TLabel
-    Left = 172
-    Top = 8
+    Left = 212
+    Top = 10
     Width = 39
     Height = 16
     Caption = '&Color :'
   end
   object OKBtn: TButton
-    Left = 127
-    Top = 164
-    Width = 75
-    Height = 25
+    Left = 156
+    Top = 202
+    Width = 93
+    Height = 31
     Caption = 'OK'
     Default = True
     ModalResult = 1
@@ -38,20 +38,20 @@ object frmColorSettings: TfrmColorSettings
     OnClick = OKBtnClick
   end
   object CancelBtn: TButton
-    Left = 207
-    Top = 164
-    Width = 75
-    Height = 25
+    Left = 255
+    Top = 202
+    Width = 92
+    Height = 31
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 1
   end
   object ListBox1: TListBox
-    Left = 8
-    Top = 28
-    Width = 153
-    Height = 129
+    Left = 10
+    Top = 34
+    Width = 188
+    Height = 159
     ItemHeight = 16
     Items.Strings = (
       'Whitespace'
@@ -71,42 +71,42 @@ object frmColorSettings: TfrmColorSettings
     OnClick = ListBox1Click
   end
   object GroupBox1: TGroupBox
-    Left = 304
-    Top = 24
-    Width = 101
-    Height = 97
+    Left = 374
+    Top = 30
+    Width = 124
+    Height = 119
     Caption = 'Text attributes'
     TabOrder = 3
     object ChkBold: TCheckBox
-      Left = 8
-      Top = 20
-      Width = 73
-      Height = 17
+      Left = 10
+      Top = 25
+      Width = 90
+      Height = 21
       Caption = '&Bold'
       TabOrder = 0
     end
     object ChkItalic: TCheckBox
-      Left = 8
-      Top = 44
-      Width = 49
-      Height = 17
+      Left = 10
+      Top = 54
+      Width = 60
+      Height = 21
       Caption = '&Italic'
       TabOrder = 1
     end
     object ChkUnderline: TCheckBox
-      Left = 8
-      Top = 68
-      Width = 73
-      Height = 17
+      Left = 10
+      Top = 84
+      Width = 90
+      Height = 21
       Caption = '&Underline'
       TabOrder = 2
     end
   end
   object ColorGrid1: TColorGrid
-    Left = 168
-    Top = 28
-    Width = 132
-    Height = 128
+    Left = 207
+    Top = 34
+    Width = 160
+    Height = 156
     BackgroundEnabled = False
     TabOrder = 4
   end

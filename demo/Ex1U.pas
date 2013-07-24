@@ -1,14 +1,50 @@
+{*****************************************************************************}
+{   TxQuery DataSet                                                           }
+{                                                                             }
+{   The contents of this file are subject to the Mozilla Public License       }
+{   Version 1.1 (the "License"); you may not use this file except in          }
+{   compliance with the License. You may obtain a copy of the License at      }
+{   http://www.mozilla.org/MPL/                                               }
+{                                                                             }
+{   Software distributed under the License is distributed on an "AS IS"       }
+{   basis, WITHOUT WARRANTY OF ANY KIND, either express or implied. See the   }
+{   License for the specific language governing rights and limitations        }
+{   under the License.                                                        }
+{                                                                             }
+{   The Original Code is: Ex1U.pas                                            }
+{                                                                             }
+{                                                                             }
+{   The Initial Developer of the Original Code is Alfonso Moreno.             }
+{   Portions created by Alfonso Moreno are Copyright (C) <1999-2003> of       }
+{   Alfonso Moreno. All Rights Reserved.                                      }
+{   Open Source patch reviews (2009-2012) with permission from Alfonso Moreno }
+{                                                                             }
+{   Alfonso Moreno (Hermosillo, Sonora, Mexico)                               }
+{   email: luisarvayo@yahoo.com                                               }
+{     url: http://www.ezsoft.com                                              }
+{          http://www.sigmap.com/txquery.htm                                  }
+{                                                                             }
+{   Contributor(s): Chee-Yang, CHAU (Malaysia) <cychau@gmail.com>             }
+{                   Sherlyn CHEW (Malaysia)                                   }
+{                   Francisco Dueñas Rodriguez (Mexico) <fduenas@gmail.com>   }
+{                                                                             }
+{              url: http://code.google.com/p/txquery/                         }
+{                   http://groups.google.com/group/txquery                    }
+{                                                                             }
+{*****************************************************************************}
+
 Unit Ex1U;
 
 {$I XQ_FLAG.INC}
 Interface
 
 {.$DEFINE USE_DBF_ENGINE}
-{.$DEFINE QUERYBUILDER}   { use query builder in the demo. Comment if not used }
+{$DEFINE QUERYBUILDER}   { use query builder in the demo. Comment if not used }
 Uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   Grids, DBGrids, XQuery, Db, DBTables, StdCtrls, ComCtrls, Menus, ExtCtrls,
-  DBCtrls, Buttons, QBaseExpr, SyntaxHi, XQMiscel, xqbase
+  DBCtrls, Buttons, QBaseExpr, XQSyntaxHi, XQMiscel, xqbase, XQTypes
+  {$IFDEF XQ_USE_WIDESTRINGS}, WideStrings{$ENDIF}
 {$IFDEF USE_DBF_ENGINE}
   , halcn6DB
   , gs6_shel
@@ -171,7 +207,6 @@ Type
     Table1TaxRate: TFloatField;
     Table1Contact: TStringField;
     Table1LastInvoiceDate: TDateTimeField;
-    Table1_Campo: TIntegerField;
     Procedure ButtonRunSQLClick(Sender: TObject);
     Procedure Button3Click(Sender: TObject);
     Procedure Button4Click(Sender: TObject);
@@ -189,11 +224,10 @@ Type
     Procedure Button6Click(Sender: TObject);
     Procedure Button7Click(Sender: TObject);
     Procedure Button8Click(Sender: TObject);
-    Procedure XQuery1CreateIndex(Sender: TObject; Unique, Descending: Boolean; Const TableName, IndexName: String; ColumnExprList: TStringList);
-    Procedure XQuery1DropTable(Sender: TObject; Const TableName: String);
-    Procedure XQuery1DropIndex(Sender: TObject; Const TableName, IndexName: String);
+    Procedure XQuery1DropTable(Sender: TObject; Const TableName: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF});
+    Procedure XQuery1DropIndex(Sender: TObject; Const TableName, IndexName: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF});
     Procedure XQuery1CreateTable(Sender: TObject; CreateTable: TCreateTableItem);
-    Procedure XQuery1SyntaxError(Sender: TObject; Const ErrorMsg, OffendingText: String; LineNum, ColNum, TextLen: Integer);
+    Procedure XQuery1SyntaxError(Sender: TObject; Const ErrorMsg, OffendingText: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF}; LineNum, ColNum, TextLen: Integer);
     Procedure Button12Click(Sender: TObject);
     Procedure BtnQBuilderClick(Sender: TObject);
     Procedure Saveresultsetastext1Click(Sender: TObject);
@@ -202,7 +236,8 @@ Type
     procedure XQuery1AlterTable(Sender: TObject;
       CreateTable: TCreateTableItem);
     procedure XQuery1ResolveDataset(Sender: TObject;
-      const Filename: String; var ATableName: String;
+      const Filename: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
+      var ATableName: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
       var Dataset: TDataSet);
     procedure TreeView1Click(Sender: TObject);
     procedure TreeView1Change(Sender: TObject; Node: TTreeNode);
@@ -210,22 +245,25 @@ Type
     procedure TreeView2Click(Sender: TObject);
     procedure XQuery1SetRange(Sender: TObject;
       RelOperator: TRelationalOperator; DataSet: TDataSet;
-      const FieldNames, StartValues, EndValues: String;
+      const FieldNames, StartValues, EndValues: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
       IsJoining: Boolean);
     procedure XQuery1CancelRange(Sender: TObject; DataSet: TDataSet;
       IsJoining: Boolean);
+    procedure XQuery1CreateIndex(Sender: TObject; Unique, Descending: Boolean; const TableName,
+      IndexName: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
+      ColumnExprList: {$IFDEF XQ_USE_WIDESTRINGS}TWideStringList{$ELSE}TStringList{$ENDIF});
     procedure XQuery1IndexNeededFor(Sender: TObject; DataSet: TDataSet;
-      const FieldNames: String; ActivateIndex, IsJoining: Boolean;
+      const FieldNames: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF}; ActivateIndex, IsJoining: Boolean;
       var Accept: Boolean);
     procedure XQuery1CancelFilter(Sender: TObject; DataSet: TDataSet;
       IsJoining: Boolean);
     procedure XQuery1SetFilter(Sender: TObject; DataSet: TDataSet;
-      const Filter: String; IsJoining: Boolean; var Handled: Boolean);
+      const Filter: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF}; IsJoining: Boolean; var Handled: Boolean);
     procedure xQuery4BeforeInsert(DataSet: TDataSet);
-    procedure XQuery1UDFCheck(Sender: TObject; const Identifier: String;
+    procedure XQuery1UDFCheck(Sender: TObject; const Identifier: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
       Params: TParameterList; var DataType: TExprType; var MaxLen: Integer;
       var Accept: Boolean);
-    procedure XQuery1UDFSolve(Sender: TObject; const Identifier: String;
+    procedure XQuery1UDFSolve(Sender: TObject; const Identifier: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
       Params: TParameterList; var Value: Variant);
     procedure Button1Click(Sender: TObject);
     procedure XQuery1CancelQuery(Sender: TObject; var Cancel: Boolean);
@@ -235,7 +273,7 @@ Type
     fOQBDialog: TOQBuilderDialog;
     fOQBxQuery: TOQBEnginexQry;
     {$ENDIF}
-    {$IFNDEF LEVEL3}
+    {$IFDEF LEVEL4}
     Procedure PopupDrawItem(Sender: TObject; ACanvas: TCanvas; ARect: TRect; Selected: Boolean);
     Procedure PopupMeasureItem(Sender: TObject; ACanvas: TCanvas; Var Width, Height: Integer);
     {$ENDIF}
@@ -266,8 +304,10 @@ Procedure TfrmTest.ButtonRunSQLClick(Sender: TObject);
 Begin
   PageControlSQLExamples.ActivePage := TabSheetResultDataSet;
   XQuery1.Close;
-  RichEdit1.WordWrap := False; //There is a silly bug in RichEdit. It returns wrapped lines as new lines.
-  XQuery1.Sql.Assign(RichEdit1.Lines);
+  RichEdit1.WordWrap := false; //There is a silly bug in RichEdit. It returns wrapped lines as new lines.
+  XQuery1.Sql.Text := RichEdit1.Lines.Text; {commented by fduenas. this causes that a Char(11) be added at end of each line)
+  //XQuery1.Sql.Text := RichEdit1.Text; {added by fduenas. This prevents the Char(11) to be added.}
+
   RichEdit1.WordWrap := True; //We're havin wordwrapping again
   XQuery1.Filtered := False;
   If ButtonRunSQL.Caption = 'Run SQL' Then
@@ -330,7 +370,7 @@ Begin
 
   Application.HelpFile := ExtractFilePath(Application.ExeName) + 'txquery.hlp';
   ComboBox1.ItemIndex := 0;
-  {$IFNDEF LEVEL3}
+  {$IFDEF LEVEL4}
   PopupMenu2.OwnerDraw := True;
   {$ELSE}
   Button5.Visible := False;
@@ -345,7 +385,7 @@ Begin
      TreeNode:= Add(nil, 'GROUP BY');
         AddChildObject(TreeNode, 'Sample 1',Pointer(4));
         AddChildObject(TreeNode, 'Sample 2',Pointer(5));
-        AddChildObject(TreeNode, 'Sample 2',Pointer(6));
+        AddChildObject(TreeNode, 'Sample 3',Pointer(6));
      AddObject(nil, 'IN',Pointer(7));
      TreeNode:= Add(nil, 'JOIN');
         AddChildObject(TreeNode, 'Sample',Pointer(8));
@@ -465,7 +505,7 @@ Begin
       If ColorElement^.Group = g Then
       Begin
         Item := TMenuItem.Create(Self);
-        {$IFNDEF LEVEL3}
+        {$IFDEF LEVEL4}
         Item.OnDrawItem := PopupDrawItem; // Delphi 3 cannot owner draw in menus
         Item.OnMeasureItem := PopupMeasureItem;
         {$ENDIF}
@@ -496,7 +536,7 @@ End;
 
 Procedure TfrmTest.PopupDrawItem(Sender: TObject; ACanvas: TCanvas; ARect: TRect; Selected: Boolean);
 Var
-  S: String;
+  S: TxNativeString;
   TmpRect: TRect;
   ColorElement: PColorElement;
 Begin
@@ -551,11 +591,23 @@ Begin
     xQuery4.Params.CreateParam(FtFloat, 'CustNo', PtUnknown);
   xQuery4.Close;
   xQuery4.Open;
+  DataSource4.DataSet.EnableControls;
 End;
 
-Procedure TfrmTest.XQuery1CreateIndex(Sender: TObject; Unique, Descending: Boolean; Const TableName, IndexName: String; ColumnExprList: TStringList);
+Procedure TfrmTest.XQuery1DropTable(Sender: TObject; Const TableName: TxNativeString);
+Begin
+  ShowMessage('Requested to drop table ' + TableName);
+End;
+
+Procedure TfrmTest.XQuery1DropIndex(Sender: TObject; Const TableName, IndexName: TxNativeString);
+Begin
+  ShowMessage('Requested to drop index ' + IndexName + ' on table ' + TableName);
+End;
+
+procedure TfrmTest.XQuery1CreateIndex(Sender: TObject; Unique, Descending: Boolean; const TableName,
+  IndexName: TxNativeString; ColumnExprList: TxNativeTStringList);
 Var
-  S, TempS: String;
+  S, TempS: TxNativeString;
   I: Integer;
 Begin
   S := 'Requested to create an index on table : ' + TableName + CRLF + 'Index name on this table : ' + IndexName + CRLF;
@@ -568,16 +620,6 @@ Begin
 
   For I := 0 To ColumnExprList.Count - 1 Do S := S + ColumnExprList[I] + CRLF;
   ShowMessage(S);
-End;
-
-Procedure TfrmTest.XQuery1DropTable(Sender: TObject; Const TableName: String);
-Begin
-  ShowMessage('Requested to drop table ' + TableName);
-End;
-
-Procedure TfrmTest.XQuery1DropIndex(Sender: TObject; Const TableName, IndexName: String);
-Begin
-  ShowMessage('Requested to drop index ' + IndexName + ' on table ' + TableName);
 End;
 
 Procedure TfrmTest.XQuery1CreateTable(Sender: TObject;
@@ -709,7 +751,7 @@ Begin
   {$ENDIF}
 End;
 
-Procedure TfrmTest.XQuery1SyntaxError(Sender: TObject; Const ErrorMsg, OffendingText: String; LineNum, ColNum, TextLen: Integer);
+Procedure TfrmTest.XQuery1SyntaxError(Sender: TObject; Const ErrorMsg, OffendingText: TxNativeString; LineNum, ColNum, TextLen: Integer);
 Var
   I, NumChars: Integer;
 Begin
@@ -850,7 +892,8 @@ Begin
 end;
 
 procedure TfrmTest.XQuery1ResolveDataset(Sender: TObject;
-  const Filename: String; var ATableName: String; var Dataset: TDataSet);
+  const Filename: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF};
+  var ATableName: {$IFDEF XQ_USE_WIDESTRINGS}WideString{$ELSE}String{$ENDIF}; var Dataset: TDataSet);
 begin
    dataset := TTable.Create(nil);
    with TTable(dataset) do
@@ -860,7 +903,15 @@ begin
       // this will be the table name in the result set (return value)
       if Length(ATableName)=0 then
          ATableName := ChangeFileExt(ExtractFileName(Filename),'');
-      Open;
+      try
+       Open;
+      except
+       On E: Exception do
+       begin
+        FreeAndNil(dataset);
+        Application.MessageBox( Pchar(E.Message), 'Table Open error', MB_OK+MB_ICONERROR);
+       end;
+      end;
    end;
 end;
 
@@ -879,6 +930,7 @@ begin
      exit;
   end;
   RichEdit1.Lines.Clear;
+  //RichEdit1.Lines.Text := RichEdit1.Lines.Text;
   ButtonRunSQL.Caption := 'Run SQL';
   SyntaxHighlighter1.Editor := Nil;
   //Table1.First;
@@ -1170,6 +1222,7 @@ begin
   End;
   {if not RadioGroupSQLExamples.ItemIndex in [33] then
      SyntaxHighlighter1.Editor := RichEdit1; }
+  RichEdit1.Text := Trim( RichEdit1.Text );
   if Longint(Selected.Data)-1<>34 then   // "\" CHAR IS CAUSING PROBLEM TO THE TRichEdit
     SyntaxHighlighter1.Editor := RichEdit1;
   ButtonRunSQL.Enabled := True;
@@ -1190,7 +1243,7 @@ end;
 procedure TfrmTest.ParseSQL;
 var
   ErrLine, ErrCol: Integer;
-  ErrMsg, Errtxt: string;
+  ErrMsg, Errtxt: TxNativeString;
   Node: TTreeNode;
 
   procedure RecursePopulate(A: TSqlAnalizer; ParentNode: TTreeNode);
@@ -1247,7 +1300,7 @@ procedure TfrmTest.AnalizerChange;
 var
   A: TSqlAnalizer;
   Selected: TTreeNode;
-  s: string;
+  s: TxNativeString;
   I, J: Integer;
 begin
   Selected := TreeView2.Selected;
@@ -1354,7 +1407,7 @@ end;
 
 procedure TfrmTest.XQuery1SetRange(Sender: TObject;
   RelOperator: TRelationalOperator; DataSet: TDataSet; const FieldNames,
-  StartValues, EndValues: String; IsJoining: Boolean);
+  StartValues, EndValues: TxNativeString; IsJoining: Boolean);
 Var
   F: TField;
 Begin
@@ -1406,7 +1459,7 @@ begin
 end;
 
 procedure TfrmTest.XQuery1IndexNeededFor(Sender: TObject;
-  DataSet: TDataSet; const FieldNames: String; ActivateIndex,
+  DataSet: TDataSet; const FieldNames: TxNativeString; ActivateIndex,
   IsJoining: Boolean; var Accept: Boolean);
 begin
   if IsJoining then Exit;
@@ -1437,7 +1490,7 @@ begin
 end;
 
 procedure TfrmTest.XQuery1SetFilter(Sender: TObject; DataSet: TDataSet;
-  const Filter: String; IsJoining: Boolean; var Handled: Boolean);
+  const Filter: TxNativeString; IsJoining: Boolean; var Handled: Boolean);
 begin
   //ShowMessage(Format('Dataset name %s; Filter : %s', [Dataset.Name, Filter]));
   { Note: in this case, filters now needed, they are set in OnSetRange this is only to illustrate how to }
@@ -1462,7 +1515,7 @@ begin
 end;
 
 procedure TfrmTest.XQuery1UDFCheck(Sender: TObject;
-  const Identifier: String; Params: TParameterList;
+  const Identifier: TxNativeString; Params: TParameterList;
   var DataType: TExprType; var MaxLen: Integer; var Accept: Boolean);
 var
   I: Integer;  
@@ -1509,11 +1562,11 @@ begin
 end;
 
 procedure TfrmTest.XQuery1UDFSolve(Sender: TObject;
-  const Identifier: String; Params: TParameterList; var Value: Variant);
+  const Identifier: TxNativeString; Params: TParameterList; var Value: Variant);
 Var
   I: Integer;
   Temp: Double;
-  TempS, S: String;
+  TempS, S: TxNativeString;
 Begin
   If AnsiCompareText(Identifier, 'DTOS') = 0 Then
   Begin
@@ -1531,7 +1584,7 @@ Begin
     S := Params.AsString[0];
     TempS := '';
     For I := 1 To Length(S) Do Begin
-      If Not (S[I] In ['$', ',']) Then TempS := TempS + S[I]; // discard "$" and ","
+      If Not CharInSet(S[I], ['$', ',']) Then TempS := TempS + S[I]; // discard "$" and ","
     End;
     Value := StrToFloat(TempS);
   End;

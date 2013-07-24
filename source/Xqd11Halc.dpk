@@ -1,7 +1,7 @@
-package dclXq;
+package Xqd11Halc;
 
 {$R *.res}
-{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$R 'Halcnqry.dcr'}
 {$ALIGN 8}
 {$ASSERTIONS ON}
 {$BOOLEVAL OFF}
@@ -12,7 +12,7 @@ package dclXq;
 {$LOCALSYMBOLS ON}
 {$LONGSTRINGS ON}
 {$OPENSTRINGS ON}
-{$OPTIMIZATION OFF}
+{$OPTIMIZATION ON}
 {$OVERFLOWCHECKS OFF}
 {$RANGECHECKS OFF}
 {$REFERENCEINFO ON}
@@ -23,18 +23,20 @@ package dclXq;
 {$WRITEABLECONST OFF}
 {$MINENUMSIZE 1}
 {$IMAGEBASE $400000}
-{$DEFINE Debug}
-{$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'TxQuery Design Time Component'}
-{$LIBSUFFIX '_D18'}
-{$DESIGNONLY}
+{$DESCRIPTION 'TXQuery for Halcyon Dataset'}
 {$IMPLICITBUILD OFF}
 
 requires
+  Halcyon6_D11run,
+  Xqd11,
+  rtl,
+  vcl,
+  dbrtl,
   designide,
-  Xq;
+  vclactnband,
+  vclx;
 
 contains
-  XQReg in '..\..\source\XQReg.pas';
+  Halcnqry in 'Halcnqry.pas';
 
 end.

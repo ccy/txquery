@@ -36,12 +36,12 @@
 unit XQYacc;
 
 {$I XQ_FLAG.INC}
-{$R xqyacc.res}
+{$R XQYacc.res}
 interface
 
 uses
    SysUtils, Classes, Windows, Dialogs, QLexLib, QYaccLib, xqBase, xquery,
-   DB, xqmiscel, CnvStrUtils, xqJoins
+   DB, xqmiscel, QCnvStrUtils, xqJoins
 {$IFDEF LEVEL3}
    , DBTables
 {$ENDIF}
@@ -1474,10 +1474,11 @@ begin
          yyval.yystring := Format('(Subquery %d)', [CurrentAnalizer.SubqueryList.Count-1]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  204 : begin
-         yyval.yystring := Format('IFNULL(%s,TRUE)', [yyv[yysp-2].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         {use ISNULL to test only if a Field has a NULL value; use IFNULL to get a default value if the field has a NULL value}
+         yyval.yystring := Format('ISNULL(%s,TRUE)', [yyv[yysp-2].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  205 : begin
-         yyval.yystring := Format('IFNULL(%s,FALSE)', [yyv[yysp-3].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
+         yyval.yystring := Format('ISNULL(%s,FALSE)', [yyv[yysp-3].yystring]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
        end;
  206 : begin
          fIsNotInList := False;

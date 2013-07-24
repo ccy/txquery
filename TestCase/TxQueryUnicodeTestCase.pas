@@ -37,7 +37,7 @@ unit TxQueryUnicodeTestCase;
 
 interface
 
-uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery;
+uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery, Character;
 
 type
   TTest_TxQuery_Unicode = class(TTestCase)
@@ -200,15 +200,15 @@ begin
   for i := 1 to 10 do begin
     FMainDataSet.Append;
     FMainDataSet['DocKey'] := i;
-    FMainDataSet['Code'] := Format(#$987E#$5BA2 + '-%d', [i]);
-    FMainDataSet['DocNo'] := Format(#$8BA2#$5355 + '-%.4d', [i]);
+    FMainDataSet['Code'] := Format(Chr($987E)+Chr($5BA2) + '-%d', [i]);
+    FMainDataSet['DocNo'] := Format(Chr($8BA2)+Chr($5355) + '-%.4d', [i]);
     FMainDataSet['DocDate'] := IncDay(FDate, i);
     if i <= 3 then
-      FMainDataSet['Agent'] := #$4EE3#$74061
+      FMainDataSet['Agent'] := Chr($4EE3)+Chr($7406)+'1'
     else if (i > 3) and (i < 8) then
-      FMainDataSet['Agent'] := #$4EE3#$74062
+      FMainDataSet['Agent'] := Chr($4EE3)+Chr($7406)+'2'
     else
-      FMainDataSet['Agent'] := #$4EE3#$74063;
+      FMainDataSet['Agent'] := Chr($4EE3)+Chr($7406)+'3';
     FMainDataSet['Qty'] := i;
     FMainDataSet['UnitPrice'] := i * 2;
     FMainDataSet['Amount'] := FMainDataSet['Qty'] * FMainDataSet['UnitPrice'];
@@ -229,7 +229,7 @@ begin
       FDetailDataSet['DocKey'] := 1
     else
       FDetailDataSet['DocKey'] := 7;
-    FDetailDataSet['ItemCode'] := Format(#$8D27#$7269 + '%d', [i]);
+    FDetailDataSet['ItemCode'] := Format(Chr($8D27)+Chr($7269) + '%d', [i]);
     FDetailDataSet.Post;
   end;
 end;
@@ -250,11 +250,11 @@ begin
   with FQuery.SQL do begin
     Clear;
     Add('DELETE FROM Main');
-    Add( 'WHERE DocNo=' + QuotedStr(#$8BA2#$5355 + '-0001'));
+    Add( 'WHERE DocNo=' + QuotedStr(Chr($8BA2)+Chr($5355) + '-0001'));
   end;
   FQuery.ExecSQL;
   CheckEquals(9, FMainDataSet.RecordCount, 'FMainDataSet Record Count incorrect');
-  CheckFalse(FMainDataSet.Locate('DocNo', #$8BA2#$5355 + '-0001', []), 'Record still exists even has been deleted');
+  CheckFalse(FMainDataSet.Locate('DocNo', Chr($8BA2)+Chr($5355) + '-0001', []), 'Record still exists even has been deleted');
 end;
 
 procedure TTest_Unicode_Distinct.Test_Distinct_Aggregate;
@@ -277,7 +277,7 @@ begin
       CreateDataSet;
       AppendRecord([Null]);
       AppendRecord(['']);
-      AppendRecord([#$6D4B#$8BD5]);
+      AppendRecord([Chr($6D4B)+Chr($8BD5)]);
     end;
 
     FQuery.DataSets.Clear;
@@ -293,7 +293,7 @@ begin
     FQuery.First;
     CheckEquals('', FQuery['Test1']);
     FQuery.Next;
-    CheckEquals(#$6D4B#$8BD5, FQuery['Test1']);
+    CheckEquals(Chr($6D4B)+Chr($8BD5), FQuery['Test1']);
   finally
     D1.Free;
   end;
@@ -307,11 +307,11 @@ begin
   FQuery.Open;
 
   FQuery.First;
-  CheckEquals(#$4EE3#$74061, FQuery.Fields[0].AsString);
+  CheckEquals( Chr($4EE3)+Chr($7406)+'1', FQuery.Fields[0].AsString);
   FQuery.Next;
-  CheckEquals(#$4EE3#$74062, FQuery.Fields[0].AsString);
+  CheckEquals( Chr($4EE3)+Chr($7406)+'2', FQuery.Fields[0].AsString);
   FQuery.Next;
-  CheckEquals(#$4EE3#$74063, FQuery.Fields[0].AsString);
+  CheckEquals( Chr($4EE3)+Chr($7406)+'3', FQuery.Fields[0].AsString);
   FQuery.Close;
 end;
 
@@ -366,7 +366,7 @@ begin
     Clear;
     Add('SELECT SUM(Amount) / Count(*) As Total, Agent');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74061));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'1'));
     Add( 'GROUP BY Agent');
     Add( 'ORDER BY Agent');
   end;
@@ -385,10 +385,11 @@ begin
     Clear;
     Add('SELECT SUM(Amount) / SUM(Qty) As Total, Agent');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74061));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'1' ) );
     Add( 'GROUP BY Agent');
     Add( 'ORDER BY Agent');
   end;
+
   FQuery.Open;
   CheckEquals(1,      FQuery.RecordCount,          'FQuery Record Count incorrect.');
   CheckEquals(4.6667, FQuery.Fields[0].AsCurrency, 'Total incorrect.');
@@ -404,7 +405,7 @@ begin
     Clear;
     Add('SELECT SUM(Amount) / COUNT(Qty) As Total, Agent');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74061));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'1'));
     Add( 'GROUP BY Agent');
     Add( 'ORDER BY Agent');
   end;
@@ -421,7 +422,7 @@ begin
 
   with FQuery.SQL do begin
     Clear;
-    Add(Format(   'SELECT "%s"', [#$6D4B#$8BD5]));
+    Add(Format(   'SELECT "%s"', [Chr($6D4B)+Chr($8BD5)]));
     Add(           'FROM Main');
   end;
   FQuery.Open;
@@ -439,13 +440,13 @@ begin
     Clear;
     Add('SELECT *');
     Add(  'FROM Main');
-    Add(Format('WHERE Agent IN (%s, %s)', [QuotedStr(#$4EE3#$74061), QuotedStr(#$4EE3#$74063)]));
+    Add(Format('WHERE Agent IN (%s, %s)', [QuotedStr( Chr($4EE3)+Chr($7406)+'1'), QuotedStr(Chr($4EE3)+Chr($7406)+'3')]));
   end;
   FQuery.Open;
 
   FQuery.First;
   while not FQuery.Eof do begin
-    lResult := SameText(FQuery['Agent'], #$4EE3#$74061) or SameText(FQuery['Agent'], #$4EE3#$74063);
+    lResult := SameText(FQuery['Agent'],  Chr($4EE3)+Chr($7406)+'1') or SameText(FQuery['Agent'], Chr($4EE3)+Chr($7406)+'3');
     CheckTrue(lResult, 'Return result not true.');
     FQuery.Next;
   end;
@@ -462,7 +463,7 @@ begin
     Add('INSERT INTO Main (Code, DocNo, Agent, Amount)');
     Add('(SELECT Code, DocNo, Agent, Amount');
     Add(  'FROM Main');
-    Add(Format( 'WHERE Agent=%s)', [QuotedStr(#$4EE3#$74061)]));
+    Add(Format( 'WHERE Agent=%s)', [QuotedStr( Chr($4EE3)+Chr($7406)+'1')]));
   end;
   FQuery.ExecSQL;
   CheckEquals(13, FMainDataSet.RecordCount, 'FMainDataSet RecordCount incorrect');
@@ -476,14 +477,16 @@ begin
   with FQuery.SQL do begin
     Clear;
     Add('INSERT INTO Main (Code, DocNo, Agent, Amount)');
-    Add(Format('VALUES(%s, %s, %s, ''400'')', [QuotedStr(#$4F9B#$5E94#$55461), QuotedStr(#$7380#$91D1#$9500#$552E), QuotedStr(#$9648#$5148#$751F)]));
+    Add(Format('VALUES(%s, %s, %s, ''400'')', [QuotedStr(Chr($4F9B)+Chr($5E94)+Chr($55461)),
+                                               QuotedStr(Chr($7380)+Chr($91D1)+Chr($9500)+Chr($552E)),
+                                               QuotedStr(Chr($9648)+Chr($5148)+Chr($751F))]));
   end;
   FQuery.ExecSQL;
   CheckEquals(11, FMainDataSet.RecordCount, 'FMainDataSet RecordCount incorrect');
-  CheckTrue(FMainDataSet.Locate('DocNo', #$7380#$91D1#$9500#$552E, []), #$7380#$91D1#$9500#$552E + 'not found');
+  CheckTrue(FMainDataSet.Locate('DocNo', Chr($7380)+Chr($91D1)+Chr($9500)+Chr($552E), []), Chr($7380)+Chr($91D1)+Chr($9500)+Chr($552E) + 'not found');
   //since the above statement CheckTrue is pass then the following record has been point to CS-0001
-  CheckEquals(#$4F9B#$5E94#$55461, FMainDataSet.FindField('Code').AsString,     'Field "Code" incorrect');
-  CheckEquals(#$9648#$5148#$751F,  FMainDataSet.FindField('Agent').AsString,    'Field "Agent" incorrect');
+  CheckEquals(Chr($4F9B)+Chr($5E94)+Chr($55461), FMainDataSet.FindField('Code').AsString,     'Field "Code" incorrect');
+  CheckEquals(Chr($9648)+Chr($5148)+Chr($751F),  FMainDataSet.FindField('Agent').AsString,    'Field "Agent" incorrect');
   CheckEquals(400,                 FMainDataSet.FindField('Amount').AsCurrency, 'Field "Amount" incorrect');
 end;
 
@@ -499,16 +502,16 @@ begin
       CreateDataSet;
       AppendRecord([Null]);
       AppendRecord(['']);
-      AppendRecord([#$6D4B#$8BD5]);
+      AppendRecord([Chr($6D4B)+Chr($8BD5)]);
     end;
 
     with D2 do begin
       FieldDefs.Add('Test2',    ftWideString, 10);
       FieldDefs.Add('ItemCode', ftWideString, 10);
       CreateDataSet;
-      AppendRecord([Null,         #$8D27#$72691]);
-      AppendRecord(['',           #$8D27#$72692]);
-      AppendRecord([#$6D4B#$8BD5, #$8D27#$72693]);
+      AppendRecord([Null,         Chr($8D27)+Chr($7269)+'1']);
+      AppendRecord(['',           Chr($8D27)+Chr($7269)+'2']);
+      AppendRecord([Chr($6D4B)+Chr($8BD5), Chr($8D27)+Chr($7269)+'3']);
     end;
 
     FQuery.DataSets.Clear;
@@ -524,13 +527,13 @@ begin
     CheckEquals(3,         D.RecordCount);
     D.First;
     CheckTrue(VarIsNull(D['Test1']));
-    CheckEquals(#$8D27#$72691,   D['ItemCode']);
+    CheckEquals(Chr($8D27)+Chr($7269)+'1',   D['ItemCode']);
     D.Next;
     CheckEquals('',        D['Test1']);
-    CheckEquals(#$8D27#$72692,   D['ItemCode']);
+    CheckEquals(Chr($8D27)+Chr($7269)+'2',   D['ItemCode']);
     D.Next;
-    CheckEquals(#$6D4B#$8BD5, D['Test1']);
-    CheckEquals(#$8D27#$72693,   D['ItemCode']);
+    CheckEquals(Chr($6D4B)+Chr($8BD5), D['Test1']);
+    CheckEquals(Chr($8D27)+Chr($7269)+'3',   D['ItemCode']);
   finally
     D.Free;
     D1.Free;
@@ -550,15 +553,15 @@ begin
       CreateDataSet;
       AppendRecord([Null]);
       AppendRecord(['']);
-      AppendRecord([#$6D4B#$8BD5]);
+      AppendRecord([Chr($6D4B)+Chr($8BD5)]);
     end;
 
     with D2 do begin
       FieldDefs.Add('Test2',    ftWideString, 10);
       FieldDefs.Add('ItemCode', ftWideString, 10);
       CreateDataSet;
-      AppendRecord([Null, #$8D27#$72691]);
-      AppendRecord(['',   #$8D27#$72692]);
+      AppendRecord([Null, Chr($8D27)+Chr($7269)+'1']);
+      AppendRecord(['',   Chr($8D27)+Chr($7269)+'2']);
     end;
 
     FQuery.DataSets.Clear;
@@ -574,12 +577,12 @@ begin
     CheckEquals(3,         D.RecordCount);
     D.First;
     CheckTrue(VarIsNull(D['Test1']));
-    CheckEquals(#$8D27#$72691,   D['ItemCode']);
+    CheckEquals(Chr($8D27)+Chr($7269)+'1',   D['ItemCode']);
     D.Next;
     CheckEquals('',        D['Test1']);
-    CheckEquals(#$8D27#$72692,   D['ItemCode']);
+    CheckEquals(Chr($8D27)+Chr($7269)+'2',   D['ItemCode']);
     D.Next;
-    CheckEquals(#$6D4B#$8BD5, D['Test1']);
+    CheckEquals(Chr($6D4B)+Chr($8BD5), D['Test1']);
     CheckTrue(VarIsNull(D['ItemCode']));
   finally
     D.Free;
@@ -599,17 +602,17 @@ begin
     Add('SELECT A.DocNo, B.ItemCode');
     Add(  'FROM Main A, Detail B');
     Add( 'WHERE A.DocKey=B.DocKey');
-    Add(   'AND A.DocNo=' + QuotedStr(#$8BA2#$5355 + '-0007'));
+    Add(   'AND A.DocNo=' + QuotedStr(Chr($8BA2)+Chr($5355) + '-0007'));
     Add( 'ORDER BY B.ItemCode');
   end;
   FQuery.Open;
   CheckEquals(2, FQuery.RecordCount, 'FQuery Record Count incorrect');
   FQuery.First;
-  CheckEquals(#$8BA2#$5355 + '-0007', FQuery.FindField('DocNo').AsString);
-  CheckEquals(#$8D27#$72694, FQuery.FindField('ItemCode').AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0007', FQuery.FindField('DocNo').AsString);
+  CheckEquals(Chr($8D27)+Chr($7269)+'4', FQuery.FindField('ItemCode').AsString);
   FQuery.Next;
-  CheckEquals(#$8BA2#$5355 + '-0007', FQuery.FindField('DocNo').AsString);
-  CheckEquals(#$8D27#$72695, FQuery.FindField('ItemCode').AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0007', FQuery.FindField('DocNo').AsString);
+  CheckEquals(Chr($8D27)+Chr($7269)+'5', FQuery.FindField('ItemCode').AsString);
   FQuery.Close;
 end;
 
@@ -624,17 +627,17 @@ begin
     Add('SELECT Main.DocNo, Detail.ItemCode');
     Add(  'FROM Main, Detail');
     Add( 'WHERE Main.DocKey=Detail.DocKey');
-    Add(   'AND Main.DocNo=' + QuotedStr(#$8BA2#$5355 + '-0007'));
+    Add(   'AND Main.DocNo=' + QuotedStr(Chr($8BA2)+Chr($5355) + '-0007'));
     Add( 'ORDER BY Detail.ItemCode');
   end;
   FQuery.Open;
   CheckEquals(2, FQuery.RecordCount, 'FQuery Record Count incorrect');
   FQuery.First;
-  CheckEquals(#$8BA2#$5355 + '-0007', FQuery.FindField('DocNo').AsString);
-  CheckEquals(#$8D27#$72694, FQuery.FindField('ItemCode').AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0007', FQuery.FindField('DocNo').AsString);
+  CheckEquals(Chr($8D27)+Chr($7269)+'4', FQuery.FindField('ItemCode').AsString);
   FQuery.Next;
-  CheckEquals(#$8BA2#$5355 + '-0007', FQuery.FindField('DocNo').AsString);
-  CheckEquals(#$8D27#$72695, FQuery.FindField('ItemCode').AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0007', FQuery.FindField('DocNo').AsString);
+  CheckEquals(Chr($8D27)+Chr($7269)+'5', FQuery.FindField('ItemCode').AsString);
   FQuery.Close;
 end;
 
@@ -648,17 +651,17 @@ begin
     Clear;
     Add('SELECT A.DocNo, B.ItemCode');
     Add(  'FROM Main A INNER JOIN Detail B ON (A.DocKey=B.DocKey)');
-    Add( 'WHERE A.DocNo=' + QuotedStr(#$8BA2#$5355 + '-0007'));
+    Add( 'WHERE A.DocNo=' + QuotedStr(Chr($8BA2)+Chr($5355) + '-0007'));
     Add( 'ORDER BY B.ItemCode');
   end;
   FQuery.Open;
   CheckEquals(2, FQuery.RecordCount, 'FQuery Record Count incorrect');
   FQuery.First;
-  CheckEquals(#$8BA2#$5355 + '-0007', FQuery.FindField('DocNo').AsString);
-  CheckEquals(#$8D27#$72694, FQuery.FindField('ItemCode').AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0007', FQuery.FindField('DocNo').AsString);
+  CheckEquals(Chr($8D27)+Chr($7269)+'4', FQuery.FindField('ItemCode').AsString);
   FQuery.Next;
-  CheckEquals(#$8BA2#$5355 + '-0007', FQuery.FindField('DocNo').AsString);
-  CheckEquals(#$8D27#$72695, FQuery.FindField('ItemCode').AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0007', FQuery.FindField('DocNo').AsString);
+  CheckEquals(Chr($8D27)+Chr($7269)+'5', FQuery.FindField('ItemCode').AsString);
   FQuery.Close;
 end;
 
@@ -691,12 +694,12 @@ begin
 
       Append;
       FindField('DocKey').AsInteger := 2;
-      FindField('Agent').AsString := #$8D27#$72691;
+      FindField('Agent').AsString := Chr($8D27)+Chr($7269)+'1';
       Post;
 
       Append;
       FindField('DocKey').AsInteger := 4;
-      FindField('Agent').AsString := #$8D27#$72692;
+      FindField('Agent').AsString := Chr($8D27)+Chr($7269)+'2';
       Post;
     end;
 
@@ -730,7 +733,7 @@ begin
   end;
   FQuery.Open;
   CheckEquals(1,                      FQuery.RecordCount,        'FQuery Record Count incorrect.');
-  CheckEquals(#$8BA2#$5355 + '-0002', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0002', FQuery.Fields[0].AsString, 'DocNo incorrect.');
   FQuery.Close;
 end;
 
@@ -747,7 +750,7 @@ begin
   end;
   FQuery.Open;
   CheckEquals(1,                      FQuery.RecordCount,        'FQuery Record Count incorrect.');
-  CheckEquals(#$8BA2#$5355 + '-0001', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0001', FQuery.Fields[0].AsString, 'DocNo incorrect.');
   FQuery.Close;
 end;
 
@@ -755,15 +758,16 @@ procedure TTest_Unicode_LIKE.Test_LIKE_Multiple_StartWith;
 begin
   FQuery.DataSets.Clear;
   FQuery.AddDataSet(FMainDataSet, 'Main');
-
+  FMainDataSet.RecordCount;
   with FQuery.SQL do begin
     Clear;
     Add('SELECT DISTINCT Agent');
     Add(  'FROM Main');
-    Add(Format( 'WHERE Agent LIKE ''%s%%''', [#$4EE3#$7406]));
+    Add( Format('WHERE Agent LIKE ''%s%%''', [Chr($4EE3)+Chr($7406)]) );
   end;
+  FQuery.SQL.Text;
   FQuery.Open;
-  CheckEquals(10,     FQuery.RecordCount,        'FQuery Record Count incorrect.');
+  CheckEquals(3,     FQuery.RecordCount,        'FQuery Record Count incorrect.');
   FQuery.Close;
 end;
 
@@ -776,11 +780,11 @@ begin
     Clear;
     Add('SELECT DocNo');
     Add(  'FROM Main');
-    Add(Format( 'WHERE DocNo LIKE ''%s-000_''', [#$8BA2#$5355]));
+    Add(Format( 'WHERE DocNo LIKE ''%s-000_''', [Chr($8BA2)+Chr($5355)]));
   end;
   FQuery.Open;
   CheckEquals(9,                      FQuery.RecordCount,        'FQuery Record Count incorrect.');
-  CheckEquals(#$8BA2#$5355 + '-0001', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0001', FQuery.Fields[0].AsString, 'DocNo incorrect.');
   FQuery.Close;
 end;
 
@@ -793,11 +797,11 @@ begin
     Clear;
     Add('SELECT DocNo');
     Add(  'FROM Main');
-    Add(Format( 'WHERE DocNo LIKE ''%s_-0002''', [#$4EE3]));
+    Add(Format( 'WHERE DocNo LIKE ''%s_0002''', [Chr($8BA2)+Chr($5355)]));
   end;
   FQuery.Open;
   CheckEquals(1,                      FQuery.RecordCount,        'FQuery Record Count incorrect.');
-  CheckEquals(#$4EE3#$7406 + '-0002', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0002', FQuery.Fields[0].AsString, 'DocNo incorrect.');
   FQuery.Close;
 end;
 
@@ -810,11 +814,11 @@ begin
     Clear;
     Add('SELECT DocNo');
     Add(  'FROM Main');
-    Add(Format( 'WHERE DocNo LIKE ''_%s-0003''', [#$7406]));
+    Add(Format( 'WHERE DocNo LIKE ''_%s-0003''', [Chr($5355)]));
   end;
   FQuery.Open;
   CheckEquals(1,             FQuery.RecordCount,        'FQuery Record Count incorrect.');
-  CheckEquals(#$4EE3#$74063, FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  CheckEquals(Chr($8BA2)+Chr($5355)+'-0003', FQuery.Fields[0].AsString, 'DocNo incorrect.');
   FQuery.Close;
 end;
 
@@ -827,7 +831,7 @@ begin
     Clear;
     Add('SELECT MAX(Amount)');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74061));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'1'));
   end;
   FQuery.Open;
   CheckEquals(18, FQuery.Fields[0].AsInteger, 'Max Result incorrect');
@@ -843,7 +847,7 @@ begin
     Clear;
     Add('SELECT MIN(Amount)');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74063));
+    Add( 'WHERE Agent=' + QuotedStr(Chr($4EE3)+Chr($7406)+'3'));
   end;
   FQuery.Open;
   CheckEquals(128, FQuery.Fields[0].AsInteger, 'Min Result incorrect');
@@ -906,7 +910,7 @@ begin
     Clear;
     Add('SELECT Code, DocNo, Agent');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74061));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'1'));
     Add( 'ORDER BY Agent, 2 Desc');
   end;
   FQuery.Open;
@@ -926,12 +930,12 @@ begin
   FQuery.AddDataSet(FMainDataSet, 'Main');
 
   FQuery.SQL.Text := 'UPDATE Main SET Agent=:Agent WHERE DocNo=:DocNo';
-  FQuery.ParamByName('Agent').AsString := #$4EE3#$74063;
-  FQuery.ParamByName('DocNo').AsString := #$8BA2#$5355 + '-0001';
+  FQuery.ParamByName('Agent').AsString := Chr($4EE3)+Chr($7406)+'3';
+  FQuery.ParamByName('DocNo').AsString := Chr($8BA2)+Chr($5355) + '-0001';
   FQuery.ExecSQL;
 
-  CheckTrue(FMainDataSet.Locate('DocNo', #$8BA2#$5355 + '-0001', []));
-  CheckEquals(#$4EE3#$74063, FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
+  CheckTrue(FMainDataSet.Locate('DocNo', Chr($8BA2)+Chr($5355) + '-0001', []));
+  CheckEquals(Chr($4EE3)+Chr($7406)+'3', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
 end;
 
 procedure TTest_Unicode_SubQueries.Test_SubQueries_IN_Case1;
@@ -945,15 +949,15 @@ begin
     Add(  'FROM Main');
     Add( 'WHERE Agent IN (SELECT Agent');
     Add(                  'FROM Main');
-    Add(Format(          'WHERE Agent NOT IN (%s, %s))', [QuotedStr(#$4EE3#$74061), QuotedStr(#$4EE3#$74062)]));
+    Add(Format(          'WHERE Agent NOT IN (%s, %s))', [QuotedStr( Chr($4EE3)+Chr($7406)+'1'), QuotedStr(Chr($4EE3)+Chr($7406)+'2')]));
   end;
   FQuery.Open;
   FQuery.First;
-  CheckEquals(#$8BA2#$5355 + '-0008', FQuery.Fields[0].AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0008', FQuery.Fields[0].AsString);
   FQuery.Next;
-  CheckEquals(#$8BA2#$5355 + '-0009', FQuery.Fields[0].AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0009', FQuery.Fields[0].AsString);
   FQuery.Next;
-  CheckEquals(#$8BA2#$5355 + '-0010', FQuery.Fields[0].AsString);
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0010', FQuery.Fields[0].AsString);
   FQuery.Close;
 end;
 
@@ -968,16 +972,16 @@ begin
     Add(  'FROM Main');
     Add( 'WHERE Agent NOT IN (SELECT DISTINCT Agent');
     Add(                       'FROM Main');
-    Add(Format(               'WHERE Agent IN (%s, %s))', [QuotedStr(#$4EE3#$74061), QuotedStr(#$4EE3#$74062)]));
+    Add(Format(               'WHERE Agent IN (%s, %s))', [QuotedStr( Chr($4EE3)+Chr($7406)+'1'), QuotedStr(Chr($4EE3)+Chr($7406)+'2')]));
   end;
   FQuery.Open;
   CheckEquals(3, FQuery.RecordCount);
   FQuery.First;
-  CheckEquals(#$4EE3#$74063, FQuery.Fields[0].AsString);
+  CheckEquals(Chr($4EE3)+Chr($7406)+'3', FQuery.Fields[0].AsString);
   FQuery.Next;
-  CheckEquals(#$4EE3#$74063, FQuery.Fields[0].AsString);
+  CheckEquals(Chr($4EE3)+Chr($7406)+'3', FQuery.Fields[0].AsString);
   FQuery.Next;
-  CheckEquals(#$4EE3#$74063, FQuery.Fields[0].AsString);
+  CheckEquals(Chr($4EE3)+Chr($7406)+'3', FQuery.Fields[0].AsString);
   FQuery.Close;
 end;
 
@@ -993,34 +997,34 @@ begin
     Add(     'FROM Main');
     Add(    'GROUP BY DocNo');
     Add(    'ORDER BY DocNo');
-    Add(Format('PIVOT Agent IN ("%s", "%s", "%s")', [#$4EE3#$74061, #$4EE3#$74062, #$4EE3#$74063]));
+    Add(Format('PIVOT Agent IN ("%s", "%s", "%s")', [ Chr($4EE3)+Chr($7406)+'1', Chr($4EE3)+Chr($7406)+'2', Chr($4EE3)+Chr($7406)+'3']));
   end;
   FQuery.Open;
   CheckEquals(10, FQuery.RecordCount, 'FQuery Record Count incorrect.');
 
   FQuery.First;
-  CheckEquals(2,         FQuery.FindField(#$4EE3#$74061).AsCurrency, 'Record 1 Field "'#$4EE3#$74061'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74062).AsCurrency, 'Record 1 Field "'#$4EE3#$74062'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74063).AsCurrency, 'Record 1 Field "'#$4EE3#$74063'" incorrect');
-  CheckEquals(#$8BA2#$5355 + '-0001', FQuery.FindField('DocNo').AsString, 'Record 1 Field "DocNo" incorrect');
+  CheckEquals(2,         FQuery.FindField( Chr($4EE3)+Chr($7406)+'1').AsCurrency, 'Record 1 Field "'+ Chr($4EE3)+Chr($7406)+'1'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField(Chr($4EE3)+Chr($7406)+'2').AsCurrency, 'Record 1 Field "'+Chr($4EE3)+Chr($7406)+'2'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField(Chr($4EE3)+Chr($7406)+'3').AsCurrency, 'Record 1 Field "'+Chr($4EE3)+Chr($7406)+'3'+'" incorrect');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0001', FQuery.FindField('DocNo').AsString, 'Record 1 Field "DocNo" incorrect');
 
   FQuery.Next;
-  CheckEquals(8,         FQuery.FindField(#$4EE3#$74061).AsCurrency, 'Record 2 Field "'#$4EE3#$74061'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74062).AsCurrency, 'Record 2 Field "'#$4EE3#$74062'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74063).AsCurrency, 'Record 2 Field "'#$4EE3#$74063'" incorrect');
-  CheckEquals(#$8BA2#$5355 + '-0002', FQuery.FindField('DocNo').AsString, 'Record 2 Field "DocNo" incorrect');
+  CheckEquals(8,         FQuery.FindField( Chr($4EE3)+Chr($7406)+'1').AsCurrency, 'Record 2 Field "'+ Chr($4EE3)+Chr($7406)+'1'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField(Chr($4EE3)+Chr($7406)+'2').AsCurrency, 'Record 2 Field "'+Chr($4EE3)+Chr($7406)+'2'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField(Chr($4EE3)+Chr($7406)+'3').AsCurrency, 'Record 2 Field "'+Chr($4EE3)+Chr($7406)+'3'+'" incorrect');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0002', FQuery.FindField('DocNo').AsString, 'Record 2 Field "DocNo" incorrect');
 
   FQuery.RecNo := 5;
-  CheckEquals(50,        FQuery.FindField(#$4EE3#$74062).AsCurrency, 'Record 5 Field "DEF" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74061).AsCurrency, 'Record 5 Field "'#$4EE3#$74061'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74063).AsCurrency, 'Record 5 Field "'#$4EE3#$74063'" incorrect');
-  CheckEquals(#$8BA2#$5355 + '-0005', FQuery.FindField('DocNo').AsString, 'Record 5 Field "DocNo" incorrect');
+  CheckEquals(50,        FQuery.FindField(Chr($4EE3)+Chr($7406)+'2').AsCurrency, 'Record 5 Field "DEF" incorrect');
+  CheckEquals(0,         FQuery.FindField( Chr($4EE3)+Chr($7406)+'1').AsCurrency, 'Record 5 Field "'+ Chr($4EE3)+Chr($7406)+'1'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField(Chr($4EE3)+Chr($7406)+'3').AsCurrency, 'Record 5 Field "'+Chr($4EE3)+Chr($7406)+'3'+'" incorrect');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0005', FQuery.FindField('DocNo').AsString, 'Record 5 Field "DocNo" incorrect');
 
   FQuery.RecNo := 10;
-  CheckEquals(200,       FQuery.FindField(#$4EE3#$74063).AsCurrency, 'Record 10 Field "'#$4EE3#$74063'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74061).AsCurrency, 'Record 10 Field "'#$4EE3#$74061'" incorrect');
-  CheckEquals(0,         FQuery.FindField(#$4EE3#$74062).AsCurrency, 'Record 10 Field "'#$4EE3#$74062'" incorrect');
-  CheckEquals(#$8BA2#$5355 + '-0010', FQuery.FindField('DocNo').AsString, 'Record 10 Field "DocNo" incorrect');
+  CheckEquals(200,       FQuery.FindField(Chr($4EE3)+Chr($7406)+'3').AsCurrency, 'Record 10 Field "'+Chr($4EE3)+Chr($7406)+'3'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField( Chr($4EE3)+Chr($7406)+'1').AsCurrency, 'Record 10 Field "'+ Chr($4EE3)+Chr($7406)+'1'+'" incorrect');
+  CheckEquals(0,         FQuery.FindField(Chr($4EE3)+Chr($7406)+'2').AsCurrency, 'Record 10 Field "'+Chr($4EE3)+Chr($7406)+'2'+'" incorrect');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0010', FQuery.FindField('DocNo').AsString, 'Record 10 Field "DocNo" incorrect');
   FQuery.Close;
 end;
 
@@ -1041,13 +1045,13 @@ begin
 
   FQuery.First;
   CheckEquals(28,    FQuery.FindField('2005').AsCurrency,  'Record 1 Field "2005" incorrect');
-  CheckEquals(#$4EE3#$74061, FQuery.FindField('Agent').AsString,   'Record 1 Field "Agent" incorrect');
+  CheckEquals( Chr($4EE3)+Chr($7406)+'1', FQuery.FindField('Agent').AsString,   'Record 1 Field "Agent" incorrect');
   FQuery.Next;
   CheckEquals(252,   FQuery.FindField('2005').AsCurrency,  'Record 2 Field "2005" incorrect');
-  CheckEquals(#$4EE3#$74062, FQuery.FindField('Agent').AsString,   'Record 2 Field "Agent" incorrect');
+  CheckEquals(Chr($4EE3)+Chr($7406)+'2', FQuery.FindField('Agent').AsString,   'Record 2 Field "Agent" incorrect');
   FQuery.Next;
   CheckEquals(490,   FQuery.FindField('2005').AsCurrency,  'Record 3 Field "2005" incorrect');
-  CheckEquals(#$4EE3#$74063, FQuery.FindField('Agent').AsString,   'Record 3 Field "Agent" incorrect');
+  CheckEquals(Chr($4EE3)+Chr($7406)+'3', FQuery.FindField('Agent').AsString,   'Record 3 Field "Agent" incorrect');
   FQuery.Close;
 end;
 
@@ -1060,11 +1064,11 @@ begin
     Clear;
     Add('SELECT *');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74061));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'1'));
     Add( 'UNION');
     Add('SELECT *');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$74062));
+    Add( 'WHERE Agent=' + QuotedStr( Chr($4EE3)+Chr($7406)+'2'));
   end;
   FQuery.Open;
   CheckEquals(7, FQuery.RecordCount, 'FQuery Record Count incorrect');
@@ -1079,7 +1083,7 @@ begin
   with FQuery.SQL do begin
     Clear;
     Add('UPDATE Main');
-    Add(   'SET Agent=' + QuotedStr(#$4EE3#$7406));
+    Add(   'SET Agent=' + QuotedStr(Chr($4EE3)+Chr($7406)));
   end;
   FQuery.ExecSQL;
 
@@ -1087,7 +1091,7 @@ begin
 
   FMainDataSet.First;
   while not FMainDataSet.Eof do begin
-    CheckEquals(#$4EE3#$7406, FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
+    CheckEquals(Chr($4EE3)+Chr($7406), FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
     FMainDataSet.Next;
   end;
 end;
@@ -1101,7 +1105,7 @@ begin
     Clear;
     Add('UPDATE Main');
     Add(   'SET Agent=''SHERLYN''');
-    Add(Format(', DocNo=%s', [QuotedStr(#$8BA2#$5355 + '-2000')]));
+    Add(Format(', DocNo=%s', [QuotedStr(Chr($8BA2)+Chr($5355) + '-2000')]));
   end;
   FQuery.ExecSQL;
 
@@ -1110,7 +1114,7 @@ begin
   FMainDataSet.First;
   while not FMainDataSet.Eof do begin
     CheckEquals('SHERLYN', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
-    CheckEquals(#$8BA2#$5355 + '-2000', FMainDataSet.FindField('DocNo').AsString, 'Field "DocNo" incorrect');
+    CheckEquals(Chr($8BA2)+Chr($5355) + '-2000', FMainDataSet.FindField('DocNo').AsString, 'Field "DocNo" incorrect');
     FMainDataSet.Next;
   end;
 end;
@@ -1123,8 +1127,8 @@ begin
   with FQuery.SQL do begin
     Clear;
     Add('UPDATE Main');
-    Add(   'SET Agent=' + QuotedStr(#$4EE3#$7406));
-    Add(Format( 'WHERE DocNo=%s', [QuotedStr(#$8BA2#$5355 + '-0001')]));
+    Add(   'SET Agent=' + QuotedStr(Chr($4EE3)+Chr($7406)));
+    Add(Format( 'WHERE DocNo=%s', [QuotedStr(Chr($8BA2)+Chr($5355) + '-0001')]));
   end;
   FQuery.ExecSQL;
 
@@ -1132,12 +1136,12 @@ begin
     Clear;
     Add('SELECT *');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=''XYZ''');
+    Add( 'WHERE Agent='+QuotedStr(Chr($4EE3)+Chr($7406)));
   end;
   FQuery.Open;
   CheckEquals(1,         FQuery.RecordCount,                 'FQuery Record Count incorrect');
-  CheckEquals(#$4EE3#$7406,     FQuery.FindField('Agent').AsString, 'Field "Agent" incorrect');
-  CheckEquals(#$8BA2#$5355 + '-0001', FQuery.FindField('DocNo').AsString, 'Field "DocNo" incorrect');
+  CheckEquals(Chr($4EE3)+Chr($7406),     FQuery.FindField('Agent').AsString, 'Field "Agent" incorrect');
+  CheckEquals(Chr($8BA2)+Chr($5355) + '-0001', FQuery.FindField('DocNo').AsString, 'Field "DocNo" incorrect');
   FQuery.Close;
 end;
 
@@ -1150,7 +1154,7 @@ begin
   with FQuery.SQL do begin
     Clear;
     Add('UPDATE Main');
-    Add(   'SET Agent=' + QuotedStr(#$4EE3#$7406));
+    Add(   'SET Agent=' + QuotedStr(Chr($4EE3)+Chr($7406)));
     Add( 'WHERE DocKey IN (SELECT DocKey FROM Detail)');
   end;
   FQuery.ExecSQL;
@@ -1159,7 +1163,7 @@ begin
     Clear;
     Add('SELECT *');
     Add(  'FROM Main');
-    Add( 'WHERE Agent=' + QuotedStr(#$4EE3#$7406));
+    Add( 'WHERE Agent=' + QuotedStr(Chr($4EE3)+Chr($7406)));
     Add(  'ORDER BY DocKey');
   end;
   FQuery.Open;

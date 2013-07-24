@@ -156,7 +156,7 @@ Resourcestring
   SJoinInvalidFieldName= 'Invalid field or table name in join clause';
   SEXPR_WRONGWHENEXPR = 'Expression in Case must be boolean';
   SEXPR_WRONGTHENEXPR = 'Expressions in THEN section must be all of same type';
-  SEXPR_UNKNOWNID = 'Unknown Identifier %s';
+  SEXPR_UNKNOWNID = 'Unknown Identifier "%s"';
   SEXPR_OPERATORINCOMPAT = 'Operator %s incompatible';
   SEXPR_CANNOTCASTTOWIDESTRING = 'Cannot read %s as WideString';
   SEXPR_CANNOTCASTTOSTRING = 'Cannot read %s as String';
@@ -170,6 +170,8 @@ Resourcestring
   SEXPR_WRONGRELATIONALOP = '%s is not relational operator';
   SEXPR_WRONGPARAMETER = 'Invalid parameter to %s';
   SEXPR_INVALIDPARAMETERTO = 'Invalid parameter to %s';
+  SEXPR_INVALIDPARAMETERTYPE = 'Invalid parameter type %s';
+  SEXPR_INVALIDPARAMETERTYPEMUSTBE = 'Invalid parameter type %s, it must be of type %s';
   SEXPR_WRONGPARAMETERCOUNT = '%s: Incorrect number of arguments';
   SEXPR_PARAMETERSTYPEDIFFERENT = '%s: All parameters must be of the same type';
 {$ENDIF}
@@ -278,7 +280,7 @@ Resourcestring
   SJoinInvalidFieldName= 'Campo o tabla no encontrado en un JOIN';
   SEXPR_WRONGWHENEXPR = 'La expresión en el Case debe ser de tipo lógico'; //'Expression in Case must be boolean';
   SEXPR_WRONGTHENEXPR = 'Todas las expresiones en la sección THEN deben de ser del mismo tipo'; //'Expressions in THEN section must be all of same type';
-  SEXPR_UNKNOWNID = 'Identificador desconocido %s'; //'Unknown Identifier %s';
+  SEXPR_UNKNOWNID = 'Identificador desconocido "%s"'; //'Unknown Identifier %s';
   SEXPR_OPERATORINCOMPAT = 'El operador %s no es compatible con %s'; //'Operator %s incompatible with %s';
   SEXPR_CANNOTCASTTOSTRING = 'No se puede leer %s como tipo String'; //'Cannot read %s as String';
   SEXPR_CANNOTCASTTOWIDESTRING = 'No se puede leer %s como tipo WideString';//'Cannot read %s as WideString';

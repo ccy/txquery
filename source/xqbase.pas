@@ -40,14 +40,14 @@ Interface
 
 Uses
   Windows, Classes, Dialogs, Db, SysUtils,
-  xqmiscel, Sparsarr, Qbaseexpr, QExprYacc
+  XQMiscel, XQSparseArray, QbaseExpr, QExprYacc
 {$IFDEF WITHBDE}
   , DBTables, bde
 {$ENDIF}
 {$IF RTLVersion >= 20}
     , Generics.Collections
 {$IFEND}
-  , xqtypes ;
+  , XQTypes ;
   {-------------------------------------------------------------------------------}
   {                      These Definitions where moved to xqtypes.pas             }
   {                                                                               }
@@ -62,14 +62,6 @@ Uses
   {  PWordBool = ^WordBool;                                                       }
   {                                                                               }
   {-------------------------------------------------------------------------------}
-{$if RtlVersion = 20}
-type
-  TList<T> = class(Generics.Collections.TList<T>)
-  public
-    procedure Exchange(Index1, Index2: Integer);
-  end;
-{$ifend}
-
 Type
 
   {-------------------------------------------------------------------------------}
@@ -181,19 +173,18 @@ Type
     FColumnExpr: String; { the expression in this column }
     FAsAlias: String; { column Name (used later in where, group by, etc), default is FieldName   }
     { also is used as title in browse                                          }
-    FIsAsExplicit: Boolean; { explicity defined in SQL (ex.: SELECT Sales+Bonus As TotalSales FROM...) }
     FResolver: TExprParser; { object used to evaluate ColumnExpr                                       }
+    FIsAsExplicit: Boolean; { explicity defined in SQL (ex.: SELECT Sales+Bonus As TotalSales FROM...) }
     FAutoFree: Boolean; { Auto free FResolver class                                                }
     FIsTemporaryCol: Boolean; { Is a column used for some calculations (temporarily)                     }
     FCastType: Word; { column must be casted to this type (CAST expr AS DATE)                   }
     FCastLen: Word; { only used if casting to CHAR(n) n=CastLen                                }
     FAggregateList: TAggregateList; { the list of aggregates for this column: SUM(expression) / SUM(expression) }
-    FSubQueryList: TList;
-      { the list of subqueries for this column (SELECT AMOUNTPAID FROM custno WHERE custno=1000) / (SELECT AMOUNTPAID FROM custno WHERE custno=2000) }
+    FSubQueryList: TList; { the list of subqueries for this column (SELECT AMOUNTPAID FROM custno WHERE custno=1000) / (SELECT AMOUNTPAID FROM custno WHERE custno=2000) }
   Public
     Constructor Create( ColumnList: TColumnList );
     Destructor Destroy; Override;
-
+    procedure ReleaseResolver;
     Property ColumnExpr: String Read FColumnExpr Write FColumnExpr;
     Property AsAlias: String Read FAsAlias Write FAsAlias;
     Property IsAsExplicit: Boolean Read FIsAsExplicit Write FIsAsExplicit;
@@ -230,8 +221,8 @@ Type
   TTableItem = Class
   Private
     FTableList: TTableList;
-    FTableName: String;
-    FAlias: String;
+    FTableName: TxNativeString;
+    FAlias: TxNativeString;
     FDataSet: TDataSet; { the attached dataset }
     FIsFullPath: Boolean;
     { for using in syntax like: SELECT * FROM subquery1, a, subquery2, ... etc}
@@ -239,8 +230,8 @@ Type
   Public
     Constructor Create( TableList: TTableList );
 
-    Property TableName: String Read FTableName Write FTableName;
-    Property Alias: String Read FAlias Write FAlias;
+    Property TableName: TxNativeString Read FTableName Write FTableName;
+    Property Alias: TxNativeString Read FAlias Write FAlias;
     Property DataSet: TDataSet Read FDataSet Write FDataSet;
     Property IsFullPath: Boolean Read FIsFullPath Write FIsFullPath;
     Property NumSubquery: Integer read FNumSubquery write FNumSubquery;
@@ -309,7 +300,7 @@ Type
   Public
     Constructor Create( UpdateList: TUpdateList );
     Destructor Destroy; Override;
-
+    procedure ReleaseResolver;
     Property ColName: String Read FColName Write FColName;
     Property ColExpr: String Read FColExpr Write FColExpr;
     Property Resolver: TExprParser Read FResolver Write FResolver;
@@ -717,10 +708,10 @@ Type
     FFilterRecno: Integer;
 
     function ActiveBuffer: TxBuffer; virtual; abstract;  {patched by fduenas}
-  {$IFNDEF XQ_FASTCOMPARE_FUNCTIONS}
-    Function DoCompare( N: Integer; Const KeyValue: Variant ): Integer;
+  {$IFNDEF XQ_USE_FASTCOMPARE_FUNCTIONS}
+    Function DoCompare( N: Integer; Const KeyValue: Variant ): Integer; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   {$ELSE}
-    Function DoCompareFast( N: Integer; Const KeyValue: Variant ): Integer; {added by fduenas, obtimized}
+    Function DoCompareFast( N: Integer; Const KeyValue: Variant ): Integer; {added by fduenas, obtimized} {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   {$ENDIF}
     Function Find( Const KeyValue: Variant; Var Index: Integer ): Boolean;
     procedure SetBookmarkedDataset(const Value: TDataset);
@@ -832,10 +823,10 @@ Type
 
   TUserDefinedRange = Class
   Private
-    FForFields: TStrings;
-    FStartValues: TStrings;
-    FEndValues: TStrings;
-    FUsingIndex: String;
+    FForFields: TxNativeTStrings;
+    FStartValues: TxNativeTStrings;
+    FEndValues: TxNativeTStrings;
+    FUsingIndex: TxNativeString;
     FStartResolvers: TList;
     FEndResolvers: TList;
     Procedure ClearResolvers;
@@ -843,10 +834,10 @@ Type
     Constructor Create;
     Destructor Destroy; Override;
 
-    Property ForFields: TStrings Read FForFields;
-    Property StartValues: TStrings Read FStartValues;
-    Property EndValues: TStrings Read FEndValues;
-    Property UsingIndex: String Read FUsingIndex Write FUsingIndex;
+    Property ForFields: TxNativeTStrings Read FForFields;
+    Property StartValues: TxNativeTStrings Read FStartValues;
+    Property EndValues: TxNativeTStrings Read FEndValues;
+    Property UsingIndex: TxNativeString Read FUsingIndex Write FUsingIndex;
   End;
 
   {-------------------------------------------------------------------------------}
@@ -959,22 +950,11 @@ Type
 Implementation
 
 Uses
-  xquery, xqconsts
+  XQuery, XQConsts, QCnvStrUtils
 {$IFDEF LEVEL6}
   , Variants
 {$ENDIF}
-  , StrUtils, Math, CnvStrUtils;
-
-{$if RtlVersion = 20}
-procedure TList<T>.Exchange(Index1, Index2: Integer);
-var
-  temp: T;
-begin
-  temp := FItems[Index1];
-  FItems[Index1] := FItems[Index2];
-  FItems[Index2] := temp;
-end;
-{$ifend}
+  , StrUtils, Math;
 
 {-------------------------------------------------------------------------------}
 {                  Implement TColumnItem                                        }
@@ -995,12 +975,17 @@ Var
 Begin
   FAggregateList.Free;
   If FAutoFree And Assigned( FResolver ) Then
-    FResolver.Free;
+     FreeAndNil(FResolver);
   For i := 0 To FSubQueryList.Count - 1 Do
     TSqlAnalizer( FSubQueryList[i] ).Free;
   FSubQueryList.Free;
   Inherited Destroy;
 End;
+
+procedure TColumnItem.ReleaseResolver;
+begin
+ FreeAndNil(FResolver);
+end;
 
 {-------------------------------------------------------------------------------}
 {                  Implement TColumnList                                        }
@@ -1259,9 +1244,14 @@ End;
 Destructor TUpdateItem.Destroy;
 Begin
   If Assigned( FResolver ) Then
-    FResolver.Free;
+    FreeAndNil(FResolver);
   Inherited Destroy;
 End;
+
+procedure TUpdateItem.ReleaseResolver;
+begin
+ FreeAndNil(FResolver);
+end;
 
 {-------------------------------------------------------------------------------}
 {                  Implement TUpdateList                                        }
@@ -1559,7 +1549,7 @@ Begin
   Begin
     Resolver := TExprParser( FResolverList[I] );
     If Assigned( Resolver ) Then
-      Resolver.Free;
+      FreeAndNil(Resolver);
   End;
   FResolverList.Free;
   Inherited Destroy;
@@ -1670,7 +1660,7 @@ Begin
   FillChar( Buffer, dsMaxStringSize, #0 ); {added by fduenas} {this prevents some DISTINCT errors}
   Result := GetData( @Buffer );
   If Result Then
-    Value := Buffer;
+     Value := WideString( Buffer );
 End;
 {$ENDIF}
 
@@ -1700,7 +1690,7 @@ Begin
   //L := Length( Value );
   {StrLCopy( Buffer, PChar( Value ), L );}
   //StrLCopy(AnsiBuffer, PAnsiChar(AnsiValue), L);
-  CopyMemory(@Buffer[0], PChar(Value), Length( Value ) * SizeOf(Char) ); { changed by fduenas }
+  CopyMemory(@Buffer[0], PChar(Value), Length( Value ) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} ); { changed by fduenas }
   SetData( @Buffer );
 End;
 {$IFDEF LEVEL4}
@@ -1713,7 +1703,7 @@ Begin
   FillChar( Buffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
   //L := Length( Value );
   {StrLCopy( Buffer, PChar( Value ), L );}
-  CopyMemory(@Buffer[0], PChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
+  CopyMemory(@Buffer[0], PWideChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
   SetData( @Buffer );
 End;
 {$ENDIF}
@@ -1923,7 +1913,7 @@ Begin
     SetAsFloat( 0 )
   Else
   Begin
-    If Not TextToFloat( {$IFDEF Delphi2009Up}PWideChar{$ELSE}PChar{$ENDIF}( Value ), F, fvExtended{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} ) Then
+    If Not TextToFloat( {$IFDEF Delphi2009Up}PChar{$ELSE}PChar{$ENDIF}( Value ), F, fvExtended{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} ) Then
       raise EXQueryError.CreateFmt( SIsInvalidFloatValue, [Value] );
     SetAsFloat( F );
   End;
@@ -2304,7 +2294,7 @@ Begin
   Inherited Create;
   FFields := TSrtFields.Create( Self );
   FRecNo := -1;
-  FRecordBufferSize := SizeOf( Integer ); { first data is the SourceRecNo property }
+  FRecordBufferSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF}; { first data is the SourceRecNo property }
   FUsingBookmark := UsingBookmark;
   fRuntimeFormatSettings := aRuntimeSettings;
   fSystemFormatSettings := aSystemSettings;
@@ -2354,14 +2344,14 @@ Begin
     BufferOffset := FRecordBufferSize;
     DataType := pDataType;
     Case DataType Of
-      ttString: DataSize := (pDataSize) * SizeOf(Char);  { patched by ccy} {patched by fduenas}
+      ttString: DataSize := (pDataSize) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF};  { patched by ccy} {patched by fduenas}
      {$IFDEF LEVEL4}
-      ttWideString: DataSize := (pDataSize) * SizeOf(WideChar);  { patched by ccy} {patched by fduenas}
+      ttWideString: DataSize := (pDataSize) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeWideChar){$ELSE}XQ_SizeOf_NativeWideChar{$ENDIF};  { patched by ccy} {patched by fduenas}
      {$ENDIF}
-      ttFloat: DataSize := SizeOf( Double );
-      ttInteger: DataSize := IMax( SizeOf( Integer ), pDataSize ); {added by fduenas: fix for ftLargeInt Issue}
-      ttLargeInt: DataSize := IMax( SizeOf( Int64 ), pDataSize ); {added by fduenas: fix for ftLargeInt Issue}
-      ttBoolean: DataSize := SizeOf( WordBool );
+      ttFloat: DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
+      ttInteger: DataSize := IMax( {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF}, pDataSize ); {added by fduenas: fix for ftLargeInt Issue}
+      ttLargeInt: DataSize := IMax( {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF}, pDataSize ); {added by fduenas: fix for ftLargeInt Issue}
+      ttBoolean: DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
     End;
     Desc := pDescending;
     Inc( FRecordBufferSize, DataSize );
@@ -2406,14 +2396,14 @@ Begin
 
  {$IF RtlVersion <= 18.5}
   GetMem(Buffer2, FRecordBufferSize);
-  FillChar(Buffer2^, FRecordBufferSize, #0);
+  //FillChar(Buffer2^, FRecordBufferSize, 0);
  {$ELSE}
    SetLength(Buffer2, FRecordBufferSize); { patched by fduenas }
    FillChar(Buffer2[0], FRecordBufferSize, #0); { patched by fduenas }
  {$IFEND}
 
  {$IF RTLVersion <= 18.5}
-   Move( Buffer^, Buffer2^, FRecordBufferSize );
+   Move( (Buffer+0)^, Buffer2^, FRecordBufferSize );
  {$ELSE}
    Move( Buffer[0], Buffer2[0], Length(Buffer)  ); { patched by fduenas }
  {$IFEND}
@@ -2421,21 +2411,22 @@ Begin
   { the first SizeOf(Integer) bytes is the source recno and always is different }
 
  {$IF RTLVersion <= 18.5}
-   if FRecordBufferSize > SizeOf( Integer ) then
-      Result := Comparemem( ( Buffer1 + SizeOf( Integer ) ),
-                ( Buffer2 + SizeOf( Integer ) ), FRecordBufferSize - SizeOf( Integer ) ) { patched by fduenas }
+   if FRecordBufferSize > {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} then
+      Result := Comparemem( ( Buffer1 + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ),
+                ( Buffer2 + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ), FRecordBufferSize -
+                            {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ) { patched by fduenas }
    Else
       Result := True;
  {$ELSE}
-   if FRecordBufferSize > SizeOf( Integer ) then
-      Result := CompareMem( @Buffer1[SizeOf( Integer )] ,
-                 @Buffer2[SizeOf( Integer )], FRecordBufferSize - SizeOf( Integer ) ) { patched by fduenas }
+   if FRecordBufferSize > {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} then
+      Result := CompareMem( @Buffer1[{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF}] ,
+                 @Buffer2[{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF}], FRecordBufferSize - {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ) { patched by fduenas }
    else
       Result := True;
  {$IFEND}
 
  {$IF RTLVersion <= 18.5}
-//  FreeMem( Buffer, FRecordBufferSize );
+  //FreeMem( Buffer,  FRecordBufferSize );
   FreeMem( Buffer1, FRecordBufferSize );
   FreeMem( Buffer2, FRecordBufferSize );
  {$ELSE}
@@ -2446,7 +2437,7 @@ Begin
 
 End;
 
-{$IFNDEF XQ_FASTCOMPARE_FUNCTIONS}
+{$IFNDEF XQ_USE_FASTCOMPARE_FUNCTIONS}
 Function TxqSortList.DoCompare( N: Integer; Const KeyValue: Variant ): Integer;
 { returns -1, 0 or 1 for a<b, a=b, a>b}
 Var
@@ -2643,92 +2634,79 @@ Begin
       End;
   End;
 End;
-{$ELSE ~XQ_FASTCOMPARE_FUNCTIONS}
+{$ELSE ~XQ_USE_FASTCOMPARE_FUNCTIONS}
 function TxqSortList.DoCompareFast(N: Integer;
   const KeyValue: Variant): Integer;
 { returns -1, 0 or 1 for a<b, a=b, a>b}
 Var
   DataType: TExprType;
-  CompareValueS: String;
+  CompareValueVar: Variant;
+  //CompareValueS: String;
  {$IFDEF LEVEL4}
-  CompareValueWS: WideString;
+  //CompareValueWS: WideString;
  {$ENDIF}
-  CompareValueF: Double;
-  CompareValueI: Integer;
-  CompareValueLI: Int64;
-  CompareValueB: Boolean;
+  //CompareValueF: Double;
+  //CompareValueI: Integer;
+  //CompareValueLI: Int64;
+  //CompareValueB: Boolean;
 Begin
   Result := 0;
   SetRecno( N );
   DataType := FFields[0].DataType;
-  If VarIsNull( KeyValue ) Then
+  CompareValueVar := KeyValue;
+  {Initialize compare values}
+  {
+  CompareValueF :=0;
+  CompareValueI:=0;
+  CompareValueLI:=0;
+  CompareValueB:=false;
+  }
+  If VarIsNull( CompareValueVar ) Then
   Begin
     { solo por si se ofrece, se prueba tambien al recibir un valor NULL }
     Case DataType Of
-      ttString: CompareValueS := '';
+      ttString: CompareValueVar := '';
      {$IFDEF LEVEL4}
-      ttWideString: CompareValueWS := '';
+      ttWideString: CompareValueVar := '';
      {$ENDIF}
-      ttFloat: CompareValueF := 0;
-      ttInteger: CompareValueI := 0;
-      ttLargeInt: CompareValueLI := 0;
-      ttBoolean: CompareValueB := False ;
+      ttFloat: CompareValueVar := 0;
+      ttInteger: CompareValueVar := 0;
+      ttLargeInt: CompareValueVar := 0;
+      ttBoolean: CompareValueVar := False;
     End;
-  End Else
+  End{ Else
   begin
    Case DataType Of
       ttString: CompareValueS := KeyValue;
      {$IFDEF LEVEL4}
-      ttWideString: CompareValueWS := KeyValue;
+      {ttWideString: CompareValueWS := KeyValue;
      {$ENDIF}
-      ttFloat: CompareValueF := KeyValue;
+      {ttFloat: CompareValueF := KeyValue;
       ttInteger: CompareValueI := KeyValue;
       ttLargeInt: CompareValueLI := KeyValue;
       ttBoolean: CompareValueB := KeyValue ;
     End;
-  end;
+  end};
   Case DataType Of
     ttString:
-      Begin
-        result := AnsiCompareStr(FFields[0].AsString, CompareValueS);
-        If FFields[0].Desc Then
-           Result := Result * -1;
-      End;
+       Result := AnsiCompareStr(FFields[0].AsString, CompareValueVar);
    {$IFDEF LEVEL4}
     ttWideString:
-      Begin
-        Result := WideCompareStr(FFields[0].AsWideString, CompareValueWS);
-        If FFields[0].Desc Then
-           Result := Result * -1;
-      End;
+       Result := WideCompareStr(FFields[0].AsWideString, CompareValueVar);
    {$ENDIF}
     ttFloat:
-      Begin
-        Result := CompareValue(FFields[0].AsFloat, CompareValueF);
-        If FFields[0].Desc Then
-           Result := Result * -1;
-      End;
+        Result := CompareValue(FFields[0].AsFloat, CompareValueVar);
     ttInteger:
-      Begin
-        Result := CompareValue(FFields[0].AsInteger, CompareValueI);
-        If FFields[0].Desc Then
-           Result := Result * -1;
-      End;
+        Result := CompareValue(FFields[0].AsInteger, CompareValueVar);
     ttLargeInt:
-      Begin
-        Result := CompareValue(FFields[0].AsLargeInt, CompareValueLI);
-        If FFields[0].Desc Then
-           Result := Result * -1;
-      End;
+        Result := CompareValue(FFields[0].AsLargeInt, CompareValueVar);
     ttBoolean:
-      Begin
-        Result := CompareValue(Ord(FFields[0].AsBoolean), Ord(CompareValueB));
-        If FFields[0].Desc Then
-           Result := Result * -1;
-      End;
+        Result := CompareValue(Ord(FFields[0].AsBoolean), Ord(Boolean(CompareValueVar)));
   End;
+  If FFields[0].Desc Then
+      Result := Result * -1;
 End;
-{$ENDIF ~XQ_FASTCOMPARE_FUNCTIONS}
+{$ENDIF ~XQ_USE_FASTCOMPARE_FUNCTIONS}
 Function TxqSortList.Find( Const KeyValue: Variant; Var Index: Integer ): Boolean;
 Var
   L, H, I, C: Integer;
@@ -2739,7 +2717,7 @@ Begin
   While L <= H Do
   Begin
     I := ( L + H ) Shr 1;
-    C := {$IFDEF XQ_FASTCOMPARE_FUNCTIONS}DoCompareFast{$ELSE}DoCompare{$ENDIF}( I, KeyValue );
+    C := {$IFDEF XQ_USE_FASTCOMPARE_FUNCTIONS}DoCompareFast{$ELSE}DoCompare{$ENDIF}( I, KeyValue );
     If C < 0 Then
       L := I + 1
     Else
@@ -2769,7 +2747,7 @@ Begin
   If Self.Find( KeyValue, Index ) Then
   Begin
     For I := Index To GetRecordCount Do
-      If {$IFDEF XQ_FASTCOMPARE_FUNCTIONS}DoCompareFast{$ELSE}DoCompare{$ENDIF}( I, KeyValue ) = 0 Then
+      If {$IFDEF XQ_USE_FASTCOMPARE_FUNCTIONS}DoCompareFast{$ELSE}DoCompare{$ENDIF}( I, KeyValue ) = 0 Then
         FSelected.Add( Pointer( I ) )
       Else
         Break;
@@ -2785,7 +2763,7 @@ Begin
     FFilterRecno := 0;
     FBofCrack := false;
     FEofCrack := false;
-    SetRecno( Longint( FSelected[FFilterRecno] ) );
+    SetRecno( TxNativeInt( FSelected[FFilterRecno] ) );
   End
   Else
   Begin
@@ -2811,7 +2789,7 @@ Begin
       FBofCrack := false;
       FEofCrack := true;
     End;
-    SetRecno( Longint( FSelected[FFilterRecno] ) );
+    SetRecno( TxNativeInt( FSelected[FFilterRecno] ) );
   End
   Else
   Begin
@@ -2863,111 +2841,31 @@ Var
   End;
  {$ENDIF}
   Function SortCompare_F( Recno: Integer; Const Value: Double ): Integer;
-  Var
-    f: Double;
   Begin
     SetRecno( Recno );
-    f := FFields[Idx].AsFloat;
-    If f = Value Then
-    Begin
-      Result := 0;
-      Exit;
-    End;
-    If IsDesc Then
-    Begin
-      If f < Value Then
-        Result := 1
-      Else
-        Result := -1;
-    End
-    Else
-    Begin
-      If f < Value Then
-        Result := -1
-      Else
-        Result := 1;
-    End;
+    Result := CompareValue(FFields[Idx].AsFloat, Value);
+    if IsDesc then Result := - Result;
   End;
 
   Function SortCompare_I( Recno: Integer; Value: Integer ): Integer;
-  Var
-    i: Integer;
   Begin
     SetRecno( Recno );
-    i := FFields[Idx].AsInteger;
-    If i = Value Then
-    Begin
-      Result := 0;
-      Exit;
-    End;
-    If IsDesc Then
-    Begin
-      If i < Value Then
-        Result := 1
-      Else
-        Result := -1;
-    End
-    Else
-    Begin
-      If i < Value Then
-        Result := -1
-      Else
-        Result := 1;
-    End;
+    Result := CompareValue(FFields[Idx].AsInteger, Value);
+    if IsDesc then Result := - Result;
   End;
 
-  Function SortCompare_LI( Recno: Int64; Value: Int64 ): Int64; {added by fduenas: added LargeInt (Int64) support}
-  Var
-    li: Int64;
+  Function SortCompare_LI( Recno: Int64; Value: Int64 ): Int64;
   Begin
     SetRecno( Recno );
-    li := FFields[Idx].AsLargeInt;
-    If li = Value Then
-    Begin
-      Result := 0;
-      Exit;
-    End;
-    If IsDesc Then
-    Begin
-      If li < Value Then
-        Result := 1
-      Else
-        Result := -1;
-    End
-    Else
-    Begin
-      If li < Value Then
-        Result := -1
-      Else
-        Result := 1;
-    End;
+    Result := CompareValue(FFields[Idx].AsLargeInt, Value);
+    if IsDesc then Result := - Result;
   End;
 
   Function SortCompare_B( Recno: Integer; Value: Boolean ): Integer;
-  Var
-    b: Boolean;
   Begin
     SetRecno( Recno );
-    b := FFields[Idx].AsBoolean;
-    If Ord( b ) = Ord( Value ) Then
-    Begin
-      Result := 0;
-      Exit;
-    End;
-    If IsDesc Then
-    Begin
-      If Ord( b ) < Ord( Value ) Then
-        Result := 1
-      Else
-        Result := -1;
-    End
-    Else
-    Begin
-      If Ord( b ) < Ord( Value ) Then
-        Result := -1
-      Else
-        Result := 1;
-    End;
+    Result := CompareValue(Ord(FFields[Idx].AsBoolean), Ord(Value));
+    if IsDesc then Result := - Result;
   End;
 
   Procedure QuickSort( L, R: Integer );
@@ -3005,66 +2903,43 @@ Var
             Begin
               While SortCompare_S( I, s1 ) < 0 Do
                 Inc( I );
+              While SortCompare_S( J, s1 ) > 0 Do
+                Dec( J );
             End;
        {$IFDEF LEVEL4}
           ttWideString:
             Begin
               While SortCompare_W( I, ws1 ) < 0 Do
                 Inc( I );
+              While SortCompare_W( J, ws1 ) > 0 Do
+                Dec( J );
             End;
        {$ENDIF}
           ttFloat:
             Begin
               While SortCompare_F( I, f1 ) < 0 Do
                 Inc( I );
-            End;
-          ttInteger:
-            Begin
-              While SortCompare_I( I, i1 ) < 0 Do
-                Inc( I );
-            End;
-          ttLargeInt:
-            Begin
-              While SortCompare_LI( I, li1 ) < 0 Do
-                Inc( I );
-            End;
-          ttBoolean:
-            Begin
-              While SortCompare_B( I, b1 ) < 0 Do
-                Inc( I );
-            End;
-        End;
-
-        Case DataType Of
-          ttString:
-            Begin
-              While SortCompare_S( J, s1 ) > 0 Do
-                Dec( J );
-            End;
-         {$IFDEF LEVEL4}
-          ttWideString:
-            Begin
-              While SortCompare_W( J, ws1 ) > 0 Do
-                Dec( J );
-            End;
-         {$ENDIF}
-          ttFloat:
-            Begin
               While SortCompare_F( J, f1 ) > 0 Do
                 Dec( J );
             End;
           ttInteger:
             Begin
+              While SortCompare_I( I, i1 ) < 0 Do
+                Inc( I );
               While SortCompare_I( J, i1 ) > 0 Do
                 Dec( J );
             End;
           ttLargeInt:
             Begin
+              While SortCompare_LI( I, li1 ) < 0 Do
+                Inc( I );
               While SortCompare_LI( J, li1 ) > 0 Do
                 Dec( J );
             End;
           ttBoolean:
             Begin
+              While SortCompare_B( I, b1 ) < 0 Do
+                Inc( I );
               While SortCompare_B( J, b1 ) > 0 Do
                 Dec( J );
             End;
@@ -3077,7 +2952,7 @@ Var
         End;
       Until I > J;
       If L < J Then
-        QuickSort( L, J );
+         QuickSort( L, J );
       L := I;
     Until I >= R;
   End;
@@ -3103,11 +2978,11 @@ Begin
       SetRecno( Index );
       TempR := '';
       For I := 0 To Idx - 1 Do
-        TempR := TempR + FFields[I].AsString;
+          TempR := TempR + FFields[I].AsString;
       If TempL <> TempR Then
       Begin
         If Index - 1 > Pivot Then
-          QuickSort( Pivot, Index - 1 );
+           QuickSort( Pivot, Index - 1 );
 
         Pivot := Index;
         SetRecno( Pivot );
@@ -3117,7 +2992,7 @@ Begin
       Inc( Index );
     End;
     If ( ( Index - 1 ) <= GetRecordCount ) And ( Index - 1 > Pivot ) Then
-      QuickSort( Pivot, Index - 1 );
+       QuickSort( Pivot, Index - 1 );
   End;
 End;
 
@@ -3163,7 +3038,7 @@ Begin
     FBufferList.Clear();
   end;
   if(FFields<>nil) then FFields.Clear();
-  FRecordBufferSize := SizeOf( Integer );
+  FRecordBufferSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
   FRecNo := -1;
 End;
 
@@ -3257,10 +3132,10 @@ Begin
   If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then Exit;
 {$IF RtlVersion <= 18.5}
   Buffer := PAnsiChar( FBufferList[FRecNo - 1] );
-  Move( ( Buffer + 0 )^, Result, SizeOf( Integer ) ); {patched by fduenas}
+  Move( ( Buffer + 0 )^, Result, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ); {patched by fduenas}
 {$ELSE}
   Buffer := FBufferList[FRecNo - 1] ;
-  Move( Buffer[0], Result, SizeOf( Integer ) ); {patched by fduenas}
+  Move( Buffer[0], Result, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ); {patched by fduenas}
 {$IFEND}
 
 End;
@@ -3285,10 +3160,10 @@ Begin
 
 {$IF RtlVersion <= 18.5}
   Buffer := PAnsiChar( FBufferList[FRecNo - 1] );
-  Move( Value, ( Buffer + 0 )^, SizeOf( Integer ) );
+  Move( Value, ( Buffer + 0 )^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} );
 {$ELSE}
   Buffer := FBufferList[FRecNo - 1] ;
-  Move( Value, Buffer[0], SizeOf( Integer ) ); {patched by fduenas}
+  Move( Value, Buffer[0], {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} ); {patched by fduenas}
 {$IFEND}
 
 End;
@@ -3330,7 +3205,7 @@ Begin
   inherited Clear;
 
   if(FFields<>nil) then FFields.Clear();
-  FRecordBufferSize := SizeOf( Integer );
+  FRecordBufferSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
   FRecNo := -1;
 
   FMemMapFile.Seek( 0, 0 );
@@ -3355,7 +3230,7 @@ Begin
   end;
 
   FFields.Clear;
-  FRecordBufferSize := SizeOf( Integer );
+  FRecordBufferSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
   FRecNo := -1;
 
 End;
@@ -3374,7 +3249,7 @@ Begin
   SetLength(FBuffer, FRecordBufferSize); { patched by fduenas based on ccy }
 {$IFEND}
 
-  FMemMapFile.Seek(LongInt(FBufferList[FRecNo - 1]), 0);
+  FMemMapFile.Seek(TxNativeInt(FBufferList[FRecNo - 1]), 0);
 
 {$IF RtlVersion <= 18.5}
   FMemMapFile.Read(FBuffer^, FRecordBufferSize);
@@ -3421,7 +3296,7 @@ Begin
   { patched by fduenas based on ccy }
 {$IFEND}
 
-  FMemMapFile.Seek(LongInt(FBufferList[Recno - 1]), 0);
+  FMemMapFile.Seek(TxNativeInt(FBufferList[Recno - 1]), 0);
 
 {$IF RTLVersion <= 18.5}
   FMemMapFile.Write(RecBuf^, FRecordBufferSize);
@@ -3482,8 +3357,8 @@ Procedure TFileSortList.SetSourceRecno( Value: Integer );
 Begin
   If ( FRecNo < 1 ) Or ( FRecNo > GetRecordCount ) Then
     Exit;
-  FMemMapFile.Seek( LongInt( FBufferList[FRecNo - 1] ), 0 );
-  FMemMapFile.Write( Value, SizeOf( Integer ) );
+  FMemMapFile.Seek( TxNativeInt( FBufferList[FRecNo - 1] ), 0 );
+  FMemMapFile.Write( Value, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} );
 End;
 
 Function TFileSortList.GetSourceRecno: Integer;
@@ -3495,9 +3370,9 @@ Begin
   If (RecBuf = Nil) Then
     Exit;
 {$IF RtlVersion <= 18.5}
-  Move( ( RecBuf + 0 )^, Result, SizeOf( Integer ) );
+  Move( ( RecBuf + 0 )^, Result, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} );
 {$ELSE}
-  Move( RecBuf[0], Result, SizeOf( Integer ) );
+  Move( RecBuf[0], Result, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} );
 {$IFEND}
 
 End;
@@ -3731,9 +3606,9 @@ End;
 Constructor TUserDefinedRange.Create;
 Begin
   Inherited Create;
-  FForFields := TStringList.Create;
-  FStartValues := TStringList.Create;
-  FEndValues := TStringList.Create;
+  FForFields := TxNativeTStringList.Create;
+  FStartValues := TxNativeTStringList.Create;
+  FEndValues := TxNativeTStringList.Create;
   FStartResolvers := TList.create;
   FEndResolvers := TList.create;
 End;
@@ -3888,7 +3763,7 @@ End;
 
 Function TxqIntegerList.Get( Index: Integer ): Integer;
 Begin
-  result := Longint( FList[Index] );
+  result := LongInt( FList[Index] );
 End;
 
 Procedure TxqIntegerList.Insert( Index, Value: Integer );
@@ -3926,16 +3801,16 @@ Procedure TxqIntegerList.Sort;
     Repeat
       I := L;
       J := R;
-      P := Longint( FList[( L + R ) Shr 1] );
+      P := LongInt( FList[( L + R ) Shr 1] );
       Repeat
-        While Longint( FList[I] ) < P Do
+        While LongInt( FList[I] ) < P Do
           Inc( I );
-        While Longint( FList[J] ) > P Do
+        While LongInt( FList[J] ) > P Do
           Dec( J );
         If I <= J Then
         Begin
-          T := Longint( FList[I] );
-          FList[I] := Pointer( Longint( FList[J] ) );
+          T := LongInt( FList[I] );
+          FList[I] := Pointer( LongInt( FList[J] ) );
           FList[J] := Pointer( T );
           Inc( I );
           Dec( J );

@@ -33,7 +33,7 @@
 {                                                                             }
 {*****************************************************************************}
 
-unit ColorSet;
+unit XQColorSet;
 
 {$I XQ_FLAG.INC}
 interface
@@ -48,9 +48,7 @@ uses Windows,
      Buttons,
      ExtCtrls,
      ColorGrd,
-     XQLex,
-     XQYacc,
-     Syntaxhi;
+     XQSyntaxhi;
 
 type
   TfrmColorSettings = class(TForm)

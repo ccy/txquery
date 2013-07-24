@@ -45,7 +45,7 @@ Uses
     , DBTables
 {$ENDIF}
 {$IFDEF LEVEL4}
-    , WideStrUtils, SyncObjs
+    , WideStrUtils, SyncObjs, SqlTimSt
 {$ENDIF}
 {$IFDEF LEVEL6}
     , Variants
@@ -53,8 +53,7 @@ Uses
 {$if RTLVersion >= 20}
     , Generics.Collections
 {$ifend}
-  , XQTypes, QFormatSettings;
-  
+  , XQTypes, QFormatSettings ;
 const
   SAggregateKind: array[TAggregateKind] of string=('Sum', 'Avg','StDev', 'Min', 'Max', 'Count'); {added by fduenas: to give correct field names to transform aggregated fields}
   SAggregateKindOf = 'OF_';
@@ -93,6 +92,9 @@ Type
     FDataSizeMaxMove: Word; { added by fduenas } { help in CAST functions }
     FMaxDataSizeMaxMove: Word; { added by fduenas } { help in CAST and SetFieldData functions }
     FMinDataSizeMaxMove: Word; { added by fduenas } { help in CAST and SetFieldData functions }
+    {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}
+    FDataSetFieldMaxSize: Word; { added by fduenas } { get the max length of a string field to determine the length of the created field}
+    {$ENDIF}
     Function GetData(Buffer: Pointer): Boolean;
     Procedure SetData(Buffer: Pointer);
     Function GetColWidth: Integer;
@@ -136,6 +138,9 @@ Type
     Property DataSizeMaxMove: Word Read FDataSizeMaxMove Write SetDataSizeMaxMove; { added by fduenas } { help in CAST functions }
     Property MinDataSizeMaxMove: Word Read FMinDataSizeMaxMove Write FMinDataSizeMaxMove; { added by fduenas } { help in CAST functions }
     Property MaxDataSizeMaxMove: Word Read FMaxDataSizeMaxMove Write FMaxDataSizeMaxMove; { added by fduenas } { help in CAST functions }
+    {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}
+    Property DataSetFieldMaxSize: Word Read FDataSetFieldMaxSize; { added by fduenas } { get the max length of a string field to determine the length of the created field}
+    {$ENDIF}
     Property ReadOnly: Boolean Read FReadOnly Write FReadOnly;
     Property FieldOffset: Integer Read FFieldOffset Write FFieldOffset;
     Property SourceField: TField Read FSourceField Write FSourceField;
@@ -164,7 +169,7 @@ Type
   TxqStringField = Class(TxqField)
   Private
     Function GetValue(Var Value: String): Boolean;
-    Function GetWideValue(Var Value: WideString): Boolean;
+    Function GetWideValue(Var Value: WideString): Boolean; virtual;
   Protected
     Function GetAsVariant: Variant; Override;
     Procedure SetVarValue(const Value: Variant); Override;
@@ -194,6 +199,7 @@ Type
   TxqWideStringField = Class(TxqStringField)
   Private
     Function GetValue(Var Value: WideString): Boolean;
+    Function GetWideValue(Var Value: WideString): Boolean; Override;
   Protected
     Function GetAsVariant: Variant; Override;
     Procedure SetVarValue(const Value: Variant); Override;
@@ -307,7 +313,7 @@ Type
   { ------------------------------------------------------------------------------- }
   TQueryDataSetFieldNameEvent = Procedure(Sender: TObject;
     FieldIndex: Integer;
-    Var FieldName: String) Of Object;
+    Var FieldName: TxNativeString) Of Object;
 
   TxqFields = Class
   private
@@ -464,11 +470,11 @@ Type
     FIsDistinct: Boolean; { syntax: SELECT DISTINCT }
     FTableList: TTableList; { FROM }
     FJoinList: TJoinOnList; { JOIN ON }
-    FLJoinCandidateList: TStringList; { candidates for converting to join }
-    FRJoinCandidateList: TStringList; { }
-    FWhereStr: String; { WHERE clause expression }
+    FLJoinCandidateList: TxNativeTStringList; { candidates for converting to join }
+    FRJoinCandidateList: TxNativeTStringList; { }
+    FWhereStr: TxNativeString; { WHERE clause expression }
     FIsJoinInWhere: Boolean; { JOINing in a where clause }
-    FJoinInWhereExpres: String;
+    FJoinInWhereExpres: TxNativeString;
     FJoinInWhereResolver: TExprParser;
     FMainWhereResolver: TExprParser; { WHERE expression resolver class }
     FWhereOptimizeList: TWhereOptimizeList; { used for optimizing the Result set generation}
@@ -487,17 +493,17 @@ Type
     FAlterTableList: TCreateTableList; { ALTER TABLE statement }
     FIndexUnique: Boolean; { CREATE INDEX, DROP TABLE, DROP INDEX statements }
     FIndexDescending: Boolean; { }
-    FIndexColumnList: TStringList; { }
-    FIndexName: String; { }
-    FIndexTable: String; { }
-    FPivotStr: String; { syntax: TRANSFORM...PIVOT }
-    FPivotInList: TStringList;
+    FIndexColumnList: TxNativeTStringList; { }
+    FIndexName: TxNativeString; { }
+    FIndexTable: TxNativeString; { }
+    FPivotStr: TxNativeString; { syntax: TRANSFORM...PIVOT }
+    FPivotInList: TxNativeTStringList;
     FTransformColumnList: TColumnList; { LAS 25:07:2000 }
     FTransfBaseColumns: Integer;
     FTransfGroupedColumns: Integer;
     FTransfResultSet: TResultSet; { used in the TRANSFORM...PIVOT }
     FUnionAnalizer: TSqlAnalizer; { syntax select_statement UNION second_select_statement }
-    FWhereFilter: String; { used to check if a WHERE clause can be filtered }
+    FWhereFilter: TxNativeString; { used to check if a WHERE clause can be filtered }
     FSubqueryInPivotPredicate: Boolean; { syntax: 	transform count(it.AutoId)
       select 'No. of Items' as Items from pe, it
       where  (pe.Title=it.ItDateM)
@@ -545,11 +551,11 @@ Type
     Constructor Create(ParentAnalizer: TSqlAnalizer; XQuery: TCustomxQuery);
     Destructor Destroy; Override;
     Procedure ClearSQL;
-    Function ReplaceParams(const SQL: string): String;
+    Function ReplaceParams(const SQL: TxNativeString): TxNativeString;
     Function HasAggregates: Boolean;
-    Function FindDataSetByName(Const Name: String): TDataSet;
-    Function FindFieldByName(Const FieldName: String): TField;
-    Function QualifiedField(Const FieldName: String; UseAlias: Boolean): String;
+    Function FindDataSetByName(Const Name: TxNativeString): TDataSet;
+    Function FindFieldByName(Const FieldName: TxNativeString): TField;
+    Function QualifiedField(Const FieldName: TxNativeString; UseAlias: Boolean): TxNativeString;
     Function CheckIntegrity: Boolean;
     Procedure doSelect;
     Procedure doExecSQL;
@@ -566,9 +572,9 @@ Type
     Property IsDistinct: Boolean Read FIsDistinct Write FIsDistinct;
     Property TableList: TTableList Read FTableList;
     Property JoinList: TJoinOnList Read FJoinList;
-    Property LJoinCandidateList: TStringList Read FLJoinCandidateList;
-    Property RJoinCandidateList: TStringList Read FRJoinCandidateList;
-    Property WhereStr: String Read FWhereStr Write FWhereStr;
+    Property LJoinCandidateList: TxNativeTStringList Read FLJoinCandidateList;
+    Property RJoinCandidateList: TxNativeTStringList Read FRJoinCandidateList;
+    Property WhereStr: TxNativeString Read FWhereStr Write FWhereStr;
     Property WhereOptimizeList: TWhereOptimizeList Read FWhereOptimizeList;
     Property OrderByList: TOrderByList Read FOrderByList;
     Property GroupByList: TOrderByList Read FGroupByList;
@@ -579,7 +585,6 @@ Type
       Read FSubQueryKindIsDefaultFlagList; { added by fduenas }
     Property SubQueryIsNotInListFlagList: TList
       Read FSubQueryIsNotInListFlagList; { added by fduenas }
-
     Property doSelectAll: Boolean Read FDoSelectAll Write FDoSelectAll;
     Property TableAllFields: TStringList Read FTableAllFields;
     Property InsertList: TInsertList Read FInsertList;
@@ -588,12 +593,12 @@ Type
     Property AlterTableList: TCreateTableList Read FAlterTableList Write FAlterTableList;
     Property IndexUnique: Boolean Read FIndexUnique Write FIndexUnique;
     Property IndexDescending: Boolean Read FIndexDescending Write FIndexDescending;
-    Property IndexColumnList: TStringList Read FIndexColumnList Write FIndexColumnList;
-    Property IndexName: String Read FIndexName Write FIndexName;
-    Property IndexTable: String Read FIndexTable Write FIndexTable;
+    Property IndexColumnList: TxNativeTStringList Read FIndexColumnList Write FIndexColumnList;
+    Property IndexName: TxNativeString Read FIndexName Write FIndexName;
+    Property IndexTable: TxNativeString Read FIndexTable Write FIndexTable;
     Property ResultSet: TResultSet Read GetResultSet Write SetResultSet;
-    Property PivotStr: String Read FPivotStr Write FPivotStr;
-    Property PivotInList: TStringList Read FPivotInList;
+    Property PivotStr: TxNativeString Read FPivotStr Write FPivotStr;
+    Property PivotInList: TxNativeTStringList Read FPivotInList;
     Property TransformColumnList: TColumnList Read FTransformColumnList;
     Property UnionAnalizer: TSqlAnalizer Read FUnionAnalizer Write FUnionAnalizer;
     Property ParentAnalizer: TSqlAnalizer Read FParentAnalizer Write FParentAnalizer;
@@ -619,10 +624,10 @@ Type
   TxDataSetItem = Class(TCollectionItem)
   Private
     FDataSet: TDataSet;
-    FAlias: String;
+    FAlias: TxNativeString;
     FTemporal: Boolean;
     Procedure SetDataSet(Value: TDataSet);
-    Procedure SetAlias(Const Value: String);
+    Procedure SetAlias(Const Value: TxNativeString);
   Protected
     Function GetDisplayName: String; Override;
     Function GetCaption: String;
@@ -630,7 +635,7 @@ Type
     Procedure Assign(Source: TPersistent); Override;
     Property Temporal: boolean Read FTemporal Write FTemporal;
   Published
-    Property Alias: String Read FAlias Write SetAlias;
+    Property Alias: TxNativeString Read FAlias Write SetAlias;
     Property DataSet: TDataSet Read FDataSet Write SetDataSet;
   End;
 
@@ -646,7 +651,7 @@ Type
     Procedure SetItem(Index: Integer; Value: TxDataSetItem);
   Public
     Constructor Create(AOwner: TPersistent);
-    Function IndexOFAlias(Const Alias: String): Integer; { LAS : 05-30-2000 }
+    Function IndexOFAlias(Const Alias: TxNativeString): Integer; { LAS : 05-30-2000 }
     Function Add: TxDataSetItem;
     Property Items[Index: Integer]: TxDataSetItem Read GetItem Write SetItem; Default;
     Property DataSetClass: TDataSetClass Read FDataSetClass Write FDataSetClass;
@@ -659,17 +664,17 @@ Type
   TOptimizeMethod = (omNone, omSetFilter, omSetRange);
 
   TUDFCheckEvent = Procedure(Sender: tobject;
-    Const Identifier: String; Params: TParameterList;
+    Const Identifier: TxNativeString; Params: TParameterList;
     Var DataType: TExprType; Var MaxLen: Integer;
     Var Accept: Boolean) Of Object;
 
   TUDFSolveEvent = Procedure(Sender: tobject;
-    Const Identifier: String; Params: TParameterList;
+    Const Identifier: TxNativeString; Params: TParameterList;
     Var Value: variant) Of Object;
 
   TIndexNeededForEvent = Procedure(Sender: tobject;
     DataSet: TDataSet;
-    Const FieldNames: String;
+    Const FieldNames: TxNativeString;
     ActivateIndex: Boolean;
     IsJoining: Boolean;
     Var Accept: Boolean) Of Object;
@@ -677,7 +682,7 @@ Type
   TSetRangeEvent = Procedure(Sender: tobject;
     RelOperator: TRelationalOperator;
     DataSet: TDataSet;
-    Const FieldNames, StartValues, EndValues: String;
+    Const FieldNames, StartValues, EndValues: TxNativeString;
     IsJoining: Boolean) Of Object;
 
   TCancelRangeEvent = Procedure(Sender: tobject;
@@ -686,7 +691,7 @@ Type
 
   TSetFilterEvent = Procedure(Sender: tobject;
     DataSet: TDataSet;
-    Const Filter: String;
+    Const Filter: TxNativeString;
     IsJoining: Boolean;
     Var Handled: Boolean) Of Object;
 
@@ -708,25 +713,25 @@ Type
 
   TCreateIndexEvent = Procedure(Sender: tobject;
     Unique, Descending: Boolean;
-    Const TableName, IndexName: String;
-    ColumnExprList: TStringList) Of Object;
+    Const TableName, IndexName: TxNativeString;
+    ColumnExprList: TxNativeTStringList) Of Object;
 
   TDropTableEvent = Procedure(Sender: TObject;
-    Const TableName: String) Of Object;
+    Const TableName: TxNativeString) Of Object;
 
   TDropIndexEvent = Procedure(Sender: TObject;
-    Const TableName, IndexName: String) Of Object;
+    Const TableName, IndexName: TxNativeString) Of Object;
 
   TSyntaxErrorEvent = Procedure(Sender: tobject;
-    Const ErrorMsg, OffendingText: String;
+    Const ErrorMsg, OffendingText: TxNativeString;
     LineNum, ColNum, TextLen: Integer) Of Object;
 
   TCancelQueryEvent = Procedure(Sender: TObject;
     Var Cancel: Boolean) Of Object;
 
   TResolveDatasetEvent = Procedure(Sender: TObject;
-    Const Filename: String;
-    Var ATableName: String;
+    Const Filename: TxNativeString;
+    Var ATableName: TxNativeString;
     Var Dataset: TDataset) Of Object;
 
   TQueryScriptErrorEvent = Procedure(Sender: TObject;
@@ -735,12 +740,12 @@ Type
 
   TQueryFieldNameEvent = Procedure(Sender: TObject;
     FieldIndex: Integer;
-    Var FieldName: String) Of Object;
+    Var FieldName: TxNativeString) Of Object;
 
   TSetUserRangeEvent = Procedure(Sender: TObject;
     Dataset: TDataset;
-    Const UsingIndex: String;
-    ForFields, StartValues, EndValues: TStrings) Of Object;
+    Const UsingIndex: TxNativeString;
+    ForFields, StartValues, EndValues: TxNativeTStrings) Of Object;
 
   TCancelUserRangeEvent = Procedure(Sender: TObject;
     Dataset: TDataset) Of Object;
@@ -761,7 +766,7 @@ Type
   TxSystemFormatSettings = Class;
   TxParserFormatSettings = Class;
 
-  TxFormatSettings = Class( TPersistent )
+  TxCustomFormatSettingsGroup = Class( TPersistent )
   private
     fSystem: TxSystemFormatSettings;
     fParser: TxParserFormatSettings;
@@ -769,12 +774,18 @@ Type
     procedure SetSystem(const Value: TxSystemFormatSettings);
   protected
     fOwner: TObject;
-  published
+  protected
    property Parser: TxParserFormatSettings read fParser write SetParser;
    property System: TxSystemFormatSettings read fSystem write SetSystem;
   public
-    constructor Create( aOwner: TObject; aInitSettings: boolean=true );
+    constructor Create( aOwner: TObject; aInitSettings: boolean=true ); virtual;
     destructor Destroy; override;
+  End;
+
+  TxQueryFormatSettingsGroup = Class( TxCustomFormatSettingsGroup )
+  published
+   property Parser;
+   property System;
   End;
 
   TxParserFormatSettings = Class(TQCustomFormatSettings)
@@ -785,6 +796,8 @@ Type
     property DateSeparator;
     property TimeSeparator;
     property ShortDateFormat;
+    property LongDateFormat;
+    property LongTimeFormat;
     property TimeAMString;
     property TimePMString;
     property ShortTimeFormat;
@@ -834,7 +847,7 @@ Type
     StartCalculated: Integer;
     FIsOpen: Boolean;
     FReadOnly: Boolean;
-    FSQL: Tstrings;
+    FSQL: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF};
     FFilterBuffer: TRecordBuffer;
     FFilterExpr: TExprParser;
     FPrepared: Boolean;
@@ -852,7 +865,7 @@ Type
     { script section }
     FScriptStatementType: TSQLStatement;
     FScriptIsRunning: Boolean;
-    FSQLScript: Tstrings;
+    FSQLScript: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF};
     FShowWaitCursor: Boolean;
     FResultSetIsDefined: Boolean;
     FRowsAffected: Integer;
@@ -890,11 +903,11 @@ Type
     fOnRestoreFormatSettings: TSetupLocaleFormatSettings;
     FLock: TCriticalSection; {added to lock/release current TxQuery}
     Procedure SetParamsAsFields(Value: TParamsAsFields);
-    Function GetFieldSize(FieldType: TFieldType; Size: longint): longint;
+    Function GetFieldSize(FieldType: TFieldType; Size: longint; AddHasValueFlag: Boolean): longint;
     function GetActiveRecordBuffer: TRecordBuffer;
     function FilterRecord(Buffer: TRecordBuffer): Boolean;
-    Procedure SetQuery(Value: Tstrings);
-    Procedure SetSQLScript(Value: Tstrings);
+    Procedure SetQuery(Value: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF});
+    Procedure SetSQLScript(Value: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF});
     Function GetAbout: String;
     Procedure SetAbout(Const Value: String);
     Procedure SetFilterData(Const Text: String);
@@ -910,7 +923,7 @@ Type
     Procedure ReadParamData(Reader: TReader);
     Procedure WriteParamData(writer: Twriter);
 {$ENDIF}
-    Procedure FixDummiesForQuerying(Var Filter: String);
+    Procedure FixDummiesForQuerying(Var Filter: TxNativeString);
     Procedure ClearTempDatasets;
     Function LocateRecord(Const KeyFields: String; Const KeyValues: Variant;
       Options: TLocateOptions): Integer;
@@ -920,16 +933,16 @@ Type
     procedure SetCustomFormatSettings(const Value: TxSystemFormatSettings);
     function GetDateSeparator: Char;
     procedure SetDateSeparator(const Value: Char);
-    procedure SetFormatSettings(const Value: TxFormatSettings);
+    procedure SetFormatSettings(const Value: TxQueryFormatSettingsGroup);
   Protected
     fGlobalFormatSettings: TxSystemFormatSettings;
     fRunTimeFormatSettings: TFormatSettings;
     fSystemFormatSettings: TFormatSettings;
     fSavedFormatSettings: TFormatSettings;
     fOldRunTimeFormatSettings: TFormatSettings;
-    fFormatSettings: TxFormatSettings;
+    fFormatSettings: TxQueryFormatSettingsGroup;
     Procedure InternalEdit; Override; // editing
-    Procedure SetFieldData(Field: TField; Buffer: Pointer); Override; // editing
+    Procedure SetFieldData(Field: TField; Buffer: PxqSetFieldDataBuffer); Override; // editing
     Procedure InternalRefresh; Override;
     Function GetDataSource: TDataSource; Override;
     function AllocRecordBuffer: TRecordBuffer; override;
@@ -976,7 +989,7 @@ Type
     Procedure Notification(AComponent: TComponent; Operation: toperation); Override;
     Procedure SetFilterText(Const Value: String); Override;
     Procedure SetFiltered(Value: Boolean); Override;
-    Procedure FixDummiesForFilter(Var Filter: String); Dynamic;
+    Procedure FixDummiesForFilter(Var Filter: TxNativeString); Dynamic;
 {$IFDEF level4}
     Procedure DefineProperties(Filer: TFiler); Override;
 {$ENDIF}
@@ -1007,16 +1020,10 @@ Type
     Constructor Create(AOwner: TComponent); Override;
     Destructor Destroy; Override;
 
-{$IFDEF LEVEL4}
-    Function GetFieldData(Field: TField; Buffer: Pointer): Boolean; Override;
+{$IFDEF Delphi4Up}
+    Function GetFieldData(Field: TField;  {$IFDEF DelphiXE4Up}var{$ENDIF} Buffer: PxqGetFieldDataBuffer): Boolean; Override;
     Procedure SetBlockReadSize(Value: Integer); Override;
 {$ENDIF}
-{$ifdef DelphiXE3}
-    function GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean; overload; override;
-{$endif}
-{$ifdef DelphiXE4Up}
-    function GetFieldData(Field: TField; var Buffer: TValueBuffer): Boolean; overload; override;
-{$endif}
     Function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; Override;
     Function IsSequenced: Boolean; Override;
     Function IsDataSetDisabled(DataSet: TDataSet): Boolean;
@@ -1083,21 +1090,21 @@ Type
 
   Published
     Property DataSource: TDataSource Read GetDataSource Write SetDataSource;
-    Property SQL: TStrings Read FSQL Write SetQuery;
-    Property SQLScript: TStrings Read FSQLScript Write SetSQLScript;
+    Property SQL: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF} Read FSQL Write SetQuery;
+    Property SQLScript: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF} Read FSQLScript Write SetSQLScript;
     Property Params: TParams Read FParams Write SetParamsList Stored False;
     Property ParamCheck: Boolean Read FParamCheck Write FParamCheck Default True;
     Property About: String Read GetAbout Write SetAbout;
     Property AutoDisableControls: Boolean Read FAutoDisableControls Write FAutoDisableControls Default True;
     Property UseDisplayLabel: Boolean Read FUseDisplayLabel Write FUseDisplayLabel Default False;
-    Property DateFormat: String Read GetDateFormat Write SetDateFormat;
-    Property DateSeparator: Char Read GetDateSeparator Write SetDateSeparator;
+    Property DateFormat: String Read GetDateFormat Write SetDateFormat Stored False;
+    Property DateSeparator: Char Read GetDateSeparator Write SetDateSeparator Stored False;
     Property ShowWaitCursor: Boolean Read FShowWaitCursor Write FShowWaitCursor Default true;
     Property WhereOptimizeMethod: TOptimizeMethod Read FWhereOptimizeMethod Write FWhereOptimizeMethod Default omSetFilter;
     Property ParamsAsFields: TParamsAsFields read FParamsAsFields write SetParamsAsFields;
     Property ActiveDataSetEvents: Boolean Read FActiveDataSetEvents Write FActiveDataSetEvents Default True;   // Nonn
     Property ActiveStoredUsage: TxActiveStoredUsageSet read FActiveStoredUsage write FActiveStoredUsage Default [asDesignTime, asRunTime]; {added by fduenas}
-    property FormatSettings: TxFormatSettings read fFormatSettings write SetFormatSettings;
+    property FormatSettings: TxQueryFormatSettingsGroup read fFormatSettings write SetFormatSettings;
     { inherited properties }
     Property Active;
     Property Filter;
@@ -1190,7 +1197,7 @@ Uses
 {$IFDEF XQDEMO}
   DemoReg,
 {$ENDIF}
-  xqLex, xqYacc, xqConsts, CnvStrUtils, XQMiscel;
+  xqLex, xqYacc, xqConsts, QCnvStrUtils, XQMiscel;
 
 Function VarTypeToExprType(Const Value: Variant): TExprType;
 Begin
@@ -1242,6 +1249,9 @@ Begin
   fRuntimeFormatSettings := FFields.RuntimeFormatSettings;
   fSystemFormatSettings  := FFields.SystemFormatSettings;
   FDataSetFieldName := ''; {modified by fduenas: use Field Name instead of Field Index}
+  {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}
+  FDataSetFieldMaxSize := 0;
+  {$ENDIF}
 End;
 
 Function TxqField.GetData(Buffer: Pointer): Boolean;
@@ -1375,8 +1385,8 @@ Begin
     Else
       Result := FSourceField.DataSize;
   End
-  Else if DataType in [ttstring {$IFDEF LEVEL4}, ttWideString{$ENDIF}] then
-    Result := Trunc((FDataSize - SizeOf(WordBool)) / NativeExprTypeSize)
+  Else if DataType in [ttString {$IFDEF LEVEL4}, ttWideString{$ENDIF}] then
+    Result := Trunc((FDataSize - {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}) / NativeExprTypeSize)
   else
     Result := FDataSize;
 End;
@@ -1403,7 +1413,8 @@ Var
   AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
   A: AnsiString;
 Begin
-  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  if (DataType = ttString) and
+     ((not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar])) then
   begin
     FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
 	  Result := GetData(@AnsiBuffer);
@@ -1430,7 +1441,8 @@ Var
   AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
   A: AnsiString;
 Begin
-  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  if (DataType = ttString) and
+     ((not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar])) then
   begin
     FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
 	  Result := GetData(@AnsiBuffer);
@@ -1507,7 +1519,8 @@ Var
   A: AnsiString;
 Begin
   { FillChar(Buffer, FDataSize, 0) ; }
-  if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
+  {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}FDataSetFieldMaxSize := IMax(FDataSetFieldMaxSize, Length(Value));{$ENDIF}
+  if ((not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar])) then
   begin
    FillChar(AnsiBuffer, dsMaxStringSize, #0); { added by fduenas }
    A := AnsiString(Value);
@@ -1529,6 +1542,7 @@ Var
   AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
   A: AnsiString;
 Begin
+  {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}FDataSetFieldMaxSize := IMax(FDataSetFieldMaxSize, Length(Value));{$ENDIF}
   if (not assigned(SourceField)) or (SourceField.DataType in [ftString, ftFixedChar]) then
   begin
    FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
@@ -1637,7 +1651,34 @@ Begin
   If Result Then
     Value := Buffer;
 End;
-
+{$IFDEF LEVEL4}
+function TxqWideStringField.GetWideValue(var Value: WideString): Boolean;
+Var
+  Buffer: Array [0 .. dsMaxstringSize] Of WideChar;
+  AnsiBuffer: Array[0..dsMaxstringSize] Of AnsiChar;
+  A: AnsiString;
+Begin
+  if (assigned(SourceField) and (SourceField.DataType in [ftString, ftFixedChar])) then
+  begin
+    FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
+	  Result := GetData(@AnsiBuffer);
+    If Result Then
+    begin
+     A := AnsiBuffer;
+     Value := WideString(A);
+    end;
+  end
+  else
+  begin
+   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
+   Result := GetData(@Buffer);
+   If Result Then
+     Value := Buffer;
+  end
+  {else
+	  Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsWide')};
+End;
+{$ENDIF}
 procedure TxqWideStringField.SetAsBoolean(Value: Boolean);
 begin
   SetAsWideString(Copy(xqtypes.NBoolean[Value], 1, 1));
@@ -1662,6 +1703,7 @@ procedure TxqWideStringField.SetAsString(const Value: String);
 Var
   Buffer: Array [0 .. dsMaxstringSize] Of Char;
 Begin
+  {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}FDataSetFieldMaxSize := IMax(FDataSetFieldMaxSize, Length(Value));{$ENDIF}
   { FillChar(Buffer, FDataSize, 0) ; }
   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
   { StrLCopy(Buffer, PChar(Value), L); }
@@ -1674,6 +1716,7 @@ procedure TxqWideStringField.SetAsWideString(const Value: WideString);
 Var
   Buffer: Array [0 .. dsMaxStringSize] Of WideChar;
 Begin
+  {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}FDataSetFieldMaxSize := IMax(FDataSetFieldMaxSize, Length(Value));{$ENDIF}
   { FillChar(Buffer, FDataSize, 0) ; }
   FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
   { StrLCopy(Buffer, PChar(Value), L); }
@@ -1683,7 +1726,7 @@ End;
 
 procedure TxqWideStringField.SetVarValue(const Value: Variant);
 begin
- SetAsString(Value);
+ SetAsWideString(Value);
 end;
 {$ENDIF}
 { ------------------------------------------------------------------------------- }
@@ -1723,7 +1766,7 @@ End;
 
 Function TxqFloatField.GetAsInteger: Longint;
 Begin
-  Result := Longint(Round(GetAsFloat));
+  Result := LongInt( Round(GetAsFloat) );
 End;
 
 function TxqFloatField.GetAsLargeInt: Int64;
@@ -1811,9 +1854,13 @@ Begin
 End;
 
 function TxqIntegerField.GetAsLargeInt: Int64;
+Var
+  L: LongInt;
 begin
-  If Not GetData(@Result) Then
-    Result := 0;
+  If GetData(@L) Then
+     result := L
+  else
+     Result := 0;
 end;
 
 Function TxqIntegerField.GetAsString: String;
@@ -2062,15 +2109,17 @@ function TxqFields.FindByDataSetFieldName(
 Var
   I: Integer;
 Begin
-  For I := 0 To FItems.Count - 1 Do
+  result := nil;
+  if (DataSetFieldName=EmptyStr) then
+     exit;
+  For I := 0 To (FItems.Count-1) Do
   Begin
-    if (DataSetFieldName='') then
-       Break;
-    Result := FItems[I];
-    If (AnsiCompareText(Result.FDataSetFieldName, DataSetFieldName) = 0) Then
-      Exit;
+   If (AnsiCompareText(TxqField(FItems[I]).FDataSetFieldName, DataSetFieldName) = 0) Then
+   begin
+    result := FItems[I];
+    break;
+   end;
   End;
-  Result := Nil;
 End;
 
 Function TxqFields.FindField(Const FieldName: String): TxqField;
@@ -2113,7 +2162,7 @@ function TxqFields.PrepareDataSetFieldNames(
 Var
   I, J, Numtry: Integer;
   Field: TxqField;
-  FieldName, Test: String;
+  FieldName, Test: TxNativeString;
   Found: Boolean;
 begin
  For I := 0 To Count - 1 Do
@@ -2194,7 +2243,7 @@ Begin
   FFields := TxqFields.Create(Self);
   FRecNo := -1;
   { first sizeof(TBookmark) bytes is the SourceBookmark for every table }
-  {$if RTLVersion <= 18.5}fRecordBufferSize := SizeOf(Integer);{$ifend}  { patched by ccy }
+  {$if RTLVersion <= 18.5}fRecordBufferSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};{$ifend}  { patched by ccy }
 End;
 
 Destructor TResultSet.Destroy;
@@ -2258,7 +2307,7 @@ Procedure TResultSet.AddField(Const pFieldName, pAlias: String;
   pUseDisplayLabel: Boolean);
 Begin
   if Assigned(pField) then { patched by ccy }
-    CheckRecordBufferSize(pField.DataSet); { patched by ccy }
+     CheckRecordBufferSize(pField.DataSet); { patched by ccy }
   With FFields.Add(pDataType) Do
   Begin
     FieldName := pFieldName;
@@ -2270,7 +2319,7 @@ Begin
     CastLen := pCastLen;
     UseDisplayLabel := pUseDisplayLabel;
     Case pDataType Of
-      ttstring:
+      ttString:
         Begin
           DataSize := pDataSize;
           // last boolean is the Null indicator
@@ -2284,22 +2333,22 @@ Begin
      {$ENDIF}
       ttFloat:
         Begin
-          DataSize := SizeOf(double);
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
         End;
       ttInteger:
         Begin
-{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
-            DataSize := SizeOf(Integer)
-          else {$ENDIF}
-            DataSize := SizeOf(Integer);
+(*{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            DataSize := SizeOfExprType( pDataType ) {check this doubt, should be ttLargeInt}
+          else {$ENDIF}*)
+            DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
         End;
       ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
         Begin
-          DataSize := SizeOf(Int64);
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF};
         End;
       ttBoolean:
         Begin
-          DataSize := SizeOf(WordBool);
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
         End;
     End;
     DataSizeMaxMove := DataSize;
@@ -2307,14 +2356,14 @@ Begin
     Case CastType Of
       RW_CHAR:
         begin
-          if pDataType in [{$IFDEF LEVEL4} ttWideString{$ENDIF}] then
+          if pDataType in [{$IFDEF LEVEL4}ttWideString{$ENDIF}] then
           begin
-           pDataSize := (pCastLen * SizeOfExprType(pDataType)) + SizeOf(WordBool);
+           pDataSize := (pCastLen * SizeOfExprType(pDataType)) + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF};
            DataType := pDataType;
           end
           else
           begin
-           pDataSize := (pCastLen * SizeOfExprType(ttString)) + SizeOf(WordBool);
+           pDataSize := (pCastLen * SizeOfExprType(ttString)) + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF};
            { patched by fduenas CastLen }
            DataType := ttString;
           end;
@@ -2334,38 +2383,41 @@ Begin
     { Calculate the position in the record buffer }
     BufferOffset := FRecordBufferSize;
     Case DataType Of
-      ttstring{$IFDEF LEVEL4}, ttWideString{$ENDIF}:
+      ttString{$IFDEF LEVEL4}, ttWideString{$ENDIF}:
         Begin
           DataSize := pDataSize;
-          Inc(FRecordBufferSize, DataSize + (DataSize Mod SizeOf(Word)) + Sizeof(WordBool));
+          Inc(FRecordBufferSize, DataSize + (DataSize Mod {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Word){$ELSE}XQ_SizeOf_Word{$ENDIF}) + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
           // last boolean is the Null indicator
         End;
       ttFloat:
         Begin
-          Inc(FRecordBufferSize, SizeOf(Double) + Sizeof(WordBool));
-          DataSize := SizeOf(Double);
+          Inc(FRecordBufferSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF} +
+             {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
         End;
       ttInteger:
         Begin
-{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
-            Inc(FRecordBufferSize, SizeOf(Integer) + SizeOf(WordBool))
-          else {$ENDIF}
-            Inc(FRecordBufferSize, SizeOf(Integer) + SizeOf(WordBool));
+(*{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            Inc(FRecordBufferSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF})
+          else {$ENDIF}*)
+            Inc(FRecordBufferSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF} + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 
-{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
-            DataSize := SizeOf(Integer)
-          else {$ENDIF}
-            DataSize := SizeOf(Integer);
+(*{$IFDEF LEVEL4} if Assigned(pField) and (pField.DataType = ftLargeint) then
+            DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF}
+          else {$ENDIF}*)
+            DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
         End;
       ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
         Begin
-         Inc(FRecordBufferSize, SizeOf(Int64) + SizeOf(WordBool));
-         DataSize := SizeOf(Int64)
+         Inc(FRecordBufferSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF}+
+                                {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
+         DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF}
         End;
       ttBoolean:
         Begin
-          Inc(FRecordBufferSize, SizeOf(WordBool) + SizeOf(WordBool));
-          DataSize := SizeOf(WordBool);
+          Inc(FRecordBufferSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF} +
+              {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
         End;
     End;
   End;
@@ -2381,7 +2433,7 @@ begin
   end;
 end;
 
-Function TResultSet.GetRecno: Integer;
+Function TResultSet.GetRecno: integer;
 Begin
   Result := FRecNo;
 End;
@@ -2513,11 +2565,11 @@ Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
   {$if RTLVersion <= 18.5}
-  Move((RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Buffer^,
+  Move((RecBuf + Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF})^, Buffer^,
     Field.MinDataSizeMaxMove);
   { patched by fduenas: prevents casting DataTypes to Char errors }
   {$else}
-  Move(RecBuf[Field.BufferOffset + SizeOf(WordBool)], Buffer^,
+  Move(RecBuf[Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}], Buffer^,
     Field.MinDataSizeMaxMove);
   { patched by ccy } { patched by fduenas: prevents casting DataTypes to Char errors }
   {$ifend}
@@ -2527,15 +2579,15 @@ End;
 Function TMemResultSet.GetIsNull(Field: TxqField): Boolean;
 Var
   RecBuf: TxBuffer; { patched by ccy }
-  HasValue: WordBool;
+  HasValue: TxFieldBoolSep;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
 {$if RTLVersion <= 18.5}
-  Move((RecBuf + Field.BufferOffset)^, HasValue, SizeOf(WordBool));
+  Move((RecBuf + Field.BufferOffset)^, HasValue, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 {$else}
-  Move(RecBuf[Field.BufferOffset], HasValue, SizeOf(WordBool)); { patched by ccy }
+  Move(RecBuf[Field.BufferOffset], HasValue, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}); { patched by ccy }
 {$ifend}
   Result := Not HasValue;
 End;
@@ -2544,42 +2596,42 @@ End;
 Procedure TMemResultSet.SetIsNull(Field: TxqField);
 Var
   RecBuf: TxBuffer; { patched by ccy }
-  HasValue: WordBool;
+  HasValue: TxFieldBoolSep;
 Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then Exit;
   HasValue := False;
 {$if RTLVersion <= 18.5}
-  Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+  Move(HasValue, (RecBuf + Field.BufferOffset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 {$else}
-  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool)); { patched by ccy }
+  Move(HasValue, RecBuf[Field.BufferOffset], {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}); { patched by ccy }
 {$ifend}
 End;
 
 Procedure TMemResultSet.SetFieldData(Field: TxqField; Buffer: Pointer);
 Var
   RecBuf: TxBuffer; { patched by ccy }
-  HasValue: WordBool;
+  HasValue: TxFieldBoolSep;
 Begin
   RecBuf := ActiveBuffer;
   If (RecBuf = Nil) Or (Buffer = Nil) Then Exit;
 {$IF RTLVersion <= 18.5}
-  Move(Buffer^, (RecBuf + Field.BufferOffset + SizeOf(WordBool))^,
+  Move(Buffer^, (RecBuf + Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF})^,
     Field.MinDataSizeMaxMove);
 {$ELSE}
  { if assigned( Field.SourceField) and (Field.DataType=ttLargeInt) and
      (Field.SourceField.DataType=ftLargeint)     then
-     Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)],
-          IMax(Field.DataSize, SizeOf(Int64))) { patched by ccy } {added by fduenas: fix for ftLargeInt issue}
+     Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(TxFieldBoolSep)],
+          IMax(Field.DataSize, SizeOf(Int64)) { patched by ccy } {added by fduenas: fix for ftLargeInt issue}
  { else }
-      Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)],
+      Move(Buffer^, RecBuf[Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}],
            Field.MinDataSizeMaxMove); { patched by ccy }
 {$IFEND}
   HasValue := True;
 {$IF RTLVersion <= 18.5}
-  Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+  Move(HasValue, (RecBuf + Field.BufferOffset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 {$ELSE}
-  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool));
+  Move(HasValue, RecBuf[Field.BufferOffset], {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
   { patched by ccy }
 {$IFEND}
 End;
@@ -2792,11 +2844,11 @@ Begin
   If (RecBuf = Nil) Then
     Exit;
  {$if RTLVersion <= 18.5}
-  Move((RecBuf + Field.BufferOffset + SizeOf(WordBool))^, Buffer^,
+  Move((RecBuf + Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF})^, Buffer^,
         Field.MinDataSizeMaxMove);
   { patched by fduenas: prevents casting DataTypes to Char errors }
  {$else}
-  Move(RecBuf[Field.BufferOffset + SizeOf(WordBool)], Buffer^,
+  Move(RecBuf[Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}], Buffer^,
        Field.MinDataSizeMaxMove);
   { patched by ccy } { patched by fduenas: prevents casting DataTypes to Char errors }
  {$ifend}
@@ -2807,16 +2859,16 @@ End;
 Function TFileResultSet.GetIsNull(Field: TxqField): Boolean;
 Var
   RecBuf: TxBuffer; { patched by fduenas based on ccy }
-  HasValue: WordBool;
+  HasValue: TxFieldBoolSep;
 Begin
   Result := False;
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then
     Exit;
 {$IF RTLVersion <= 18.5}
-  Move((RecBuf + Field.BufferOffset)^, HasValue, SizeOf(WordBool));
+  Move((RecBuf + Field.BufferOffset)^, HasValue, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 {$ELSE}
-  Move(RecBuf[Field.BufferOffset], HasValue, SizeOf(WordBool));
+  Move(RecBuf[Field.BufferOffset], HasValue, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
   { patched by fduenas based on ccy }
 {$IFEND}
   Result := Not HasValue;
@@ -2826,16 +2878,16 @@ End;
 Procedure TFileResultSet.SetIsNull(Field: TxqField);
 Var
   RecBuf: TxBuffer; { patched by fduenas based on ccy }
-  HasValue: WordBool;
+  HasValue: TxFieldBoolSep;
 Begin
   RecBuf := ActiveBuffer;
   If RecBuf = Nil Then
     Exit;
   HasValue := False;
 {$IF RTLVersion <= 18.5}
-  Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+  Move(HasValue, (RecBuf + Field.BufferOffset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 {$ELSE}
-  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool));
+  Move(HasValue, RecBuf[Field.BufferOffset], {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
   { patched by fduenas based on ccy }
 {$IFEND}
 End;
@@ -2843,26 +2895,26 @@ End;
 Procedure TFileResultSet.SetFieldData(Field: TxqField; Buffer: Pointer);
 Var
   RecBuf: TxBuffer; { patched by fduenas based on ccy }
-  HasValue: WordBool;
+  HasValue: TxFieldBoolSep;
 Begin
   RecBuf := ActiveBuffer;
   If (RecBuf = Nil) Or (Buffer = Nil) Then
     Exit;
 
 {$IF RTLVersion <= 18.5}
-  Move(Buffer^, (RecBuf + Field.BufferOffset + SizeOf(WordBool))^,
+  Move(Buffer^, (RecBuf + Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF})^,
        Field.MinDataSizeMaxMove);
 {$ELSE}
-   Move(Buffer^, RecBuf[Field.BufferOffset + SizeOf(WordBool)],
+   Move(Buffer^, RecBuf[Field.BufferOffset + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}],
         Field.MinDataSizeMaxMove); { patched by ccy }
 {$IFEND}
 
   HasValue := True;
 
 {$IF RTLVersion <= 18.5}
-  Move(HasValue, (RecBuf + Field.BufferOffset)^, SizeOf(WordBool));
+  Move(HasValue, (RecBuf + Field.BufferOffset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
 {$ELSE}
-  Move(HasValue, RecBuf[Field.BufferOffset], SizeOf(WordBool));
+  Move(HasValue, RecBuf[Field.BufferOffset], {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF});
   { patched by fduenas based on ccy }
 {$IFEND}
   FMemMapFile.Seek(Longint(FBufferList[Recno - 1]), 0);
@@ -2963,7 +3015,7 @@ End;
 Constructor TSqlAnalizer.Create(ParentAnalizer: TSqlAnalizer;
   xquery: TCustomxQuery);
 Var
-  Temps: String;
+  TempSQL: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeString{$ELSE}WideString{$ENDIF};
 Begin
   Inherited Create;
   FParentAnalizer := ParentAnalizer;
@@ -2976,17 +3028,17 @@ Begin
   FOrderByList := TOrderByList.Create;
   FGroupByList := TOrderByList.Create;
   FJoinList := TJoinOnList.Create(Self);
-  FLJoinCandidateList := TStringList.Create;
-  FRJoinCandidateList := TStringList.Create;
+  FLJoinCandidateList := TxNativeTStringList.Create;
+  FRJoinCandidateList := TxNativeTStringList.Create;
   FTableAllFields := TStringList.Create;
   FInsertList := TInsertList.Create;
   FUpdateColumnList := TUpdateList.Create;
   FWhereOptimizeList := TWhereOptimizeList.Create;
   FCreateTableList := TCreateTableList.Create;
   FAlterTableList := TCreateTableList.Create;
-  FIndexColumnList := TStringList.Create;
+  FIndexColumnList := TxNativeTStringList.Create;
   FTransformColumnList := TColumnList.Create;
-  FPivotInList := TStringList.Create;
+  FPivotInList := TxNativeTStringList.Create;
   FHavingCol := -1;
   FSubQueryList := TList.Create; { LAS: 01-08-00 }
   FSubQueryKindList := TList.Create;
@@ -2996,9 +3048,10 @@ Begin
   FUserDefinedRange := TUserDefinedRange.Create;
 
   { create lex / yacc information }
-  Temps := FxQuery.SQL.Text;
+  { convert any UNICODE to ANSI, because parser, for now, doesn't recognize Unicode Characters: fduenas }
+  TempSQL := {$IFDEF XQ_UNICODE_TO_ANSI_SCRIPT}AnsiString{$ENDIF}( FxQuery.SQL.Text );
   FInputStream := TMemoryStream.Create;
-  FInputStream.WriteBuffer(Pointer(Temps)^, Length(Temps) * SizeOf(Char));
+  FInputStream.WriteBuffer(Pointer(TempSQL)^, Length(TempSQL) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF});
   { patched by ccy }
   FInputStream.Seek(0, 0);
   FOutputStream := TMemoryStream.Create;
@@ -3009,8 +3062,8 @@ Begin
   FLexer.yyinput := FInputStream;
   FLexer.yyoutput := FOutputStream;
   FLexer.yyerrorfile := FErrorStream;
-  (FLexer As TxqLexer).DateFormat := FxQuery.DateFormat;
-  FParser := TxqParser.Create(Self,fRuntimeFormatSettings, fSystemFormatSettings); { parser and Analizer linked }
+  //(FLexer As TxqLexer).DateFormat := FxQuery.DateFormat;
+  FParser := TxqParser.Create(Self, fRuntimeFormatSettings, fSystemFormatSettings); { parser and Analizer linked }
   FParser.yyLexer := FLexer; { link lexer and parser }
 End;
 
@@ -3171,7 +3224,7 @@ Var
   vField: TxqField;
   vColumn: TColumnItem;
   vAnalizer: TSqlAnalizer;
-  vS: String;
+  vS: TxNativeString;
 Begin
   ResultSet.Insert;
 
@@ -3286,7 +3339,7 @@ Begin
           If InsertItem.FieldNames.Count = 0 Then
           Begin
             { insertion on all fields }
-            InsertItem.DataSet.Insert;
+            InsertItem.DataSet.Append;
             Try
               For J := 0 To InsertItem.DataSet.FieldCount - 1 Do
               Begin
@@ -3296,7 +3349,7 @@ Begin
                   Begin
                     If DataType In ftNonTextTypes Then
                     Begin
-                      TmpField := TmpAnalizer.ResultSet.FieldByName(InsertItem.FieldNames[J]).SourceField; {search by fieldname}
+                      TmpField := TmpAnalizer.ResultSet.FieldByName(InsertItem.DataSet.Fields[J].FieldName).SourceField; {search by fieldname}
                       //TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
                       If Assigned(TmpField) And
                         (TmpField.DataType In ftNonTextTypes) And
@@ -3324,7 +3377,7 @@ Begin
                             InsertItem.DataSet.Fields[J].AsInteger :=
                               TmpAnalizer.ResultSet.Fields[J].AsInteger;
                           ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
-                           {$IFDEF Delphi2010Up}
+                           {$IFDEF Delphi2009Up}
                             InsertItem.DataSet.Fields[J].AsLargeInt :=
                               TmpAnalizer.ResultSet.Fields[J].AsLargeInt;
                            {$ELSE}
@@ -3386,7 +3439,7 @@ Begin
                       ttInteger:
                         AsInteger := TmpField.AsInteger;
                       ttLargeInt:
-                        {$IFDEF Delphi2010Up}
+                        {$IFDEF Delphi2009Up}
                           AsLargeInt := TmpField.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                         {$ELSE}
                           AsFloat := TmpField.AsFloat; {added by fduenas: added LargeInt (Int64) support}
@@ -3444,7 +3497,7 @@ Begin
                     ttInteger:
                       AsInteger := Resolver.Expression.AsInteger;
                     ttLargeInt:
-                      {$IFDEF Delphi2010Up}
+                      {$IFDEF Delphi2009Up}
                         AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                       {$ELSE}
                          AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
@@ -3495,7 +3548,7 @@ Begin
                   ttInteger:
                     AsInteger := Resolver.Expression.AsInteger;
                   ttLargeInt:  {added by fduenas: added LargeInt (Int64) support}
-                    {$IFDEF Delphi2010Up}
+                    {$IFDEF Delphi2009Up}
                      AsLargeInt := Resolver.Expression.AsLargeInt;
                     {$ELSE}
                      AsFloat := Resolver.Expression.AsLargeInt;
@@ -3556,7 +3609,7 @@ Begin
             ttInteger:
               Field.AsInteger := xqField.AsInteger;
             ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
-              {$IFDEF Delphi2010Up}
+              {$IFDEF Delphi2009Up}
                 Field.AsLargeInt := xqField.AsLargeInt;
               {$ELSE}
                 Field.AsFloat := xqField.AsLargeInt;
@@ -3591,7 +3644,7 @@ Begin
            {$ENDIF}
             ttFloat: Field.AsFloat := Resolver.Expression.AsFloat;
             ttInteger: Field.AsInteger := Resolver.Expression.AsInteger;
-            {$IFDEF Delphi2010Up}
+            {$IFDEF Delphi2009Up}
              ttLargeInt: Field.AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
             {$ELSE}
              ttLargeInt: Field.AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
@@ -3615,7 +3668,7 @@ Var
   Idx: Integer;
   vIndex: Integer;
   vPivot: Integer;
-  vS: String;
+  vS: TxNativeString;
   vColumn: TColumnItem;
   vTempExpr: TExprParser;
   vDiff: Double;
@@ -3750,7 +3803,7 @@ Begin
           If Not ResultSet.Fields[ColIndex].IsNull Then
             Case ResultSet.Fields[ColIndex].DataType Of
               ttstring:
-                vSortList.Fields[J].Asstring := ResultSet.Fields[ColIndex].AsString;
+                vSortList.Fields[J].AsString := ResultSet.Fields[ColIndex].AsString;
              {$IFDEF LEVEL4}
               ttWideString:
                 vSortList.Fields[J].AsWideString := ResultSet.Fields[ColIndex].AsWideString;
@@ -4572,7 +4625,7 @@ Var
   Value             : Double;
   TempS             : String;
   Lasts: String;
-  S: String;
+  S: TxNativeString;
   TableName: String;
   TempList: TList;
   OldCursor: TCursor;
@@ -4597,7 +4650,7 @@ Var
   Var
     j, Count  : integer;
     Analizer: TSqlAnalizer;
-    tmp: String;
+    tmp: TxNativeString;
   Begin
     { warning! a combination of any and all is not supported with multiple
       subqueries, example:
@@ -4755,8 +4808,7 @@ Begin
       With FColumnList[I] Do
         If Assigned(Resolver) Then
         Begin
-          Resolver.Free;
-          Resolver := Nil;
+          ReleaseResolver;
         End;
     Raise;
   End;
@@ -4780,8 +4832,7 @@ Begin
       With FUpdateColumnList[I] Do
         If Assigned(Resolver) Then
         Begin
-          Resolver.Free;
-          Resolver := Nil;
+         ReleaseResolver;
         End;
     Raise;
   End;
@@ -4892,24 +4943,24 @@ Begin
            {added by fduenas, memory leak} { ignore exception (not bad because I'm only checking expression) }
           End;
         Finally
-          CheckExpr.free;
+          FreeAndNil(CheckExpr);
         End;
       End;
     End;
 
-    If Column.Resolver.Expression.ExprType in [ttstring{$IFDEF LEVEL4}, ttWideString{$ENDIF}] Then
+    If Column.Resolver.Expression.ExprType in [ttString{$IFDEF LEVEL4}, ttWideString{$ENDIF}] Then
     Begin
       CheckExpr := TExprParser.Create(Self, TmpDataSet, fRuntimeFormatSettings, fSystemFormatSettings);
       Try
         CheckExpr.ParseExpression(S);
-        n := (CheckExpr.Expression.MaxLen * SizeOfExprType(Column.Resolver.Expression.ExprType)) + SizeOf(WordBool)
+        n := (CheckExpr.Expression.MaxLen * SizeOfExprType(Column.Resolver.Expression.ExprType)) + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}
         { patched by ccy } { patched by fduenas prevents duplication of size }
       Finally
-        CheckExpr.Free;
+        FreeAndNil(CheckExpr);
       End;
     End
     Else
-      n := SizeOf(WordBool);
+      n := SizeOfExprType(Column.Resolver.Expression.ExprType) {  SizeOf(WordBool)}; {before was WordBool} {changed 2013-04-23}
     With Column Do
       ResultSet.AddField(AsAlias, ColumnExpr, ExprType, n, F, ReadOnly,
         CastType, CastLen, (Not IsAsExplicit) And FxQuery.UseDisplayLabel);
@@ -5382,7 +5433,7 @@ Begin
           End;
         End;
       Finally
-        SortList.free;
+       FreeAndNil(SortList);
       End;
     End;
 
@@ -5435,7 +5486,7 @@ Begin
   End;
 End;
 
-Function TSqlAnalizer.FindFieldByName(Const FieldName: String): TField;
+Function TSqlAnalizer.FindFieldByName(Const FieldName: TxNativeString): TField;
 Var
   I: Integer;
   F: TField;
@@ -5545,16 +5596,16 @@ Begin
   Result := Dataset.FindField(FldNam) <> Nil;
 End;
 
-Function TSqlAnalizer.QualifiedField(Const FieldName: String; UseAlias: Boolean): String;
+Function TSqlAnalizer.QualifiedField(Const FieldName: TxNativeString; UseAlias: Boolean): TxNativeString;
 Var
   I, P, J, K, Index: Integer;
   F: TField;
   TableItem: TTableItem;
-  S, tname, fName: String;
+  S, tname, fName: TxNativeString;
   FieldFound: Boolean;
   Found: Boolean;
 
-  Function FindColumnExplicitAlias(Const fldname: String): Integer;
+  Function FindColumnExplicitAlias(Const fldname: TxNativeString): Integer;
   Var
     I: Integer;
   Begin
@@ -5562,7 +5613,7 @@ Var
     For I := 0 To FColumnList.Count - 1 Do
       With FColumnList[I] Do
       Begin
-        If IsAsExplicit And 
+        If IsAsExplicit And
           (AnsiCompareText(Format('\f"%s"', [fldname]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), ColumnExpr) <> 0) And
           (AnsiCompareText(fldname, AsAlias) = 0) Then { patched by fduenas: Changed AnsiCompareText to CompareText }
         Begin
@@ -5576,7 +5627,7 @@ Begin
   Result := FieldName;
   If Length(Trim(FieldName)) = 0 Then
     Exit;
-  P := Pos('\f"', Result); { patched by fduenas: Changed AnsiPos to Pos }
+  P := {$IFNDEF XQ_USE_WIDESTRINGS}AnsiPos{$ELSE}Pos{$ENDIF}(TxNativeString('\f"'), Result); { patched by fduenas: Changed AnsiPos to Pos }
   While (P > 0) Do
   Begin
     K := P + 3;
@@ -5587,13 +5638,13 @@ Begin
       Begin
         FieldFound := True;
         S := Copy(Result, P + 3, K - (P + 3));
-        J := Pos('.', S); { patched by fduenas: Changed AnsiPos to Pos }
+        J := AnsiPos('.', S); { patched by fduenas: Changed AnsiPos to Pos }
         If J = 0 Then
         Begin
           Found := False;
           Index := FindColumnExplicitAlias(S);
           { if one column alias exists with same fieldname then use original field expression }
-          If (Index >= 0) And (Pos('{Aggregate', FColumnList[Index].ColumnExpr)
+          If (Index >= 0) And (AnsiPos('{Aggregate', FColumnList[Index].ColumnExpr)
             = 0) Then { patched by fduenas: Changed AnsiPos to Pos }
           Begin
             Result := StringReplace(Result, Format('\f"%s"', [S]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}),
@@ -5635,7 +5686,7 @@ Begin
     End;
     If Not FieldFound Then
       Break;
-    P := Pos('\f"', Result); { patched by fduenas: Changed AnsiPos to Pos }
+    P := {$IFNDEF XQ_USE_WIDESTRINGS}AnsiPos{$ELSE}Pos{$ENDIF}(TxNativeString('\f"'), Result); { patched by fduenas: Changed AnsiPos to Pos }
   End;
 
   Result := ReplaceParams(Result);
@@ -5671,7 +5722,7 @@ Begin
 End;
 
 { some code here borrowed from Db.TParam.ParseSQL }
-Function TSqlAnalizer.ReplaceParams(const SQL: string): String;
+Function TSqlAnalizer.ReplaceParams(const SQL: TxNativeString): TxNativeString;
 var
   List: TParams;
   I, DblQuote, Quote: Integer;
@@ -5729,7 +5780,7 @@ begin
           ftFloat, ftCurrency, ftBCD, ftAutoInc, ftSmallInt, {$IFDEF Delphi2009Up} ftShortInt, {$ENDIF}
             ftInteger, ftWord, ftFmtBcd {$IFDEF LEVEL4}, ftLargeInt {$ENDIF}: { patched by ccy } {added by fduenas: added LargeInt (Int64) support}
             ParamValue := Param.AsString;
-          ftDate, ftTime, ftDateTime:
+          ftDate, ftTime, ftDateTime, ftTimeStamp {ftTimeStamp added 2013-04-25}:
             ParamValue := FloatToStr(Param.AsFloat {$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF});
           ftBoolean:
             ParamValue := xqtypes.NBoolean[Param.AsBoolean];
@@ -5743,7 +5794,7 @@ begin
       end;
     end;
   finally
-    List.free;
+   FreeAndNil(List);
   end;
 end;
 
@@ -5752,11 +5803,11 @@ Var
   I, J, K, L, vp1, tmp: Integer;
   NumAccepted: Integer;
   Column: TColumnItem;
-  TmpWhereStr: String;
-  S, AFieldName, temp: String;
-  CheckExpres: String;
-  tablnam, lrt, rrt: String;
-  FileName: String;
+  TmpWhereStr: TxNativeString;
+  S, AFieldName, temp: TxNativeString;
+  CheckExpres: TxNativeString;
+  tablnam, lrt, rrt: TxNativeString;
+  FileName: TxNativeString;
   Found, Al, Ar: Boolean;
   GroupBy: TOrderByItem;
   OrderBy: TOrderByItem;
@@ -5778,15 +5829,15 @@ Var
   DatasetItem: TxDataSetItem;
   FromxQuery: TxQuery;
   JoinOnItem: TJoinOnItem;
-  LeftTable, RightTable, LeftField, RightField: String;
-  LeftTableAlias, RightTableAlias: String;
+  LeftTable, RightTable, LeftField, RightField: TxNativeString;
+  LeftTableAlias, RightTableAlias: TxNativeString;
   FoundAggregate: Boolean;
-  TempList: TStringList;
-  tempLeft: TStringList;
-  tempRight: TStringList;
+  TempList: TxNativeTStringList;
+  tempLeft: TxNativeTStringList;
+  tempRight: TxNativeTStringList;
 
-  Function DetectSimpleField(Const fieldnam: String;
-    Var TheTable, TheField: String): Boolean;
+  Function DetectSimpleField(Const fieldnam: TxNativeString;
+    Var TheTable, TheField: TxNativeString): Boolean;
   Var
     ds: TDataSet;
     sf, tn, fn: String;
@@ -6139,7 +6190,7 @@ Begin
     Begin
       { .$ifdef false }
       // first, reorder the join candidate list
-      TempList := TStringList.Create;
+      TempList := TxNativeTStringList.Create;
       Try
         For I := 0 To FLJoinCandidateList.Count - 1 Do
         Begin
@@ -6165,8 +6216,8 @@ Begin
         end;
         // order numerically based on index of left tables
         TempList.Sort;
-        tempLeft := TStringList.Create;
-        tempRight := TStringList.Create;
+        tempLeft := TxNativeTStringList.Create;
+        tempRight := TxNativeTStringList.Create;
         for I := 0 to TempList.Count - 1 do
         begin
           temp := TempList[I];
@@ -6226,7 +6277,7 @@ Begin
           ReferencedDataSets.Clear;
           LCheckExpr.ReferencedDataSets := ReferencedDataSets;
           { exists parameters? }
-          If Pos('(Subquery', FLJoinCandidateList[I]) > 0 Then
+          If AnsiPos('(Subquery', FLJoinCandidateList[I]) > 0 Then
             Continue; { patched by fduenas: Changed AnsiPos to Pos }
           LCheckExpr.CheckExpression(FLJoinCandidateList[I]);
           If ReferencedDataSets.Count <> 1 Then
@@ -6236,7 +6287,7 @@ Begin
           ReferencedDataSets.Clear;
           RCheckExpr.ReferencedDataSets := ReferencedDataSets;
           { exists parameters? }
-          If Pos('(Subquery', FRJoinCandidateList[I]) > 0 Then
+          If AnsiPos('(Subquery', FRJoinCandidateList[I]) > 0 Then
             Continue; { patched by fduenas: Changed AnsiPos to Pos }
           RCheckExpr.CheckExpression(FRJoinCandidateList[I]);
           If ReferencedDataSets.Count <> 1 Then
@@ -6398,8 +6449,7 @@ Begin
         lrt := UpperCase(LeftRefTest);
         rrt := UpperCase(RightRefTest);
 
-        If Pos('[DUMMY].', lrt) >
-          0 Then { patched by fduenas: Changed AnsiPos to Pos }
+        If AnsiPos('[DUMMY].', lrt) > 0 Then { patched by fduenas: Changed AnsiPos to Pos }
         Begin
           AFieldName := Copy(lrt, 9, Length(lrt));
           // find this fieldname on all tables
@@ -6416,8 +6466,7 @@ Begin
                 Break;
               End;
         End;
-        If Pos('[DUMMY].', rrt) >
-          0 Then { patched by fduenas: Changed AnsiPos to Pos }
+        If AnsiPos('[DUMMY].', rrt) > 0 Then { patched by fduenas: Changed AnsiPos to Pos }
         Begin
           AFieldName := Copy(rrt, 9, Length(rrt));
           // find this fieldname on all tables
@@ -6661,7 +6710,7 @@ Begin
   Result := True;
 End;
 
-Function TSqlAnalizer.FindDataSetByName(Const Name: String): TDataSet;
+Function TSqlAnalizer.FindDataSetByName(Const Name: TxNativeString): TDataSet;
 Var
   vI: Integer;
 Begin
@@ -7016,7 +7065,7 @@ Begin
     End;
    End;
   Finally
-    BookmarkList.free;
+   FreeAndNil(BookmarkList);
     If Assigned(FxQuery.FOnAfterQuery) Then
       FxQuery.FOnAfterQuery(Self);
 
@@ -7269,7 +7318,7 @@ Begin
     FAlias := Value.Name;
 End;
 
-Procedure TxDataSetItem.SetAlias(Const Value: String);
+Procedure TxDataSetItem.SetAlias(Const Value: TxNativeString);
 Begin
   If TxDataSets(Collection).IndexOFAlias(Value) >= 0 Then
     Raise ExQueryError.Create(SDuplicateAlias);
@@ -7297,14 +7346,13 @@ Begin
   Inherited SetItem(Index, Value);
 End;
 
-Function TxDataSets.IndexOFAlias(Const Alias: String): Integer;
+Function TxDataSets.IndexOFAlias(Const Alias: TxNativeString): Integer;
 Var
   I: Integer;
 Begin
   Result := -1;
   For I := 0 To Count - 1 Do
-    If AnsiCompareText(TxDataSetItem( Inherited GetItem(I)).Alias, Alias)
-      = 0 Then { patched by fduenas: Changed AnsiCompareText to CompareText }
+    If {$IFDEF XQ_USE_WIDESTRINGS}WideCompareText{$ELSE}AnsiCompareText{$ENDIF}(TxDataSetItem( Inherited GetItem(I)).Alias, Alias)=0 Then { patched by fduenas: Changed AnsiCompareText to CompareText }
     Begin
       Result := I;
       Exit;
@@ -7457,14 +7505,14 @@ Constructor TCustomxQuery.Create(AOwner: TComponent);
 Begin
   Inherited Create(AOwner);
   FLock := TCriticalSection.Create;
-  fFormatSettings := TxFormatSettings.Create(self, true);
+  fFormatSettings := TxQueryFormatSettingsGroup.Create(self, true);
   fGlobalFormatSettings := fFormatSettings.System;
   RefreshCurrentFormatSettings(false);
   FReadOnly := False; // editing
   FDataSets := TxDataSets.Create(Self);
-  FSQL := TStringList.Create;
-  FSQLScript := TStringList.Create;
-  TStringList(SQL).OnChange := QueryChanged;
+  FSQL := {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStringList{$ELSE}TxNativeTWideStringList{$ENDIF}.Create;
+  FSQLScript := {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStringList{$ELSE}TxNativeTWideStringList{$ENDIF}.Create;
+  {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStringList{$ELSE}TxNativeTWideStringList{$ENDIF}(FSQL).OnChange := QueryChanged;
   FDataLink := TxQueryDataLink.Create(Self);
   FParams := TParams.Create{$IFDEF LEVEL4}(Self){$ENDIF};
   FParamCheck := True;
@@ -7472,26 +7520,26 @@ Begin
   FActiveStoredUsage := [asDesignTime, asRunTime];
   FInMemResultSet := True;
 
-  if (Trim(SFmtDefaultShortDateFormat)<>'') then
-      fDateFormat := Trim(SFmtDefaultShortDateFormat)
+  if (Trim(CxFmtDefaultShortDateFormat)<>'') then
+      fFormatSettings.Parser.fInnerFormatSettings.ShortDateFormat := Trim(CxFmtDefaultShortDateFormat)
   else
-      fDateFormat := fGlobalFormatSettings.ShortDateFormat;
+      fFormatSettings.Parser.fInnerFormatSettings.ShortDateFormat := fGlobalFormatSettings.ShortDateFormat;
 
-  fFormatSettings.Parser.fInnerFormatSettings.ShortDateFormat := FDateFormat;
-  fFormatSettings.System.fInnerFormatSettings.ShortDateFormat := FDateFormat;
+  fFormatSettings.System.fInnerFormatSettings.ShortDateFormat :=
+   fFormatSettings.Parser.fInnerFormatSettings.ShortDateFormat;
 
-  if (SFmtDefaultDateSeparator<>'') then
-      FDateSeparator := SFmtDefaultDateSeparator[1]
+  if (CxFmtDefaultDateSeparator<>'') then
+      fFormatSettings.Parser.fInnerFormatSettings.DateSeparator := CxFmtDefaultDateSeparator
   else
-      FDateSeparator := fGlobalFormatSettings.DateSeparator;
+      fFormatSettings.Parser.fInnerFormatSettings.DateSeparator := fGlobalFormatSettings.DateSeparator;
 
-  fFormatSettings.Parser.fInnerFormatSettings.DateSeparator := FDateSeparator;
-  fFormatSettings.System.fInnerFormatSettings.DateSeparator := FDateSeparator;
+  fFormatSettings.System.fInnerFormatSettings.DateSeparator :=
+   fFormatSettings.Parser.fInnerFormatSettings.DateSeparator;
 
-  if (SFmtDefaultThousandSeparator<>'') then
+  if (CxFmtDefaultThousandSeparator<>'') then
   begin
-    fFormatSettings.Parser.fInnerFormatSettings.ThousandSeparator := SFmtDefaultThousandSeparator[1];
-    fFormatSettings.System.fInnerFormatSettings.ThousandSeparator := SFmtDefaultThousandSeparator[1];
+    fFormatSettings.Parser.fInnerFormatSettings.ThousandSeparator := CxFmtDefaultThousandSeparator;
+    fFormatSettings.System.fInnerFormatSettings.ThousandSeparator := CxFmtDefaultThousandSeparator;
   end;
 
   RefreshRuntimeFormatSettings( fFormatSettings.System.fInnerFormatSettings );
@@ -7510,19 +7558,19 @@ Destructor TCustomxQuery.Destroy;
 Begin
   FreeAndNil( FLock );
   Disconnect;
-  FSQL.free;
-  FSQLScript.free;
-  FFilterExpr.free;
-  FParams.free;
-  FDataLink.free;
-  FDisabledDataSets.free;
+  FreeAndNil( FSQL );
+  FreeAndNil( FSQLScript ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( FFilterExpr ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( FParams ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( FDataLink ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( FDisabledDataSets ); {added 2013-04-24: NIL the pointer}
   { I am not sure if I must move up because some customer reported memory leak
     when its placed above }
   ClearTempDatasets;
-  FDataSets.free;
-  FRefFields.free;
-  FParamsAsFields.free;
-  FreeAndNil(fFormatSettings);
+  FreeAndNil( FDataSets ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( FRefFields ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( FParamsAsFields ); {added 2013-04-24: NIL the pointer}
+  FreeAndNil( fFormatSettings ); {added 2013-04-24: NIL the pointer}
   Inherited Destroy;
 End;
 
@@ -7536,7 +7584,7 @@ procedure TCustomxQuery._ReadRecord(Buffer: TRecordBuffer; IntRecNum: Integer);
 Var
   _idx, _fieldCount: Integer;
   vField: TxqField;
-//  vDataSetField: TField; {modified by fduenas: use Field name instead of Field Index}
+  //vDataSetField: TField; {modified by fduenas: use Field name instead of Field Index}
   vS: String;
   vAs: AnsiString; { patched by ccy }
 {$IFDEF LEVEL4}
@@ -7567,7 +7615,7 @@ Begin
     //vDataSetField := FindField( vField.DataSetFieldName );
     vFieldBufferOffset := vField.FFieldOffset;
     Case vField.DataType Of
-      ttstring:
+      ttString:
         Begin
           vS := vField.AsString;
           If Length(vS) > 0 Then
@@ -7607,7 +7655,7 @@ Begin
             end
             else
             begin
-             Move(vWS[1], (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+             Move(vWs[1], (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
               IMin(FldDef.Size * SizeOfExprType(ttWideString), Length(vWS) * SizeOfExprType(ttWideString)));
             { patched by ccy } { patched by fduenas added FldDef.Size*SizeOf(Char) }
             end;
@@ -7637,7 +7685,7 @@ Begin
                 vFieldType := ftDateTime;
             End;
           End;
-          If vFieldType In [ { ftDate, ftTime, } ftDateTime] Then
+          If vFieldType In [ { ftDate, ftTime, } ftDateTime, ftTimeStamp {ftTimeStamp added 2013-04-25}] Then
           Begin
             If vf <> 0 Then
             Begin
@@ -7654,7 +7702,8 @@ Begin
               Move(vf, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(vf))
           End
           Else
-            Move(vf, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(double));
+            Move(vf, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+                {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF}); {changed 2012-04-22 by fduenas double}
         End;
       ttInteger:
         Begin
@@ -7664,12 +7713,14 @@ Begin
             if vField.SourceField.DataSize = 1 then
             begin
               b := vn;
-              Move(b, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, 1);
+              Move(b, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+               vField.SourceField.DataSize);
             end
             else if vField.SourceField.DataSize = 2 then
             begin
               si := vn;
-              Move(si, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, 2);
+              Move(si, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+               vField.SourceField.DataSize);
             end
             else
               Move(vn, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
@@ -7698,18 +7749,19 @@ Begin
                 vField.SourceField.DataSize);
           end
           else
-            Move(vln, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(Int64));
+            Move(vln, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
         End;
       ttBoolean:
         Begin
           vb := vField.AsBoolean;
-          Move(vb, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^, SizeOf(WordBool));
+          Move(vb, (Buffer + vFieldBufferOffset {vField.FFieldBufferOffset})^,
+              {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF});
         End;
     End;
   End;
 End;
 
-Procedure TCustomxQuery.SetQuery(Value: TStrings);
+Procedure TCustomxQuery.SetQuery(Value: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF});
 Begin
   If SQL.Text <> Value.Text Then
   Begin
@@ -7723,7 +7775,7 @@ Begin
   End;
 End;
 
-Procedure TCustomxQuery.SetSQLScript(Value: TStrings);
+Procedure TCustomxQuery.SetSQLScript(Value: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeTStrings{$ELSE}TxNativeTWideStrings{$ENDIF});
 Begin
   If SQLScript.Text <> Value.Text Then
   Begin
@@ -7814,7 +7866,7 @@ Var
   Field: TxqField;
   DbField: TField;
   ErrLine, ErrCol: Integer;
-  ErrMsg, Errtxt: String;
+  ErrMsg, Errtxt: TxNativeString;
   I, Offset: Integer;
   lAbort: Boolean;
 Begin
@@ -7905,37 +7957,37 @@ Begin
         ttString:
           begin
             if Assigned(Field.SourceField) then
-               DataSize := (ColWidth * SizeOfFieldType(SourceField.DataType)) + SizeOf(WordBool);
+               DataSize := (ColWidth * SizeOfFieldType(SourceField.DataType)) + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF};
             { patched by ccy } { fduenas }{ ++1 }
           end;
        {$IFDEF LEVEL4}
         ttWideString:
           begin
             if Assigned(Field.SourceField) then
-              DataSize := (ColWidth * SizeOfFieldType( SourceField.DataType)) + SizeOf(WordBool);
+              DataSize := (ColWidth * SizeOfFieldType( SourceField.DataType)) + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF};
             { patched by ccy } { fduenas }{ ++1 }
           end;
        {$ENDIF}
         ttFloat:
-          DataSize := SizeOf(double);
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
         ttInteger:
           begin
             if Assigned(Field.SourceField) then
-              DataSize := IMax(Field.SourceField.DataSize, SizeOf(Integer))
+              DataSize := IMax(Field.SourceField.DataSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF})
               { changed by fduenas: fix for ftLargeInt issue }
             else
-              DataSize := SizeOf(Integer);
+              DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
           end;
         ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
           begin
             if Assigned(Field.SourceField) then
-               DataSize := IMax(Field.SourceField.DataSize, SizeOf(Int64))
+               DataSize := IMax(Field.SourceField.DataSize, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF})
               { changed by fduenas: fix for ftLargeInt issue }
             else
-              DataSize := SizeOf(Int64);
+              DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF};
           end;
         ttBoolean:
-          DataSize := SizeOf(WordBool);
+          DataSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
       End;
       FFieldOffset := Offset;
       Inc(Offset, DataSize);
@@ -7974,7 +8026,7 @@ Begin
   FRecordInfoOffset := FRecordSize;
   StartCalculated := FRecordSize + SizeOf(TRecInfo);
   FRecordBufferSize := StartCalculated + CalcFieldsSize;
-  BookmarkSize := SizeOf(Integer);
+  BookmarkSize := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
 
   { now create the filter expression if exists }
   If FFilterExpr <> Nil Then
@@ -7995,52 +8047,65 @@ Begin
 End;
 
 Function TCustomxQuery.GetFieldSize(FieldType: TFieldType;
-  Size: Longint): Longint;
+  Size: Longint; AddHasValueFlag: Boolean): Longint;
 Begin
   Case FieldType Of
 {$IFDEF LEVEL4}
     ftFixedChar,
 {$ENDIF}
     ftString:
-      Result := (Size * SizeOfFieldType(FieldType) ) + SizeOf(WordBool); { patched by fduenas }
+      begin
+       Result := (Size * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(AnsiChar){$ELSE}XQ_SizeOf_AnsiChar{$ENDIF} );
+       if  AddHasValueFlag then
+           Result := Result + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}; { patched by fduenas }
+      end;
     // this fixes some Float field values displayed wrongly
    {$IFDEF LEVEL4}
-    ftWidestring, ftFixedWideChar:
-        Result := (Size * SizeOfFieldType(FieldType)) + SizeOf(WordBool); { patched by fduenas }
+    ftWidestring, ftFixedWideChar: {to review 2013-04-23, fieldsize}
+      begin
+        Result := (Size * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeWideChar){$ELSE}XQ_SizeOf_NativeWideChar{$ENDIF})+
+                          {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF};   { patched by fduenas }
+        if  AddHasValueFlag then
+            Result := Result + {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}; { patched by fduenas }
+      end;
    {$ENDIF}
     ftSmallInt:
-      Result := SizeOf(SmallInt);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(SmallInt){$ELSE}XQ_SizeOf_SmallInt{$ENDIF};
    {$IFDEF Delphi2009Up}
     ftShortInt:
-      Result := SizeOf(ShortInt);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(ShortInt){$ELSE}XQ_SizeOf_ShortInt{$ENDIF};
    {$ENDIF}
     ftInteger:
-      Result := SizeOf(Integer);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
 {$IFDEF LEVEL4}
     ftLargeint:
-      Result := SizeOf(Int64);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF};
 {$ENDIF}
     ftWord:
-      Result := SizeOf(Word);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Word){$ELSE}XQ_SizeOf_Word{$ENDIF};
     ftBoolean:
-      Result := SizeOf(WordBool);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
     ftFloat:
-      Result := SizeOf(double);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
     ftCurrency:
-      Result := SizeOf(double);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
     ftDate:
-      Result := SizeOf(TDateTimeRec);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
     ftTime:
-      Result := SizeOf(TDateTimeRec);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
     ftDateTime:
-      Result := SizeOf(TDateTimeRec);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
+
+    ftTimeStamp {ftTimeStamp added 2013-04-25}:
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
+
     ftAutoInc:
-      Result := SizeOf(Integer);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
     ftBlob, ftMemo, ftGraphic, ftFmtMemo, ftParadoxOle, ftDBaseOle,
       ftTypedBinary, ftBytes, ftVarBytes {$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}:
-      Result := SizeOf(Pointer);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Pointer){$ELSE}XQ_SizeOf_Pointer{$ENDIF};
     ftBCD, {$IFDEF LEVEL6}ftFMTBcd {$ENDIF}:
-      Result := 34;
+      Result := XQ_SizeOf_TBCD;
   Else
     Result := 0;
   End;
@@ -8048,13 +8113,13 @@ End;
 
 Procedure TCustomxQuery.InternalInitFieldDefs;
 Var
-  I{, J, Numtry}: Integer;
-  Field: TxqField;
-  DataType: TFieldType;
-  Size: Word;
-  FieldName{, Test}: String;
+  _idx{, J, Numtry}: Integer;
+  _xField: TxqField;
+  _DataType: TFieldType;
+  _Size: Word;
+  _FieldName{, Test}: TxNativeString;
   {Found: Boolean;}
-  FldDef: TFieldDef;
+  _FldDef: TFieldDef;
 Begin
   FRecordSize := 0;
   FieldDefs.Clear;
@@ -8063,9 +8128,9 @@ Begin
   FResultSet.Fields.PrepareDataSetFieldNames( FOnQueryFieldName ); {prepare field names for the resulting dataset}
   If DefaultFields Then
   Begin
-    For I := 0 To FResultSet.Fields.Count - 1 Do
+    For _idx := 0 To FResultSet.Fields.Count - 1 Do
     Begin
-      Field := FResultSet.FFields[I];
+      _xField := FResultSet.FFields[_idx];
       (* field names already prepared above, the below code is not nedded anymore
       FieldName := TrimSquareBrackets(Field.FieldName);
       If Length(FieldName) = 0 Then
@@ -8099,24 +8164,30 @@ Begin
       FieldName := test;
       Field.DataSetFieldName := test;
       *)
-      FieldName := Field.DataSetFieldName;
-      Size := 0;
-      Case Field.DataType Of
+      _FieldName := _xField.DataSetFieldName;
+      _Size := 0;
+      Case _xField.DataType Of
         ttString:
           Begin
            {$IFDEF LEVEL4}
-            if Assigned(Field.SourceField) and
-               (Field.SourceField.DataType in [ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo {$ENDIF}]) Then
-               DataType := ftWideString
+            if Assigned(_xField.SourceField) and
+               (_xField.SourceField.DataType in [ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo {$ENDIF}]) Then
+               _DataType := ftWideString
             else
            {$ENDIF}
-             DataType := ftString;
+             _DataType := ftString;
             { patched by ccy }
-            If not Assigned(Field.SourceField) Then
+            If not Assigned(_xField.SourceField) Then
             begin
-              Size := Trunc((Field.DataSize - SizeOf(WordBool)) / SizeOfExprType(Field.DataType) ); {patched by fduenas }
-              if Size = 0 Then
-                Size := 1;
+              {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}
+              if _xField.DataSetFieldMaxSize>0 then
+                 _Size := _xField.DataSetFieldMaxSize
+              else{$ENDIF}
+              begin
+               _Size := Trunc((_xField.DataSize - {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}) / SizeOfExprType(_xField.DataType) ); {patched by fduenas }
+               if _Size = 0 Then
+                 _Size := 1;
+              end;
             end;
           End;
        {$IFDEF LEVEL4}
@@ -8126,153 +8197,178 @@ Begin
                (Field.SourceField.DataType in [ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo {$ENDIF}]) Then
                DataType := ftWideString
             else*)
-               DataType := ftWideString;
+               _DataType := ftWideString;
             { patched by ccy }
-            If not Assigned(Field.SourceField) Then
+            If not Assigned(_xField.SourceField) Then
             begin
-              Size := Trunc((Field.DataSize - SizeOf(WordBool)) / SizeOfExprType(Field.DataType)); { patched by fduenas }
-              if Size = 0 Then
-                Size := 1;
+             {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}
+             if _xField.DataSetFieldMaxSize>0 then
+                _Size := _xField.DataSetFieldMaxSize
+             else{$ENDIF}
+              begin
+               _Size := Trunc((_xField.DataSize - {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxFieldBoolSep){$ELSE}XQ_SizeOf_FieldBoolSep{$ENDIF}) / SizeOfExprType(_xField.DataType)); { patched by fduenas }
+               if _Size = 0 Then
+                 _Size := 1;
+              end;
             end;
           End;
         {$ENDIF}
         ttFloat:
-          DataType := ftFloat;
+          _DataType := ftFloat;
         ttInteger:
-          if Assigned(Field.SourceField) and
-            (Field.SourceField.DataType = ftLargeint) then
-            DataType :=
-              Field.SourceField.DataType { changed by fduenas: Fit for ftLargeInt Fields }
+          if Assigned(_xField.SourceField) and
+            (_xField.SourceField.DataType = ftLargeint) then
+            _DataType :=
+              _xField.SourceField.DataType { changed by fduenas: Fit for ftLargeInt Fields }
           else
-            DataType := ftInteger;
+            _DataType := ftInteger;
         ttLargeInt: {added by fduenas: added LargeInt (Int64) support}
-          if Assigned(Field.SourceField) and
-            (Field.SourceField.DataType = ftLargeint) then
-            DataType :=
-              Field.SourceField.DataType { changed by fduenas: Fit for ftLargeInt Fields }
+          if Assigned(_xField.SourceField) and
+            (_xField.SourceField.DataType = ftLargeint) then
+            _DataType :=
+              _xField.SourceField.DataType { changed by fduenas: Fit for ftLargeInt Fields }
           else
-            DataType := ftLargeInt;
+            _DataType := ftLargeInt;
         ttBoolean:
-          DataType := ftBoolean;
+          _DataType := ftBoolean;
       Else
-        DataType := ftUnknown;
+        _DataType := ftUnknown;
       End;
-      If Assigned(Field.SourceField) Then
+      If Assigned(_xField.SourceField) Then
       Begin
-        DataType := Field.SourceField.DataType;
-        If ((DataType = ftFloat) And (TFloatField(Field.SourceField).Currency))
-          Or (DataType = ftBCD) Then
-          DataType := ftCurrency;
-{$IFDEF LEVEL6}
-        If (DataType = ftFmtBcd) Then
+        _DataType := _xField.SourceField.DataType;
+        If ((_DataType = ftFloat) And (TFloatField(_xField.SourceField).Currency))
+        {$IFDEF LEVEL6}
+            or
+           ((_DataType = ftBCD) And (TBCDField(_xField.SourceField).Currency)) or
+           ((_DataType = ftFmtBCD) And (TFMTBCDField(_xField.SourceField).Currency)) {$ENDIF} Then
         begin
-          DataType := ftFloat;
-          Size := 0;
+          _DataType := ftCurrency;
+        end
+        {$IFDEF LEVEL6}
+        else If (_DataType in [ftBcd, ftFmtBcd]) Then
+        begin
+          _DataType := ftFloat;
+          _Size := 0;
         end;
-{$ENDIF}
-        If DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar,
+        {$ENDIF}
+        If _DataType In [ftString{$IFDEF LEVEL4}, ftFixedChar,
           ftWidestring, ftFixedWideChar{$ENDIF}
 {$IFDEF LEVEL5}, ftGUID{$ENDIF}] Then
         Begin
          {$IFDEF LEVEL4}
-          if (DataType in [{$IFDEF LEVEL4}ftWideString, ftFixedWideChar{$ENDIF}{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}]) Then
-               DataType := ftWideString
+          if (_DataType in [{$IFDEF LEVEL4}ftWideString, ftFixedWideChar{$ENDIF}{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}]) Then
+               _DataType := ftWideString
             else
          {$ENDIF}
-               DataType := {$IF RTLVersion <= 18.5}ftString{$ELSE}ftString{$IFEND};
+               _DataType := {$IF RTLVersion <= 18.5}ftString{$ELSE}ftString{$IFEND};
           { patched by ccy }; { this fixes bug with ftWidestring }
-          Size := (Field.SourceField.Size { * SizeOf(Char) } )
+          _Size := (_xField.SourceField.Size { * SizeOf(Char) } )
           { + SizeOf(WordBool) };
           { patched by ccy } { patched by fduenas, prevents the field size to be duplicated from original }
-          If Size = 0 Then
-             Size := 1;
+          If _Size = 0 Then
+             _Size := 1;
         End;
 {$IFDEF LEVEL6}
-        If DataType = ftTimeStamp then
-          DataType := ftDateTime;
+        If _DataType  = ftTimeStamp then
+           _DataType := ftDateTime;
 {$ENDIF}
         (* if DataType in ftNonTextTypes then
           Size := 0; *)
-        If DataType In [ftAutoInc] Then
-          Size := 0;
+        If _DataType In [ftAutoInc] Then
+           _Size := 0;
       End
-      Else If Field.CastType > 0 Then
+      Else If (_xField.CastType > 0) Then
       Begin
-        Case Field.CastType Of
+        Case _xField.CastType Of
           RW_CHAR:
             Begin
-              DataType := //ftString;
+              _DataType := //ftString;
 {$IF RTLVersion <= 18.5}ftString{$ELSE}ftString{$IFEND};
               { patched by ccy }; { this fixes bug with ftWidestring }
-              Size := Field.CastLen;
+              _Size := _xField.CastLen;
             End;
           RW_INTEGER:
             Begin
-              DataType := ftInteger;
-              Size := 0;
+              _DataType := ftInteger;
+              _Size := 0;
             End;
           RW_BOOLEAN:
             Begin
-              DataType := ftBoolean;
-              Size := 0;
+              _DataType := ftBoolean;
+              _Size := 0;
             End;
           RW_DATE:
             Begin
-              DataType := ftDate;
-              Size := 0;
+              _DataType := ftDate;
+              _Size := 0;
             End;
           RW_TIME:
             Begin
-              DataType := ftTime;
-              Size := 0;
+              _DataType := ftTime;
+              _Size := 0;
             End;
           RW_DATETIME:
             Begin
-              DataType := ftDateTime;
-              Size := 0;
+              _DataType := ftDateTime;
+              _Size := 0;
             End;
           RW_FLOAT:
             Begin
-              DataType := ftFloat;
-              Size := 0;
+              _DataType := ftFloat;
+              _Size := 0;
             End;
           RW_MONEY:
             Begin
-              DataType := ftCurrency;
-              Size := 0;
+              _DataType := ftCurrency;
+              _Size := 0;
             End;
         End;
       End;
-      FieldDefs.Add(FieldName, DataType, Size, False);
-      FldDef := FieldDefs[FieldDefs.Count - 1];
-      If (DataType = ftBCD) And Assigned(Field.SourceField) Then
+      FieldDefs.Add(_FieldName, _DataType, _Size, False);
+      _FldDef := FieldDefs[FieldDefs.Count - 1];
+      If (_DataType = ftBCD) And Assigned(_xField.SourceField) Then
       Begin
-        FldDef.Size := TBCDField(Field.SourceField).Size;
-        FldDef.Precision := TBCDField(Field.SourceField).Precision;
+        _FldDef.Size := TBCDField(_xField.SourceField).Size;
+        _FldDef.Precision := TBCDField(_xField.SourceField).Precision;
+
+      End
+      else If (_DataType = ftFmtBCD) And Assigned(_xField.SourceField) Then
+      Begin
+        _FldDef.Size := TFMTBCDField(_xField.SourceField).Size;
+        _FldDef.Precision := TFMTBCDField(_xField.SourceField).Precision;
       End;
-      Field.DataSetFieldName := FieldName;
-      Inc(FRecordSize, Field.DataSize);
+        _xField.DataSetFieldName := _FieldName;
+      Inc(FRecordSize, _xField.DataSize);
     End;
   End
   Else
   Begin
-    For I := 0 To FieldCount - 1 Do
+    For _idx := 0 To FieldCount - 1 Do
     Begin
-      If (Fields[I].FieldKind = fkData) Then
+      If (Fields[_idx].FieldKind = fkData) Then
       Begin
-        Field := FResultSet.FieldByDataSetFieldName(Fields[I].FieldName);  { FFields[I];}   {modified by fduenas: use Field Name instead of Field Index}
-        if not assigned(Field) then {mofieid by fduenas, Use Field Name Instead of index}
-           Continue;
+        _xField := FResultSet.FieldByDataSetFieldName(Fields[_idx].FieldName);  { FFields[I];}   {modified by fduenas: use Field Name instead of Field Index}
+        (*if not assigned(_xField) then {modified by fduenas, Use Field Name Instead of index}
+           Continue;*) {changed 2013-04-22 by fduenas, Parse all fields}
         { Field := FResultSet.FindField(Trim(Fields[i].FieldName)); }
-        FieldDefs.Add(Fields[I].FieldName, Fields[I].DataType, Fields[I].Size,
-          Fields[I].Required);
-        FldDef := FieldDefs[FieldDefs.Count - 1];
-        If Fields[I].DataType = ftBCD Then
+        FieldDefs.Add(Fields[_idx].FieldName, Fields[_idx].DataType, Fields[_idx].Size,
+          Fields[_idx].Required);
+        _FldDef := FieldDefs[FieldDefs.Count - 1];
+        If Fields[_idx].DataType = ftBCD Then
         Begin
-          FldDef.Size := TBCDField(Field.SourceField).Size;
-          FldDef.Precision := TBCDField(Field.SourceField).Precision;
+          _FldDef.Size := TBCDField(_xField.SourceField).Size;
+          _FldDef.Precision := TBCDField(_xField.SourceField).Precision;
         End;
-        Inc(FRecordSize, GetFieldSize(Fields[I].DataType, Fields[I].Size));
+        {$IFDEF XQ_USE_OPTIMIZED_STRING_FIELD_SIZE}
+         if Assigned(_xField) and (not Assigned(_xField.SourceField)) and
+            (_xField.DataType in [ttString, ttWideString]) then
+         begin
+          Inc(FRecordSize, IMax(_xField.DataSize,1));
+         end
+         else
+        {$ENDIF}
+          Inc(FRecordSize, GetFieldSize(Fields[_idx].DataType, Fields[_idx].Size, true));
       End;
     End;
   End;
@@ -8609,9 +8705,9 @@ Begin
   SaveState := SetTempState(dsFilter);
   FFilterBuffer := Buffer;
   If Assigned(OnFilterRecord) Then
-    OnFilterRecord(Self, Result);
+     OnFilterRecord(Self, Result);
   If Assigned(FFilterExpr) And Result Then
-    Result := FFilterExpr.Expression.AsBoolean;
+     Result := FFilterExpr.Expression.AsBoolean;
   RestoreState(SaveState);
 End;
 
@@ -8621,27 +8717,21 @@ Begin
      FillChar(Buffer[StartCalculated], CalcFieldsSize, #0);
 End;
 
-{$ifdef DelphiXE3}
-function TCustomxQuery.GetFieldData(Field: TField; Buffer: TValueBuffer): Boolean;
-{$endif}
-{$ifdef DelphiXE4Up}
-function TCustomxQuery.GetFieldData(Field: TField; var Buffer: TValueBuffer): Boolean;
-{$endif}
-{$ifdef DelphiXE3Up}
+Function TCustomxQuery.GetFieldData(Field: TField; {$IFDEF DelphiXE4Up}var{$ENDIF} Buffer: PxqGetFieldDataBuffer): Boolean;
 Var
   vFieldOffset: Integer;
   vxqField: TxqField;
   RecBuffer: TRecordBuffer;
   c: Currency;
-  d: double;
+  d: Double;
   I: Integer;
   LI: Int64;
   IsBlank: Boolean;
-  HasValue: ByteBool;
+  //HasValue: TxFieldBoolSep;
+  HasCalcValue: TxCalcFieldBoolSep;
   _RecNo: Integer;
 Begin
   Result := False;
-  //Application.MessageBox( pchar( Field.fieldname),'',mb_ok);
   IsBlank := false;
   If (Field.FieldNo < 1) and (not (Field.FieldKind In [fkCalculated, fkLookup])) Then
      Exit;
@@ -8666,25 +8756,25 @@ Begin
     Exit;
   If Field.FieldKind In [fkCalculated, fkLookup] Then
   Begin
-    // Inc(RecBuffer, StartCalculated + Field.Offset);
-   {$IF RTLVersion <= 18.5}
-     Move((RecBuffer + (StartCalculated + Field.Offset))^, HasValue, SizeOf(ByteBool));
-    {$ELSE}
-     Move(RecBuffer[StartCalculated + Field.Offset], HasValue, SizeOf(ByteBool));
+   // Inc(RecBuffer, StartCalculated + Field.Offset);
+   {$IFNDEF  Delphi2009Up}
+     Move((RecBuffer + (StartCalculated + Field.Offset))^, HasCalcValue, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF});
+   {$ELSE}
+     Move(RecBuffer[StartCalculated + Field.Offset], HasCalcValue, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF});
      { patched by fduenas based on ccy }
-   {$IFEND}
+   {$ENDIF}
     // if Boolean(RecBuffer[0]) then
    //StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
-   If HasValue and (Buffer<>Nil) Then
+   If HasCalcValue and (Buffer<>Nil) Then
    begin
     if Field.DataType in [ftString, ftFixedChar] then
     begin
-     CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size*SizeOf(Char) )
+     CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], Field.Size*{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} )
     end
     else if Field.DataType in [ftWideString{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}] then
-            CopyMemory( Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size* SizeOf(Char) )
+            CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], Field.Size*{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} )
     else
-            CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)],  SizeOfFieldType(Field.DataType) ); {modified by fduenas: fixed Calculated field issues}
+            CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}],  SizeOfFieldType(Field.DataType) ); {modified by fduenas: fixed Calculated field issues}
    end;
   End
   Else
@@ -8705,181 +8795,113 @@ Begin
     Begin
       If (Field.DataType = ftBCD) And (vxqField.DataType = ttInteger) Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, I, SizeOf(Integer));
+        Move((RecBuffer + vFieldOffset)^, I, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF});
+       {$IFNDEF DelphiXe3Up}
+        Move(I, Buffer^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF});
+       {$Else}
         c := I;
-        TBitConverter.FromCurrency(c, Buffer);
+        TBitConverter.FromCurrency(c, Buffer); {added patch for XE3, by ccy}
+       {$EndIf}
       End
       Else  If (Field.DataType = ftBCD) And (vxqField.DataType = ttLargeInt) Then {added by fduenas: added LargeInt (Int64) support}
       Begin
-        Move((RecBuffer + vFieldOffset)^, LI, SizeOf(Int64));
-        TBitConverter.FromLargeInt(LI, Buffer);
+        Move((RecBuffer + vFieldOffset)^, LI, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
+       {$IFNDEF DelphiXe3Up}
+        Move(LI, Buffer^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
+       {$Else}
+        C := LI;
+        TBitConverter.FromCurrency(c, Buffer); {added patch for XE3, by ccy}
+       {$EndIf}
       End
       Else If (Field.DataType = ftBCD) Then
       Begin
-        Move((RecBuffer + vFieldOffset)^, d, SizeOf(double));
+        Move((RecBuffer + vFieldOffset)^, d, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
         c := d;
-        TBitConverter.FromCurrency(c, Buffer);
+       {$IFNDEF DelphiXe3Up}
+        Move(c, Buffer^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
+       {$Else}
+        TBitConverter.FromCurrency(c, Buffer); {added patch for XE3, by ccy}
+       {$EndIf}
       End
       Else
       Begin
-        if Field.DataType in [ftDate, ftTime] Then
+        if Field.DataType in [ftDate, ftTime, ftDateTime] Then
         Begin
-          Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
-          if Field.DataType = ftDate then
-            TBitConverter.FromInteger(DateTimeToTimeStamp(d).Date, Buffer)
-          else
-            TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer);
+         Move((RecBuffer + vFieldOffset)^, d, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF} );
+         try
+           if Field.DataType = ftDate then
+             {$IFNDEF DelphiXe3Up}
+              Integer(Buffer^) := DateTimeToTimeStamp(d).Date
+             {$Else}
+              TBitConverter.FromInteger(DateTimeToTimeStamp(d).Date, Buffer) {added patch for XE3, by ccy}
+             {$EndIf}
+           else If Field.DataType = ftTime then
+             {$IFNDEF DelphiXe3Up}
+              Integer(Buffer^) := DateTimeToTimeStamp(d).Time
+             {$Else}
+              TBitConverter.FromInteger(DateTimeToTimeStamp(d).Time, Buffer); {added patch for XE3, by ccy}
+             {$EndIf}
+           else
+             {$IFNDEF DelphiXe3Up}
+              Double(Buffer^) := d;
+             {$Else}
+              TBitConverter.FromDouble(d, Buffer); {added patch for XE3, by ccy}
+             {$EndIf}
+          Except
+            on e: exception do
+            begin
+              e.Message := e.Message+#10#13+'Doing DateTimeToTimeStamp() with field: '+vxqField.DataSetFieldName+
+              ', Alias: '+vxqField.Alias+', Values '+FormatDateTime('yyyy-mm-dd HH:nn:ss.zzz', d)+', '+FloatToStr(d)+
+              #10#13+'Query: '+self.SQL.Text;
+              raise e at ExceptAddr
+            end;
+          end;
         End
         Else
-          Move((RecBuffer + vFieldOffset)^, Buffer[0], Field.DataSize);
+           Move((RecBuffer + vFieldOffset)^, {$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, (Field.Size+SizeOf(ByteBool))*SizeOfExprType( vxqField.DataType) ); {field.DataSize} {added patch for XE3, by ccy}
       End;
       { empty date problem fixed by Stephan Trapp 05.01.2000 }
       If (vxqField.SourceField <> Nil) And
-        (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
+         (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime, ftTimeStamp {ftTimeStamp added 2013-04-25}]) Then
       Begin
-        If TBitConverter.ToDouble(Buffer) = 0 Then { 693594 = Delphi1-Zero-Date }
-        Begin
-          Result := False;
-          Exit;
-        End;
+         if (vxqField.SourceField.DataType In [ftDate, ftTime]) then
+         begin
+          try
+           If {$IFNDEF DelphiXe3Up}Integer(Buffer^){$Else}TBitConverter.ToInteger(Buffer){$EndIf} = 0 Then { 693594 = Delphi1-Zero-Date } {added patch for XE3, by ccy}
+           Begin
+            Result := False;
+            Exit;
+           End;
+          except
+           on e: exception do
+           begin
+            e.Message := e.Message+#10#13+'Doing integer(Buffer^) with field: '+vxqField.DataSetFieldName+
+              ', Alias: '+vxqField.Alias+', Values '+FormatDateTime('yyyy-mm-dd HH:nn:ss.zzz', d)+', '+FloatToStr(d)+
+              #10#13+'Query: '+self.SQL.Text;
+            raise e at ExceptAddr
+           end;
+          end;
+         end
+         else
+         begin
+          try
+           If {$IFNDEF DelphiXe3Up}Double(Buffer^){$Else}TBitConverter.ToDouble(Buffer){$EndIf} = 0 Then { 693594 = Delphi1-Zero-Date } {added patch for XE3, by ccy}
+           Begin
+            Result := False;
+            Exit;
+           End;
+          except
+           on e: exception do
+           begin
+            e.Message := e.Message+#10#13+'Doing double(Buffer^) with field: '+vxqField.Alias+
+                ' values '+FormatDateTime('yyyy-mm-dd HH:nn:ss.zzz', d)+', '+FloatToStr(d)+
+               #10#13+'Query: '+self.SQL.Text;
+            raise e at ExceptAddr
+           end;
+          end;
+         end
       End;
     End
-    Else
-    Begin
-      If Field.DataType = ftBoolean Then
-      Begin
-        Move((RecBuffer + vFieldOffset)^, Buffer, Field.DataSize);
-      End;
-    End;
-  End;
-  Result := Not IsBlank;
-End;
-{$endif}
-
-Function TCustomxQuery.GetFieldData(Field: TField; Buffer: Pointer): Boolean;
-Var
-  vFieldOffset: Integer;
-  vxqField: TxqField;
-  RecBuffer: TRecordBuffer;
-  c: Currency;
-  d: double;
-  I: Integer;
-  LI: Int64;
-  IsBlank: Boolean;
-  HasValue: ByteBool;
-  _RecNo: Integer;
-Begin
-  Result := False;
-  //Application.MessageBox( pchar( Field.fieldname),'',mb_ok);
-  IsBlank := false;
-  If (Field.FieldNo < 1) and (not (Field.FieldKind In [fkCalculated, fkLookup])) Then
-     Exit;
-  vFieldOffset := 0;
-  { IMPORTANT:
-    It's very important not to access Recno property inside this method because
-    this causes stack overflow when this TDataset is filtered }
-  If (Not (State in [dsCalcFields])) {and
-     (Not (Field.FieldKind In [fkCalculated, fkLookup]))} then
-  begin
-     if (Not Filtered) then
-     begin
-      _RecNo := Self.RecNo; {assign the value to a variable to prevent multiple calls to TxQuery.RecNo Method}
-      if (_Recno <> FResultSet.Recno) And (_Recno > 0) And
-         (_Recno < FResultSet.RecordCount) Then
-         FResultSet.Recno := _Recno;
-     end;
-  end;
-
-  RecBuffer := GetActiveRecordBuffer;
-  If Not FIsOpen Or (RecBuffer = Nil) Then
-    Exit;
-  If Field.FieldKind In [fkCalculated, fkLookup] Then
-  Begin
-    // Inc(RecBuffer, StartCalculated + Field.Offset);
-   {$IF RTLVersion <= 18.5}
-     Move((RecBuffer + (StartCalculated + Field.Offset))^, HasValue, SizeOf(ByteBool));
-    {$ELSE}
-     Move(RecBuffer[StartCalculated + Field.Offset], HasValue, SizeOf(ByteBool));
-     { patched by fduenas based on ccy }
-   {$IFEND}
-    // if Boolean(RecBuffer[0]) then
-   //StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
-   If HasValue and (Buffer<>Nil) Then
-   begin
-    if Field.DataType in [ftString, ftFixedChar] then
-    begin
-     CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size*SizeOf(Char) )
-    end
-    else if Field.DataType in [ftWideString{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}] then
-            CopyMemory( Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], Field.Size* SizeOf(Char) )
-    else
-            CopyMemory(Buffer, @RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)],  SizeOfFieldType(Field.DataType) ); {modified by fduenas: fixed Calculated field issues}
-   end;
-  End
-  Else
-  Begin
-    vxqField := FResultSet.FindFieldByDataSetFieldName(Field.FieldName){FResultSet.Fields[Field.FieldNo - 1]}; {modified by fduenas: use Field name instead of Field Index}
-
-    IsBlank := (vxqField=nil) {or (Buffer = Nil)} or vxqField.IsNull;
-    If (vxqField=nil) {or (Buffer = Nil)} Then
-    Begin
-      // Dataset checks if field is null by passing a nil buffer
-      // Return true if it is not null
-     Result := Not IsBlank;
-     Exit;
-    End;
-    if Assigned( vxqField ) then
-       vFieldOffset := vxqField.FFieldOffset;
-    If Assigned( vxqField ) and Assigned(Buffer) Then
-    Begin
-      If (Field.DataType = ftBCD) And (vxqField.DataType = ttInteger) Then
-      Begin
-        Move((RecBuffer + vFieldOffset)^, I, SizeOf(Integer));
-        c := I;
-        Move(c, Buffer^, SizeOf(Integer));
-      End
-      Else  If (Field.DataType = ftBCD) And (vxqField.DataType = ttLargeInt) Then {added by fduenas: added LargeInt (Int64) support}
-      Begin
-        Move((RecBuffer + vFieldOffset)^, LI, SizeOf(Int64));
-        Move(LI, Buffer^, SizeOf(Int64));
-      End
-      Else If (Field.DataType = ftBCD) Then
-      Begin
-        Move((RecBuffer + vFieldOffset)^, d, SizeOf(double));
-        c := d;
-        Move(c, Buffer^, SizeOf(double));
-      End
-      Else
-      Begin
-        if Field.DataType in [ftDate, ftTime] Then
-        Begin
-          Move((RecBuffer + vFieldOffset)^, d, SizeOf(d));
-          if Field.DataType = ftDate then
-            Integer(Buffer^) := DateTimeToTimeStamp(d).Date
-          else
-            Integer(Buffer^) := DateTimeToTimeStamp(d).Time;
-        End
-        Else
-          Move((RecBuffer + vFieldOffset)^, Buffer^, (Field.Size+SizeOf(ByteBool))* SizeOfExprType( vxqField.DataType) ); {field.DataSize}
-      End;
-      { empty date problem fixed by Stephan Trapp 05.01.2000 }
-      If (vxqField.SourceField <> Nil) And
-        (vxqField.SourceField.DataType In [ftDate, ftTime, ftDateTime]) Then
-      Begin
-        If double(Buffer^) = 0 Then { 693594 = Delphi1-Zero-Date }
-        Begin
-          Result := False;
-          Exit;
-        End;
-      End;
-    End
-    Else
-    Begin
-      If Field.DataType = ftBoolean Then
-      Begin
-        Move((RecBuffer + vFieldOffset)^, Buffer, Field.DataSize);
-      End;
-    End;
   End;
   Result := Not IsBlank;
 End;
@@ -8999,7 +9021,7 @@ Procedure TCustomxQuery.ExecSQL;
 Var
   Analizer: TSqlAnalizer;
   ErrLine, ErrCol: Integer;
-  ErrMsg, Errtxt: String;
+  ErrMsg, Errtxt: TxNativeString;
   lAbort: Boolean;
 Begin
 
@@ -9050,14 +9072,14 @@ End;
 
 Function TCustomxQuery.BCDToCurr(BCD: Pointer; Var Curr: Currency): Boolean;
 Begin
-  Move(BCD^, Curr, SizeOf(Currency));
+  Move(BCD^, Curr, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Currency){$ELSE}XQ_SizeOf_Currency{$ENDIF});
   Result := True;
 End;
 
 Function TCustomxQuery.CurrToBCD(Const Curr: Currency; BCD: Pointer;
   Precision, Decimals: Integer): Boolean;
 Begin
-  Move(Curr, BCD^, SizeOf(Currency));
+  Move(Curr, BCD^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Currency){$ELSE}XQ_SizeOf_Currency{$ENDIF});
   Result := True;
 End;
 
@@ -9145,7 +9167,7 @@ Begin
   SetFilterData(Value);
 End;
 
-procedure TCustomxQuery.SetFormatSettings(const Value: TxFormatSettings);
+procedure TCustomxQuery.SetFormatSettings(const Value: TxQueryFormatSettingsGroup);
 begin
  fFormatSettings.Assign(Value);
 end;
@@ -9387,7 +9409,10 @@ End;
 procedure TCustomxQuery.SetDateFormat(const Value: String);
 begin
  if Value='' then
-    FDateFormat:=SFmtDefaultShortDateFormat
+    if FormatSettings.Parser.ShortDateFormat='' then
+       FDateFormat:=CxFmtDefaultShortDateFormat
+    else
+       FDateFormat := FormatSettings.Parser.ShortDateFormat
  else
     FDateFormat := Value;
  FormatSettings.Parser.ShortDateFormat := FDateFormat;
@@ -9398,7 +9423,10 @@ end;
 procedure TCustomxQuery.SetDateSeparator(const Value: Char);
 begin
  if Value=#0 then
-    FDateSeparator:=SFmtDefaultDateSeparator[1] {this is needed if we want mantain FDateSeparator as Empty}
+    if FormatSettings.Parser.DateSeparator='' then
+       FDateSeparator:=CxFmtDefaultDateSeparator {this is needed if we want mantain FDateSeparator as Empty}
+    else
+       FDateSeparator := FormatSettings.Parser.DateSeparator
  else
     FDateSeparator := Value;
  FormatSettings.Parser.DateSeparator := FDateSeparator;
@@ -9413,12 +9441,16 @@ End;
 
 function TCustomxQuery.GetDateFormat: String;
 begin
+ if (FDateFormat='') then
+    FDateFormat := FormatSettings.Parser.ShortDateFormat;
  Result := FDateFormat;
 end;
 
 
 function TCustomxQuery.GetDateSeparator: Char;
 begin
+ if (FDateSeparator=#0) then
+     FDateSeparator := FormatSettings.Parser.DateSeparator;
  Result := FDateSeparator;
 end;
 
@@ -9430,7 +9462,7 @@ Begin
   Result := FDisabledDataSets.IndexOf(DataSet) >= 0;
 End;
 
-Procedure TCustomxQuery.FixDummiesForQuerying(Var Filter: String);
+Procedure TCustomxQuery.FixDummiesForQuerying(Var Filter: TxNativeString);
 Var
   ps: Integer;
   I: Integer;
@@ -9440,7 +9472,7 @@ Begin
   { this method called in the WHERE clause is a filter in
     order to fix some flags:
     - Only working flag now is the date in the format: 'DummyDate(32445.6566)' }
-  ps := Pos('DummyDate(', Filter);
+  ps := AnsiPos('DummyDate(', Filter);
   { patched by fduenas: Changed AnsiPos to Pos }
   While ps > 0 Do
   Begin
@@ -9453,12 +9485,12 @@ Begin
         System.Delete(Filter, ps, 10);
         Break;
       End;
-    ps := Pos('DummyDate(', Filter);
+    ps := AnsiPos('DummyDate(', Filter);
     { patched by fduenas: Changed AnsiPos to Pos }
   End;
 End;
 
-Procedure TCustomxQuery.FixDummiesForFilter(Var Filter: String);
+Procedure TCustomxQuery.FixDummiesForFilter(Var Filter: TxNativeString);
 Begin
   FixDummiesForQuerying(Filter); { fix the dates }
   Replacestring(Filter, 'DummyBoolean(True)', 'True');
@@ -9651,15 +9683,15 @@ Procedure TCustomxQuery.ExecSQLScript;
 Var
   Analizer: TSqlAnalizer;
   P, ErrLine, ErrCol: Integer;
-  ErrMsg, Errtxt: String;
+  ErrMsg, Errtxt: TxNativeString;
   AbortScript: Boolean;
-  S, ns: String;
+  S, ns: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeString{$ELSE}WideString{$ENDIF};
   SaveState: Boolean;
   SaveCursor: TCursor;
 Begin
   SaveCursor := crDefault;
 
-  S := Trim(FSQLScript.Text);
+  S := Trim( {$IFDEF XQ_UNICODE_TO_ANSI_SCRIPT}AnsiString{$ENDIF}(FSQLScript.Text));
   If Length(S) = 0 Then
     Raise ExQueryError.Create(SSQLIsEmpty);
 
@@ -9774,7 +9806,7 @@ Var
   sb, cb: Boolean;
   xqField: TxqField;
   I, J, rnum: Integer;
-  Fields: TList;
+  Fields: TList{$if RTLVersion >=24}<TField>{$ifend};
   FieldCount, MatchCount: Integer;
   IsEqual, Found: Boolean;
 Begin
@@ -9784,7 +9816,7 @@ Begin
   Found := False;
   Result := 0;
   rnum := 0;
-  Fields := TList.Create;
+  Fields := TList{$if RTLVersion >=24}<TField>{$ifend}.Create;
   Try
     GetFieldList(Fields, KeyFields);
     FieldCount := Fields.Count;
@@ -9809,8 +9841,7 @@ Begin
               Else
                 ts := ss;
               If loCaseInsensitive In Options Then
-                IsEqual := AnsiCompareText(ts, cs)
-                  = 0 { patched by fduenas: Changed AnsiCompareText to CompareText }
+                IsEqual := AnsiCompareText(ts, cs) = 0 { patched by fduenas: Changed AnsiCompareText to CompareText }
               Else
                 IsEqual := AnsiCompareStr(ts, cs) = 0;
               { patched by fduenas: Changed AnsiCompareText to CompareText }
@@ -9948,22 +9979,23 @@ Begin
     InternalSetToRecord(GetActiveRecordBuffer);
 End;
 
-Procedure TCustomxQuery.SetFieldData(Field: TField; Buffer: Pointer); // editing
+Procedure TCustomxQuery.SetFieldData(Field: TField; Buffer: PxqSetFieldDataBuffer); // editing
 Var
   Offset: Integer;
   RecBuffer: TRecordBuffer;
-  TempDouble: double;
+  TempDouble: Double;
   Data: TDateTimeRec;
   ts: TTimeStamp;
   TempBool: WordBool;
-  HasData: ByteBool;
+  //HasData: TxFieldBoolSep;
+  HasCalcData: TxCalcFieldBoolSep;
   xqField: TxqField;
 Begin
   If Not Active Then
     Exit;
 
   If (Field.FieldNo < 1) and (not (Field.FieldKind In [fkCalculated, fkLookup])) Then
-     Exit;
+      Exit;
 
   RecBuffer := GetActiveRecordBuffer;
   If (RecBuffer = Nil) Or (Buffer = Nil) Then
@@ -9972,11 +10004,11 @@ Begin
   If Field.FieldKind in [fkCalculated, fkLookup] Then
   Begin
    // Inc(RecBuffer, StartCalculated + Field.Offset);
-   HasData := True;
+   HasCalcData := True;
    {$IF RTLVersion <= 18.5}
-     Move(HasData, (RecBuffer + StartCalculated + Field.Offset)^,SizeOf(ByteBool));
+     Move(HasCalcData, (RecBuffer + StartCalculated + Field.Offset)^,{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF});
    {$ELSE}
-     Move(HasData, RecBuffer[StartCalculated + Field.Offset], SizeOf(ByteBool));
+     Move(HasCalcData, RecBuffer[StartCalculated + Field.Offset], {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF});
      { patched by fduenas based on ccy }
    {$IFEND}
     // if Boolean(RecBuffer[0]) then
@@ -9984,15 +10016,15 @@ Begin
     if Field.DataType in [ftString, ftFixedChar] then
     begin
      //CopyMemory(@RecBuffer[StartCalculated + Field.Offset+1], Buffer, Size );
-     Move(Buffer^, RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], IMin( Length(PAnsiChar(Buffer)), Field.Size ));
+     Move({$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], IMin( Length(PAnsiChar(Buffer)), Field.Size ));
     end
     else if Field.DataType in [ftWideString, ftFixedWideChar] then
     begin
-     Move(Buffer^, RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)],  IMin(Length(PWideChar(Buffer)), Field.Size) * SizeOf(Char)  )
+     Move({$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}],  IMin(Length(PWideChar(Buffer)), Field.Size) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF}  )
     end
     else
     begin
-      Move(Buffer^, RecBuffer[StartCalculated + Field.Offset+SizeOf(ByteBool)], SizeOfFieldType( Field.DataType ) { GetFieldSize(Field.DataType, Field.Size)} );
+      Move({$IFNDEF DelphiXe3Up}Buffer^{$Else}Buffer[0]{$EndIf}, RecBuffer[StartCalculated + Field.Offset+{$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxCalcFieldBoolSep){$ELSE}XQ_SizeOf_CalcFieldBoolSep{$ENDIF}], SizeOfFieldType( Field.DataType ) { GetFieldSize(Field.DataType, Field.Size)} );
     end;
     //CopyMemory(@RecBuffer[StartCalculated + Field.Offset + SizeOf(WordBool)], Buffer, GetFieldSize(field.DataType, Field.Size)); {modified by fduenas: fixed Calculated field issues}
   End
@@ -10006,18 +10038,18 @@ Begin
     Case Field.DataType Of
       ftLargeInt: { changed by fduenas: fix for ftLargeInt Issue }
         Begin
-          Move(Int64(Buffer^), (RecBuffer + Offset)^, SizeOf(Int64));
+          Move(Int64(Buffer^), (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
           {FResultSet.Fields[Field.FieldNo - 1]}xqField.AsLargeInt := Int64(Buffer^);
         End;
       ftInteger, ftWord, {$IFDEF Delphi2009Up} ftLongWord, ftShortInt, {$ENDIF} ftSmallInt:
         Begin
-          Move(Integer(Buffer^), (RecBuffer + Offset)^, SizeOf(Integer));
+          Move(Integer(Buffer^), (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF});
           xqField.AsInteger := Integer(Buffer^);
         End;
       ftBoolean:
         Begin
-          Move(WordBool(Buffer^), TempBool, SizeOf(WordBool));
-          Move(TempBool, (RecBuffer + Offset)^, SizeOf(WordBool));
+          Move(WordBool(Buffer^), TempBool, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF});
+          Move(TempBool, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF});
           xqField.AsBoolean := WordBool(Buffer^);
         End;
       ftString, ftFixedChar: { patched by fduenas added ftWideString }
@@ -10031,7 +10063,7 @@ Begin
      {$IFDEF LEVEL4}
       ftWidestring, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}: { patched by fduenas added ftWideString }
         Begin
-          Copymemory(PWideChar(RecBuffer + Offset), Buffer,
+          CopyMemory(PWideChar(RecBuffer + Offset), Buffer,
             IMin( xqField {FResultSet.Fields[Field.FieldNo - 1]}
                   .DataSize, Field.DataSize ) { Length(PChar(Buffer)) * SizeOf(Char) } );
           { patched by fduenas, allow update string data }
@@ -10052,10 +10084,10 @@ Begin
             ts.Date := Trunc(Now);
           End;
           TempDouble := TimeStampToDateTime(ts);
-          Move(TempDouble, (RecBuffer + Offset)^, SizeOf(double));
+          Move(TempDouble, (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
           xqField.AsFloat := TempDouble;
         End;
-      ftDateTime:
+      ftDateTime {ftTimeStamp added 2013-04-25}:
         Begin
           Data := TDateTimeRec(Buffer^);
           ts := MSecsToTimeStamp(Data.DateTime);
@@ -10063,15 +10095,30 @@ Begin
           Move(TempDouble, (RecBuffer + Offset)^, SizeOf(TempDouble));
           xqField.AsFloat := TempDouble;
         End;
+      ftTimeStamp {ftTimeStamp added 2013-04-25}:
+        Begin
+          Data.Date := trunc(EncodeDate( TSQLTimeStamp(Buffer^).Year,
+                                   TSQLTimeStamp(Buffer^).Month,
+                                   TSQLTimeStamp(Buffer^).day ));
+          Data.Time := trunc(EncodeTime( TSQLTimeStamp(Buffer^).Hour,
+                                   TSQLTimeStamp(Buffer^).Minute,
+                                   TSQLTimeStamp(Buffer^).Second,
+                                   TSQLTimeStamp(Buffer^).Fractions ));
+
+          ts := MSecsToTimeStamp( Data.DateTime);
+          TempDouble := TimeStampToDateTime(ts);
+          Move(TempDouble, (RecBuffer + Offset)^, SizeOf(TempDouble));
+          xqField.AsFloat := TempDouble;
+        End;
       ftFloat, ftCurrency, ftBCD, ftFMTBcd:
         Begin
-          Move(double(Buffer^), (RecBuffer + Offset)^, SizeOf(double));
+          Move(double(Buffer^), (RecBuffer + Offset)^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
           xqField.AsFloat := double(Buffer^);
         End;
     End;
   End;
   If Not(State In [dsCalcFields, dsFilter, dsNewValue]) Then
-    DataEvent(deFieldChange, LongInt(Field));
+    DataEvent(deFieldChange, TxNativeInt(Field));
 End;
 
 Procedure TCustomxQuery.SortByColumns(Const Columns: Array Of Integer;
@@ -10148,7 +10195,7 @@ End;
 
 { TXQFormatSettings }
 
-constructor TxFormatSettings.Create(aOwner: TObject; aInitSettings: boolean);
+constructor TxCustomFormatSettingsGroup.Create(aOwner: TObject; aInitSettings: boolean);
 begin
   inherited Create;
  fOwner := aOwner;
@@ -10156,7 +10203,7 @@ begin
  fParser := TxParserFormatSettings.Create(self, aInitSettings);
 end;
 
-destructor TxFormatSettings.Destroy;
+destructor TxCustomFormatSettingsGroup.Destroy;
 begin
  FreeAndNil(fSystem);
  FreeAndNil(fParser);
@@ -10164,12 +10211,12 @@ begin
  inherited;
 end;
 
-procedure TxFormatSettings.SetParser(const Value: TxParserFormatSettings);
+procedure TxCustomFormatSettingsGroup.SetParser(const Value: TxParserFormatSettings);
 begin
   fParser.Assign(Value);
 end;
 
-procedure TxFormatSettings.SetSystem(const Value: TxSystemFormatSettings);
+procedure TxCustomFormatSettingsGroup.SetSystem(const Value: TxSystemFormatSettings);
 begin
   fSystem.Assign(Value);
 end;
@@ -10180,11 +10227,11 @@ procedure TxParserFormatSettings.SetDateSeparator(const Value: Char);
 begin
  inherited;
  if Assigned(fOwner) and
-   (fOwner is TxFormatSettings) and
-   (TxFormatSettings(fOwner).fOwner is TCustomxQuery) then
+   (fOwner is TxCustomFormatSettingsGroup) and
+   (TxCustomFormatSettingsGroup(fOwner).fOwner is TCustomxQuery) then
  begin
-  if not (csLoading in TCustomxQuery(TxFormatSettings(fOwner).fOwner ).ComponentState) then
-     TCustomxQuery(TxFormatSettings(fOwner).fOwner).FDateSeparator := Value;
+  if not (csLoading in TCustomxQuery(TxCustomFormatSettingsGroup(fOwner).fOwner ).ComponentState) then
+     TCustomxQuery(TxCustomFormatSettingsGroup(fOwner).fOwner).FDateSeparator := Value;
  end;
 end;
 
@@ -10192,11 +10239,11 @@ procedure TxParserFormatSettings.SetShortDateFormat(const Value: String);
 begin
  inherited;
  if Assigned(fOwner) and
-   (fOwner is TxFormatSettings) and
-   (TxFormatSettings(fOwner).fOwner is TCustomxQuery) then
+   (fOwner is TxCustomFormatSettingsGroup) and
+   (TxCustomFormatSettingsGroup(fOwner).fOwner is TCustomxQuery) then
  begin
-  if not (csLoading in TCustomxQuery(TxFormatSettings(fOwner).fOwner ).ComponentState) then
-     TCustomxQuery(TxFormatSettings(fOwner).fOwner ).FDateFormat := Value;
+  if not (csLoading in TCustomxQuery(TxCustomFormatSettingsGroup(fOwner).fOwner ).ComponentState) then
+     TCustomxQuery(TxCustomFormatSettingsGroup(fOwner).fOwner ).FDateFormat := Value;
  end;
 end;
 

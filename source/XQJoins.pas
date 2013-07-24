@@ -39,7 +39,7 @@ unit xqJoins;
 interface
 
 Uses
-  SysUtils, Classes, Db, XQMiscel, xqbase, qexpryacc, qbaseexpr ;
+  SysUtils, Classes, Db, XQMiscel, xqbase, qexpryacc, qbaseexpr, XQTypes ;
 
 Type
 
@@ -55,9 +55,9 @@ Type
   Private
     FJOINOnList: TJOINOnList;   { belongs to }
     FJOINAction: TJOINAction;   { left inner JOIN, left outer JOIN, etc. }
-    FJOINExpression: String;
-    FLeftRefTest: string;
-    FRightRefTest: string;
+    FJOINExpression: TxNativeString;
+    FLeftRefTest: TxNativestring;
+    FRightRefTest: TxNativestring;
     FSortList: TxqSortList;
     { the expression resolver for the full JOIN expression }
     FResolver: TExprParser;
@@ -74,11 +74,11 @@ Type
     Procedure Assign( Source: TJOINOnItem );
 
     Property JOINAction: TJOINAction Read FJOINAction Write FJOINAction;
-    Property JOINExpression: String Read FJOINExpression Write FJOINExpression;
+    Property JOINExpression: TxNativeString Read FJOINExpression Write FJOINExpression;
     Property Resolver: TExprParser Read FResolver Write FResolver;
     Property SortList: TxqSortList read FSortList;
-    Property LeftRefTest: string read FLeftRefTest write FLeftRefTest;
-    Property RightRefTest: string read FRightRefTest write FRightRefTest;
+    Property LeftRefTest: TxNativeString read FLeftRefTest write FLeftRefTest;
+    Property RightRefTest: TxNativeString read FRightRefTest write FRightRefTest;
     // gis product
     Property GraphicJoin: Boolean read FGraphicJoin write FGraphicJoin;
   End;
@@ -107,7 +107,7 @@ Type
 implementation
 
 uses
-  xquery, xqconsts, xqtypes;
+  xquery, xqconsts;
 
 {-------------------------------------------------------------------------------}
 {                  Implement TJOINOnItem                                        }
@@ -207,7 +207,7 @@ procedure TJOINOnList.DoJOINOn;
       begin
         bml.Add(0);
         If TableList[I].DataSet <> Nil then
-          bml[I]:= Longint(TableList[I].DataSet.GetBookmark);
+          bml[I]:= TxNativeInt(TableList[I].DataSet.GetBookmark);
       end;
     end;
   end;
@@ -271,7 +271,7 @@ procedure TJOINOnList.DoJOINOn;
     Begin
       JOI := JOINList[Start];
 
-      HasMoreJOINs:= Start < JoinList.Count - 1 ;
+      HasMoreJOINs:= Start < (JoinList.Count - 1) ;
 
       If JOI.JOINAction = jkLeftInnerJOIN Then
       Begin
@@ -512,15 +512,15 @@ begin
           aname := UpperCase( TableList[ J ].Alias );
 
           If ( lrtIndex < 0 ) And (
-             ( AnsiPos( TrimSquareBrackets( tname + '.' ), TrimSquareBrackets( lrt ) ) = 1 ) Or
-             ( AnsiPos( TrimSquareBrackets( aname + '.' ), TrimSquareBrackets( lrt ) ) = 1 ) ) Then
+             ( AnsiPos( TrimSquareBrackets( tname  )+ '.', TrimSquareBrackets( lrt ) ) = 1 ) Or
+             ( AnsiPos( TrimSquareBrackets( aname  )+ '.', TrimSquareBrackets( lrt ) ) = 1 ) ) Then
           Begin
             lrtIndex:= J;
           End;
 
           If ( rrtIndex < 0 ) And (
-             ( AnsiPos( TrimSquareBrackets( tname + '.' ), TrimSquareBrackets( rrt ) ) = 1 ) Or
-             ( AnsiPos( TrimSquareBrackets( aname + '.' ), TrimSquareBrackets( rrt ) ) = 1 ) ) Then
+             ( AnsiPos( TrimSquareBrackets( tname  )+ '.', TrimSquareBrackets( rrt ) ) = 1 ) Or
+             ( AnsiPos( TrimSquareBrackets( aname  )+ '.', TrimSquareBrackets( rrt ) ) = 1 ) ) Then
           Begin
             rrtIndex:= J ;
           End ;
@@ -564,7 +564,7 @@ begin
           { detect the field type in the sort list }
           FRightField:= DSet.FindField( fname );
           if FRightField = Nil then
-            Raise ExQueryError.Create( SJOINInvalidFieldName );
+             Raise ExQueryError.Create( SJOINInvalidFieldName );
           SortList.UsingBookmark:= true;
           SortList.BookmarkedDataset := DSet;
           FieldExprType:= XQMiscel.Field2Exprtype( FRightField.Datatype );
@@ -575,7 +575,7 @@ begin
           Begin
             SortList.Insert;
             {$if RTLVersion <= 18.5}
-            SortList.SourceRecno := Longint( DSet.GetBookmark );
+            SortList.SourceRecno := TxNativeInt( DSet.GetBookmark );
             {$else}
             SortList.SourceBookmark := DSet.GetBookmark;  { patched by ccy }
             {$ifend}
@@ -587,7 +587,7 @@ begin
               ttFloat  :  SortList.Fields[0].AsFloat     := FRightField.AsFloat;
               ttInteger:  SortList.Fields[0].AsInteger   := FRightField.AsInteger;
               ttLargeInt:
-               {$IFDEF Delphi2010Up}
+               {$IFDEF Delphi2009Up}
                 SortList.Fields[0].AsLargeInt := FRightField.AsLargeInt;
                {$ELSE}
                 SortList.Fields[0].AsFloat := FRightField.AsFloat;

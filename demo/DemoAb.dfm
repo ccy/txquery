@@ -17,13 +17,20 @@ object frmAbout: TfrmAbout
     Top = 10
     Width = 346
     Height = 239
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     Shape = bsFrame
   end
   object Label2: TLabel
     Left = 30
     Top = 192
-    Width = 237
+    Width = 235
     Height = 16
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
     Caption = ' With questions and comments email to: '
   end
   object Label4: TLabel
@@ -32,6 +39,9 @@ object frmAbout: TfrmAbout
     Width = 161
     Height = 16
     Cursor = crHandPoint
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
     Caption = 'amoreno@sigmap.com'
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clBlue
@@ -46,6 +56,10 @@ object frmAbout: TfrmAbout
     Top = 10
     Width = 93
     Height = 31
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     Caption = 'OK'
     Default = True
     ModalResult = 1
@@ -56,6 +70,10 @@ object frmAbout: TfrmAbout
     Top = 49
     Width = 93
     Height = 31
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     Caption = '&Help'
     TabOrder = 1
     OnClick = HelpBtnClick
@@ -65,6 +83,10 @@ object frmAbout: TfrmAbout
     Top = 20
     Width = 326
     Height = 163
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
     Color = clBtnFace
     Ctl3D = True
     Font.Charset = DEFAULT_CHARSET

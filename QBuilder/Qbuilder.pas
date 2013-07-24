@@ -26,7 +26,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   Buttons, ExtCtrls, StdCtrls, ComCtrls, ToolWin, Menus, CheckLst, Grids,
-  DB, DBGrids, SyntaxHi, xqmiscel;
+  DB, DBGrids, XQSyntaxHi, xqmiscel;
 
 type
   TOQBbutton = (bOpenDialog, bSaveDialog, bRunQuery);
@@ -2932,7 +2932,7 @@ end;
 procedure TOQBForm.btnResultsClick(Sender: TObject);
 begin
   QBDialog.OQBEngine.CloseResultQuery; // OQB 4.0a
-  QBDialog.OQBEngine.SetQuerySQL(MemoSQL.Lines.Text);
+  QBDialog.OQBEngine.SetQuerySQL(MemoSQL.Lines.Text); {this prevents Char(11) to be added.}
   QBDialog.OQBEngine.OpenResultQuery;
   Pages.ActivePage:=TabResults;
   If Assigned(Pages.OnChange) Then

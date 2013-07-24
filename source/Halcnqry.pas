@@ -48,7 +48,7 @@ Interface
 Uses
   SysUtils, Windows, Messages, classes, Graphics, Controls, forms, Dialogs,
   StdCtrls, QBAseExpr, xqmiscel, xquery, halcn6DB, gs6_shel, Db, IniFiles,
-  xqbase;
+  xqbase, XQTypes;
 
 Type
   {-------------------------------------------------------------------------------}
@@ -134,29 +134,29 @@ Type
     FSaveCancelFilter: TCancelFilterEvent;
     Procedure IndexNeededfor( Sender: TObject;
       DataSet: TDataset;
-      Const FieldNames: String;
+      Const FieldNames: TxNativeString;
       ActivateIndex: Boolean;
       IsJoining: Boolean; Var Accept: Boolean );
     Procedure SetRange( Sender: TObject;
       RelOperator: TRelationalOperator;
       DataSet: TDataset;
-      Const FieldNames, StartValues, EndValues: String;
+      Const FieldNames, StartValues, EndValues: TxNativeString;
       IsJoining: Boolean );
     Procedure CancelRange( Sender: TObject;
       DataSet: TDataset;
       IsJoining: Boolean );
   Protected
-    Procedure FixDummiesForFilter( Var Filter: String ); Override;
+    Procedure FixDummiesForFilter( Var Filter: TxNativeString ); Override;
 
     Procedure CreateTable( Sender: TObject; CreateTable: TCreateTableItem );
     Procedure CreateIndex( Sender: TObject; Unique, Descending: Boolean;
-      Const TableName, IndexName: String; ColumnExprList: TStringList );
-    Procedure DropTable( Sender: TObject; Const TableName: String );
-    Procedure DropIndex( Sender: TObject; Const TableName, IndexName: String );
+      Const TableName, IndexName: TxNativeString; ColumnExprList: TxNativeTStringList );
+    Procedure DropTable( Sender: TObject; Const TableName: TxNativeString );
+    Procedure DropIndex( Sender: TObject; Const TableName, IndexName: TxNativeString );
     Procedure BeforeQuery( Sender: TObject );
     Procedure AfterQuery( Sender: TObject );
     Procedure SetDataList( Value: TDataList );
-    Procedure SetFilter( Sender: TObject; DataSet: TDataset; Const Filter: String;
+    Procedure SetFilter( Sender: TObject; DataSet: TDataset; Const Filter: TxNativeString;
       IsJoining: Boolean; Var Handled: Boolean );
     Procedure CancelFilter( Sender: TObject; DataSet: TDataset; IsJoining: Boolean );
 
@@ -482,12 +482,12 @@ End;
 
 Procedure THalcyonxQuery.IndexNeededfor( Sender: TObject;
   DataSet: TDataset;
-  Const FieldNames: String;
+  Const FieldNames: TxNativeString;
   ActivateIndex: Boolean;
   IsJoining: Boolean; Var Accept: Boolean );
 Var
   i: integer;
-  fNames: String;
+  fNames: TxNativeString;
 Begin
   If IsJoining Then
     Exit;
@@ -515,7 +515,7 @@ End;
 Procedure THalcyonxQuery.SetRange( Sender: TObject;
   RelOperator: TRelationalOperator;
   DataSet: TDataset;
-  Const FieldNames, StartValues, EndValues: String;
+  Const FieldNames, StartValues, EndValues: TxNativeString;
   IsJoining: Boolean );
 
 // DecStr - Decrements a string value (ex. 'Hello' -> 'Helln')-------------//
@@ -696,7 +696,7 @@ Begin
 End;
 
 Procedure THalcyonxQuery.CreateIndex( Sender: TObject; Unique, Descending: Boolean;
-  Const TableName, IndexName: String; ColumnExprList: TStringList );
+  Const TableName, IndexName: TxNativeString; ColumnExprList: TxNativeTStringList );
 Var
   Temps: String;
   j, Index: integer;
@@ -729,7 +729,7 @@ Begin
   FDataList.SaveToFile( FDataList.ConfigFileName );
 End;
 
-Procedure THalcyonxQuery.DropTable( Sender: TObject; Const TableName: String );
+Procedure THalcyonxQuery.DropTable( Sender: TObject; Const TableName: TxNativeString );
 Var
   Index: integer;
 Begin
@@ -743,7 +743,7 @@ Begin
   FDataList.Delete( Index );
 End;
 
-Procedure THalcyonxQuery.DropIndex( Sender: TObject; Const TableName, IndexName: String );
+Procedure THalcyonxQuery.DropIndex( Sender: TObject; Const TableName, IndexName: TxNativeString );
 Var
   Halc: THalcyonDataSet;
   Index: integer;
@@ -764,7 +764,7 @@ Var
   I: Integer;
   Field, SrcField, DestField: TField;
   FieldList, NewFieldNamesList: TStringList;
-  FieldName: String;
+  FieldName: TxNativeString;
   FieldType: Char;
   FieldSize, FieldDec: Integer;
   Halc: THalcyonDataSet;
@@ -964,7 +964,7 @@ Begin
   FDataList := Value;
 End;
 
-Procedure THalcyonxQuery.FixDummiesForFilter( Var Filter: String );
+Procedure THalcyonxQuery.FixDummiesForFilter( Var Filter: TxNativeString );
 Var
   Ps: Integer;
   I: Integer;
@@ -995,7 +995,7 @@ Begin
   End;
 End;
 
-Procedure THalcyonxQuery.SetFilter( Sender: TObject; DataSet: TDataset; Const Filter: String;
+Procedure THalcyonxQuery.SetFilter( Sender: TObject; DataSet: TDataset; Const Filter: TxNativeString;
   IsJoining: Boolean; Var Handled: Boolean );
 Var
   Halcn: THalcyonDataset;

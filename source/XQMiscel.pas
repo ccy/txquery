@@ -41,79 +41,79 @@ Interface
 Uses
   SysUtils, Windows, Messages, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, IniFiles, ExtCtrls, DB, Qbaseexpr, QFormatSettings
-{$IFDEF LEVEL6}
-  , Variants
-{$ENDIF}
-  ;
+{$IFDEF LEVEL4}, FMTBcd, SqlTimSt{$ENDIF}
+{$IFDEF LEVEL6}, Variants{$ENDIF}
+  , XQTypes
+{$IFDEF UNICODE}, Character{$ENDIF};
 
 Type
 
   {Buffered read/write class - used for fast sequencial reads/writes}
   PCharArray = ^TCharArray;
-  TCharArray = Array[0..0] Of Char;
+  TCharArray = Array[0..0] Of TxNativeChar;
 
   TBufferedReadWrite = Class( TStream )
   Private
     FStream: TStream;
-    FValidBytesInSector: Integer;
-    FCurrentSector: Integer;
-    FOffsetInSector: Integer;
+    FValidBytesInSector: TxNativeInt;
+    FCurrentSector: TxNativeInt;
+    FOffsetInSector: TxNativeInt;
     PBuffer: PCharArray;
-    FSizeOfSector: Integer;
+    FSizeOfSector: TxNativeInt;
     FFreeStream: Boolean;
     FMustFlush: Boolean;
     Procedure FlushBuffer;
   Public
-    Constructor Create( F: TStream; FreeStream: Boolean; BuffSize: Integer );
+    Constructor Create( F: TStream; FreeStream: Boolean; BuffSize: LongInt );
     Destructor Destroy; Override;
-    Function Read( Var Buffer; Count: Longint ): Longint; Override;
-    Function Seek( Offset: Longint; Origin: Word ): Longint; Override;
-    Function Write( Const Buffer; Count: Longint ): Longint; Override;
+    Function Read( Var Buffer; Count: LongInt ): LongInt; Override;
+    Function Seek( Offset: LongInt; Origin: Word ): LongInt; Override;
+    Function Write( Const Buffer; Count: LongInt ): LongInt; Override;
     Procedure ResetPos;
   End;
 
   { Miscelaneous routines }
-  Function TrimSquareBrackets( Const Ident: String ): String;
-  Function AddSquareBrackets( Const Ident: String ): String;
-  Function QualifiedFieldAddSquareBrackets( Const Ident: String ): String;
+  Function TrimSquareBrackets( Const Ident: TxNativeString ): TxNativeString;
+  Function AddSquareBrackets( Const Ident: TxNativeString ): TxNativeString;
+  Function QualifiedFieldAddSquareBrackets( Const Ident: TxNativeString ): TxNativeString;
   Procedure FreeObject( Var Obj );
-  Procedure ReplaceString( Var Work: String; Const Old, NNew: String );
-  Function TrimCRLF( Const s: String ): String;
-  Function MessageToUser( Const Msg: String; Atype: TMsgDlgtype ): Word;
-  Function Max( Const A, B: Double ): Double;
-  Function Min( Const A, B: Double ): Double;
-  Function IMax( A, B: Integer ): Integer;
-  Function IMin( A, B: Integer ): Integer;
+  Procedure ReplaceString( Var Work: TxNativeString; Const Old, NNew: TxNativeString );
+  Function TrimCRLF( Const s: TxNativeString ): TxNativeString;
+  Function MessageToUser( Const Msg: TxNativeString; Atype: TMsgDlgtype ): Word;
+  Function Max( Const A, B: Double ): Double; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function Min( Const A, B: Double ): Double; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function IMax( A, B: TxNativeInt ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function IMin( A, B: TxNativeInt ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   {$IFDEF FALSE}
-  Function GetRecordNumber( DataSet: TDataSet ): Integer;
-  Procedure SetRecordNumber( DataSet: TDataSet; RecNum: Integer );
+  Function GetRecordNumber( DataSet: TDataSet ): TxNativeInt;
+  Procedure SetRecordNumber( DataSet: TDataSet; RecNum: TxNativeInt );
   {$ENDIF}
   {$IFDEF XQDEMO}
   Function IsDelphiRunning: boolean;
   {$ENDIF}
-  Function GetTemporaryFileName( Const Prefix: String ): String;
-  Function AddSlash( Const Path: String ): String;
-  Function RemoveSlash( Const Path: String ): String;
-  Function Field2Exprtype( Datatype: TFieldtype ): TExprtype;
-  Function SizeOfExprType( ExprType: TExprtype ): Integer;
-  Function SizeOfFieldType( FieldType: TFieldtype ): Integer;
-  Function RemoveStrDelim( Const S: String ): String;
-  Function CountChars( const s: string; Ch: Char ): Integer;
-  Function VarMin( const Value1, Value2: Variant): Variant;
-  Function VarMax( const Value1, Value2: Variant): Variant;
-  Function AddCorrectStrDelim(Const S: String) : String;
-
+  Function GetTemporaryFileName( Const Prefix: TxNativeString ): TxNativeString;
+  Function AddSlash( Const Path: TxNativeString ): TxNativeString;
+  Function RemoveSlash( Const Path: TxNativeString ): TxNativeString;
+  Function Field2Exprtype( Datatype: TFieldtype ): TExprtype; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function SizeOfExprType( ExprType: TExprtype ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function SizeOfFieldType( FieldType: TFieldtype ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function RemoveStrDelim( Const S: TxNativeString ): TxNativeString;
+  Function CountChars( const s: TxNativeString; Ch: TxNativeChar ): TxNativeInt;
+  Function VarMin( const Value1, Value2: Variant): Variant; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function VarMax( const Value1, Value2: Variant): Variant; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function AddCorrectStrDelim(Const S: TxNativeString) : TxNativeString;
+  Function XQStringIsUnicode( const aString: {$IFDEF UNICODE}String{$ELSE}TxNativeWideString{$ENDIF} ): boolean;{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Implementation
 
 Uses
-  xqbase, xquery, xqconsts, qexprlex, CnvStrUtils, xqtypes;
+  xqbase, xquery, xqconsts, qexprlex, QCnvStrUtils;
 
-Function VarMin( const Value1, Value2: Variant): Variant;
+Function VarMin( const Value1, Value2: Variant): Variant; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   If Value1 < Value2 then Result:= Value1 Else Result:= Value2;
 End;
 
-Function VarMax( const Value1, Value2: Variant): Variant;
+Function VarMax( const Value1, Value2: Variant): Variant; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   If Value1 > Value2 then Result:= Value1 Else Result:= Value2;
 End;
@@ -121,7 +121,7 @@ End;
 
 // miscelaneous
 
-Function Field2Exprtype( Datatype: TFieldtype ): TExprtype;
+Function Field2Exprtype( Datatype: TFieldtype ): TExprtype; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   Result := ttString;
   If Datatype In ftNonTexttypes Then
@@ -134,7 +134,7 @@ Begin
       ftWideString, ftFixedWideChar (*$IFDEF Delphi2006Up*), ftWideMemo(*$ENDIF*):
         Result := ttWideString;
       {$ENDIF}
-      ftFloat, ftCurrency, ftBCD, {$IFDEF LEVEL6}ftFMTBcd, {$ENDIF}ftDate, ftTime, ftDateTime:
+      ftFloat, ftCurrency, ftBCD, {$IFDEF LEVEL6}ftFMTBcd, {$ENDIF}ftDate, ftTime, ftDateTime, ftTimeStamp: {ftTimeStamp added 2013-04-25}
         Result := ttFloat;
       ftAutoInc, ftSmallInt, ftInteger, {$IFDEF Delphi2009Up}ftShortint, {$ENDIF} ftWord: {added by fduenas: ftShortInt}
         Result := ttInteger;
@@ -146,66 +146,71 @@ Begin
     End;
 End;
 
-Function SizeOfExprType( ExprType: TExprtype ):Integer ;
+Function SizeOfExprType( ExprType: TExprtype ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 begin
- Result := SizeOf(Char);
+ Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF};
    Case ExprType Of
-    ttString: Result := SizeOf(AnsiChar);
+    ttString: Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(AnsiChar){$ELSE}XQ_SizeOf_AnsiChar{$ENDIF};
     {$IFDEF LEVEL4}
-    ttWideString: Result := SizeOf(WideChar);
+    ttWideString: Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeWideChar){$ELSE}XQ_SizeOf_NativeWideChar{$ENDIF};
     {$ENDIF}
-    ttFloat: Result := SizeOf(Double);
-    ttLargeInt: Result := SizeOf(Int64);
-    ttInteger: Result := SizeOf(Integer);
+    ttFloat: Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
+    ttLargeInt: Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF};
+    ttInteger: Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
+    ttBoolean: Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
    End;
 end;
 
-Function SizeOfFieldType( FieldType: TFieldType ):Integer ;
+Function SizeOfFieldType( FieldType: TFieldType ): TxNativeInt ; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   Case FieldType Of
 {$IFDEF LEVEL4}
     ftFixedChar,
 {$ENDIF}
     ftString:
-      Result := SizeOf(AnsiChar); { patched by fduenas }
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(AnsiChar){$ELSE}XQ_SizeOf_AnsiChar{$ENDIF}; { patched by fduenas }
     // this fixes some Float field values displayed wrongly
    {$IFDEF LEVEL4}
     ftWideString, ftFixedWideChar:
-        Result := SizeOf(WideChar); { patched by fduenas }
+        Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeWideChar){$ELSE}XQ_SizeOf_NativeWideChar{$ENDIF}; { patched by fduenas }
    {$ENDIF}
     ftSmallInt:
-      Result := SizeOf(SmallInt);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(SmallInt){$ELSE}XQ_SizeOf_SmallInt{$ENDIF};
    {$IFDEF Delphi2009Up}
     ftShortInt:
-      Result := SizeOf(ShortInt);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(ShortInt){$ELSE}XQ_SizeOf_ShortInt{$ENDIF};
    {$ENDIF}
     ftInteger:
-      Result := SizeOf(Integer);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
 {$IFDEF LEVEL4}
     ftLargeint:
-      Result := SizeOf(Int64);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF};
 {$ENDIF}
     ftWord:
-      Result := SizeOf(Word);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Word){$ELSE}XQ_SizeOf_Word{$ENDIF};
     ftBoolean:
-      Result := SizeOf(WordBool);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(WordBool){$ELSE}XQ_SizeOf_WordBool{$ENDIF};
     ftFloat:
-      Result := SizeOf(Double);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
     ftCurrency:
-      Result := SizeOf(Double);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF};
     ftDate:
-      Result := SizeOf(TDateTimeRec);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
     ftTime:
-      Result := SizeOf(TDateTimeRec);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
     ftDateTime:
-      Result := SizeOf(TDateTimeRec);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
+
+    ftTimeStamp: {ftTimeStamp added 2013-04-25}
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TDateTimeRec){$ELSE}XQ_SizeOf_TDateTime{$ENDIF};
+
     ftAutoInc:
-      Result := SizeOf(Integer);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF};
     ftBlob, ftMemo, ftGraphic, ftFmtMemo, ftParadoxOle, ftDBaseOle, {$IFDEF Delphi2009Up}ftStream, {$ENDIF}
       ftTypedBinary, ftBytes, ftVarBytes {$IFDEF Delphi2006Up}, ftWideMemo  {$ENDIF}:
-      Result := SizeOf(Pointer);
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Pointer){$ELSE}XQ_SizeOf_Pointer{$ENDIF};
     ftBCD{$IFDEF LEVEL6}, ftFMTBcd {$ENDIF}:
-      Result := 34;
+      Result := {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TBcd){$ELSE}XQ_SizeOf_TBCD{$ENDIF};
   Else
     Result := 0;
   End;
@@ -214,7 +219,7 @@ End;
 {
 procedure LeftSet(var S1: String; const S2: String);
 var
-  N,N1,N2: Integer;
+  N,N1,N2: TxNativeInt;
 begin
   N1 := Length(S1); if N1 = 0 then Exit;
   N2 := Length(S2);
@@ -232,9 +237,9 @@ begin
      Temp.Free;
 end;
 
-Procedure ReplaceString( Var Work: String; Const Old, NNew: String );
+Procedure ReplaceString( Var Work: TxNativeString; Const Old, NNew: TxNativeString );
 Var
-  OldLen, p: Integer;
+  OldLen, p: TxNativeInt;
 Begin
 
   If AnsiCompareText( Old, NNew ) = 0 Then Exit;
@@ -248,7 +253,7 @@ Begin
   End;
 End;
 
-Function TrimCRLF( Const s: String ): String;
+Function TrimCRLF( Const s: TxNativeString ): TxNativeString;
 Begin
   result := Trim( s );
   ReplaceString( result, #13, '' );
@@ -256,12 +261,12 @@ Begin
   ReplaceString( result, #11, '' ); {added by fduenas}
 End;
 
-Function MessageToUser( Const Msg: String; Atype: TMsgDlgtype ): Word;
+Function MessageToUser( Const Msg: TxNativeString; Atype: TMsgDlgtype ): Word;
 Begin
   Result := MessageDlg( Msg, Atype, [mbOk], 0 );
 End;
 
-Function IMax( A, B: Integer ): Integer;
+Function IMax( A, B: TxNativeInt ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   If A > B Then
     Result := A
@@ -269,7 +274,7 @@ Begin
     Result := B;
 End;
 
-Function IMin( A, B: Integer ): Integer;
+Function IMin( A, B: TxNativeInt ): TxNativeInt;  {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   If A < B Then
     Result := A
@@ -277,7 +282,7 @@ Begin
     Result := B;
 End;
 
-Function Max( Const A, B: Double ): Double;
+Function Max( Const A, B: Double ): Double; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   If A > B Then
     Result := A
@@ -285,7 +290,7 @@ Begin
     Result := B;
 End;
 
-Function Min( Const A, B: Double ): Double;
+Function Min( Const A, B: Double ): Double; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 Begin
   If A < B Then
     Result := A
@@ -293,7 +298,7 @@ Begin
     Result := B;
 End;
 
-Function RemoveStrDelim( Const S: String ): String;
+Function RemoveStrDelim( Const S: TxNativeString ): TxNativeString;
 Begin
   If ( Length( S ) >= 2 ) And
     CharInSet( S[1], xqtypes.SQuote ) And CharInSet( S[Length( S )], xqtypes.SQuote ) Then
@@ -302,7 +307,7 @@ Begin
     Result := S;
 End;
 
-Function AddCorrectStrDelim(Const S: String) : String;
+Function AddCorrectStrDelim(Const S: TxNativeString) : TxNativeString;
 Begin
   if AnsiPos('''', S) > 0 then
     Result := '"' + S + '"'
@@ -310,9 +315,9 @@ Begin
     Result := '''' + S + '''';
 End;
 
-Function CountChars( const s: string; Ch: Char ): Integer;
+Function CountChars( const s: TxNativeString; Ch: TxNativeChar ): TxNativeInt;
 var
-  I: Integer;
+  I: TxNativeInt;
 Begin
   Result:= 0;
   for I:= 1 to Length(s) do
@@ -336,16 +341,16 @@ Begin
 End;
 {$ENDIF}
 
-Function AddSlash( Const Path: String ): String;
+Function AddSlash( Const Path: TxNativeString ): TxNativeString;
 Begin
   result := Path;
   If ( Length( result ) > 0 ) And ( result[length( result )] <> '\' ) Then
     result := result + '\'
 End;
 
-Function RemoveSlash( Const Path: String ): String;
+Function RemoveSlash( Const Path: TxNativeString ): TxNativeString;
 Var
-  rlen: integer;
+  rlen: TxNativeInt;
 Begin
   result := Path;
   rlen := length( result );
@@ -355,7 +360,7 @@ End;
 
 {$IFDEF FALSE}
 
-Function GetRecordNumber( DataSet: TDataSet ): Integer;
+Function GetRecordNumber( DataSet: TDataSet ): TxNativeInt;
 {$IFDEF WITHBDE}
 Var
   CursorProps: CurProps;
@@ -390,7 +395,7 @@ Begin
 {$ENDIF}
 End;
 
-Procedure SetRecordNumber( DataSet: TDataSet; RecNum: Integer );
+Procedure SetRecordNumber( DataSet: TDataSet; RecNum: TxNativeInt );
 {$IFDEF WITHBDE}
 Var
   CursorProps: CurProps;
@@ -428,7 +433,7 @@ End;
 { TBufferedReadWrite - class implementation
    used for fast buffered readings/writing from files }
 
-Constructor TBufferedReadWrite.Create( F: TStream; FreeStream: Boolean; BuffSize: integer );
+Constructor TBufferedReadWrite.Create( F: TStream; FreeStream: Boolean; BuffSize: LongInt );
 Begin
   Inherited Create;
 
@@ -462,9 +467,9 @@ Begin
   FCurrentSector := -1;
 End;
 
-Function TBufferedReadWrite.Seek( Offset: Longint; Origin: Word ): Longint;
+Function TBufferedReadWrite.Seek( Offset: LongInt; Origin: Word ): LongInt;
 Var
-  TmpSector: LongInt;
+  TmpSector: TxNativeInt;
 Begin
   Result := 0;
   If Origin = soFromBeginning Then
@@ -472,7 +477,7 @@ Begin
     Result := Offset
   Else If Origin = soFromCurrent Then
     { from current position }
-    Result := ( FCurrentSector * FSizeOfSector + FOffsetInSector ) + Offset
+    Result := ( (FCurrentSector * FSizeOfSector) + FOffsetInSector ) + Offset
   Else If Origin = soFromEnd Then
   Begin
     { flush the buffer in order to detect the size of the file }
@@ -490,11 +495,11 @@ Begin
   FCurrentSector := TmpSector;
 End;
 
-Function TBufferedReadWrite.Read( Var Buffer; Count: Longint ): Longint;
+Function TBufferedReadWrite.Read( Var Buffer; Count: LongInt ): LongInt;
 Var
-  N, Diff: Longint;
+  N, Diff: TxNativeInt;
   { I cannot read more data than dsMaxStringSize chars at a time (take care with text) }
-  Temp: Array[0..dsMaxStringSize - 1] Of char Absolute Buffer;
+  Temp: Array[0..dsMaxStringSize - 1] Of Char Absolute Buffer;
 
   Function ReadNextBuffer: Boolean;
   Begin
@@ -533,11 +538,11 @@ Begin
   End;
 End;
 
-Function TBufferedReadWrite.Write( Const Buffer; Count: Longint ): Longint;
+Function TBufferedReadWrite.Write( Const Buffer; Count: LongInt ): LongInt;
 Var
-  N, Diff: Longint;
+  N, Diff: TxNativeInt;
   { I cannot read more data than dsMaxStringSize chars at a time (take care with text) }
-  Temp: Array[0..dsMaxStringSize - 1] Of char Absolute Buffer;
+  Temp: Array[0..dsMaxStringSize - 1] Of Char Absolute Buffer;
 
   Procedure WriteFullBuffer;
   Begin
@@ -587,17 +592,17 @@ End;
 
 { miscellaneous procedures }
 
-Function GetTemporaryFileName( Const Prefix: String ): String;
+Function GetTemporaryFileName( Const Prefix: TxNativeString ): TxNativeString;
 Var
-  TempPath: Array[0..1023] Of char;
-  FileName: Array[0..1023] Of char;
+  TempPath: Array[0..1023] Of TxNativeChar;
+  FileName: Array[0..1023] Of TxNativeChar;
 Begin
   GetTempPath( 1023, TempPath );
-  GetTempFileName( TempPath, PChar( Prefix ), 0, FileName );
+  GetTempFileName( TempPath, TxNativePChar( Prefix ), 0, FileName );
   result := FileName;
 End;
 
-Function TrimSquareBrackets( Const Ident: String ): String;
+Function TrimSquareBrackets( Const Ident: TxNativeString ): TxNativeString;
 Begin
   Result := Ident;
   If Length( Ident ) < 2 Then Exit;
@@ -605,7 +610,7 @@ Begin
   result := Copy( Ident, 2, Length( Ident ) - 2 );
 End;
 
-Function AddSquareBrackets( Const Ident: String ): String;
+Function AddSquareBrackets( Const Ident: TxNativeString ): TxNativeString;
 Var
   I: Integer;
 Begin
@@ -626,7 +631,7 @@ Begin
     begin
       Result := '[' + Ident + ']';
       Exit;
-    end else If Not CharInSet( Ident[I], ['A'..'Z', 'a'..'z', '0'..'9', '_'] ) Then
+    end else If Not (CharInSet(Ident[I], ['A'..'Z', 'a'..'z', '0'..'9', '_']{$IFDEF UNICODE}, CONST_XQ_ucIsAlpha{$ENDIF})) Then
     Begin
       Result := '[' + Ident + ']';
       Exit;
@@ -635,7 +640,7 @@ Begin
 End;
 
 { adds square brackes to full qualified fields table.fieldname }
-Function QualifiedFieldAddSquareBrackets( Const Ident: String ): String;
+Function QualifiedFieldAddSquareBrackets( Const Ident: TxNativeString ): TxNativeString;
 Var
   P: Integer;
 Begin
@@ -646,6 +651,18 @@ Begin
   else
     Result:= AddSquareBrackets(Ident);
 End;
+
+Function XQStringIsUnicode( const aString: {$IFDEF UNICODE}String{$ELSE}TxNativeWideString{$ENDIF} ): boolean;{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+var _count: Integer;
+begin
+ result := false;
+ for _count := 01 to Length( aString ) do
+ begin
+  result := (Integer( aString[_count] ) > $FF);
+  if result then
+     Break;
+ end;
+end;
 
 Initialization
 

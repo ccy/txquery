@@ -1,16 +1,20 @@
 program Demo;
-
+{$DEFINE MEMORY_CHECK}
 uses
+  FastMM4 in '..\..\..\extra\FastMM4\FastMM4.pas',
   Forms,
-  Ex1U in 'Ex1U.pas' {frmTest},
-  DemoAb in 'DemoAb.pas' {frmAbout};
+  DemoAb in '..\source\DemoAb.pas' {frmAbout},
+  Ex1U in '..\source\Ex1U.pas' {frmTest},
+  FastMM4Messages in '..\..\..\extra\FastMM4\FastMM4Messages.pas',
+  XQSyntaxHi in '..\..\..\source\XQSyntaxHi.pas',
+  XQColorSet in '..\..\..\source\XQColorSet.pas' {frmColorSettings};
 
 {$R *.RES}
 
-{.$DEFINE MEMORY_CHECK}
+
 begin
 {$IFDEF MEMORY_CHECK}
-  MemChk;
+  ReportMemoryLeaksOnShutdown := true;
 {$ENDIF}
   Application.Initialize;
   Application.CreateForm(TfrmTest, frmTest);

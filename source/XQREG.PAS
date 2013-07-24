@@ -47,7 +47,7 @@ procedure Register;
 implementation
 
 uses
-   Classes, xQuery, Db, SysUtils, SyntaxHi, xQBase
+   Classes, xQuery, Db, SysUtils, XQSyntaxHi, xQBase, XQTypes
 {$IFDEF LEVEL6}
    , DesignIntf, DesignEditors, Variants
 {$ELSE}
@@ -79,6 +79,10 @@ begin
       'DataSets', TDataSetsPropEditor);
   RegisterPropertyEditor(TypeInfo(TComponent), TParam,
       'Params', TParamPropEditor);
+  RegisterClass( TxNativeTStrings );
+  RegisterClass( TxNativeTWideStrings );
+  RegisterClass( TxNativeTStringList );
+  RegisterClass( TxNativeTWideStringList );
 end;
 
 { TDataSetsPropEditor - class implementation }

@@ -36,7 +36,7 @@
 unit QExprYacc;
 
 {$I xq_flag.INC}
-{$R Qexpryacc.res}
+{$R QExprYacc.res}
 interface
 
 uses
@@ -44,7 +44,7 @@ uses
 (*$IFDEF LEVEL6*)
   , Variants
 (*$ENDIF*)
-  ;
+  , XQTypes;
 
 const
   MAX_INDEXED_FIELDS = 10;
@@ -96,8 +96,8 @@ type
 
     fExprList: TList;
     fTempParams: TParameterList;
-    fGroupIdent: string;
-    fIdentifier: string;
+    fGroupIdent: TxNativeString;
+    fIdentifier: TxNativeString;
     fGroupIdentList: TStringList;
     fIdentifierList: TStringList;
     { is not this a simple expression ? like TABLE.FIELD
@@ -116,16 +116,16 @@ type
     fElseExpr: TExpression;
     { used in unknown identifiers }
     IDF: TExpression;
-    Procedure IDFunc( Sender: TObject; Const Group, Identifier: String;
+    Procedure IDFunc( Sender: TObject; Const Group, Identifier: TxNativeString;
       ParameterList: TParameterList; Var Expression: TExpression );
-    Function GetExplicitParam( const ParamName: string ): string;
+    Function GetExplicitParam( const ParamName: TxNativeString ): TxNativeString;
     function AddExpression(Expression: TExpression): TExpression;
     function GetParamList: TParameterList;
     function ForceParamList(Count: Integer): TParameterList;
     procedure GetTwoOperators;
     procedure GetOneOperator;
     procedure AddParam;
-    function GetString( const s: string ): string;
+    function GetString( const s: TxNativeString ): TxNativeString;
   public
     SubqueryExpr: TExpression; // used for subqueries only (special case)
     CheckData: TCheckData; // used when checking expression
@@ -137,8 +137,8 @@ type
     destructor Destroy; override;
     function yyparse : integer; override;
     function GetExpression: TExpression;
-    Procedure ParseExpression( Const ExprStr: String );
-    Function CheckExpression( Const ExprStr: String ): Boolean;
+    Procedure ParseExpression( Const ExprStr: TxNativeString );
+    Function CheckExpression( Const ExprStr: TxNativeString ): Boolean;
 
     Property ReferencedDataSets: TReferencedDataSetList Read fReferencedDataSets Write fReferencedDataSets;
     Property IdReferences: TStrings Read FIdReferences;
@@ -211,8 +211,7 @@ const RW_ESCAPE = 309;
 implementation
 
 uses
-  xquery, xqmiscel, Math, xqconsts, qlexlib, QExprLex, xqbase{$IFDEF LEVEL4}, WideStrUtils{$ENDIF},
-  xqtypes;
+  xquery, xqmiscel, Math, xqconsts, qlexlib, QExprLex, xqbase{$IFDEF LEVEL4}, WideStrUtils{$ENDIF};
 
 Constructor TReferencedDataSetItem.Create( RefDataSetList:
   TReferencedDataSetList );
@@ -398,6 +397,24 @@ Type
       Const Identifier: String; ResultType: TExprtype; MaxLen: Integer );
   End;
 
+  { use IFNULL to get a default value if the field has a NULL value }
+  TIFNULLExpr = Class( TFunctionExpr )
+  Protected
+    Function CheckParameters: Boolean; Override;
+    Function GetMaxString: String; Override;
+    Function GetAsString: String; Override;
+   {$IFDEF LEVEL4}
+    Function GetMaxWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+    Function GetAsWideString: WideString; Override; {added by fduenas: added WideString (Delphi4Up) support}
+   {$ENDIF}
+    Function GetAsFloat: Double; Override;
+    Function GetAsInteger: Integer; Override;
+    Function GetAsLargeInt: Int64; Override;
+    Function GetAsBoolean: Boolean; Override;
+    Function GetExprType: TExprtype; override;
+  End;
+
+  { use ISNULL to test only if a Field has a NULL value }
   TISNULLExpr = Class( TFunctionExpr )
   Protected
     Function CheckParameters: Boolean; Override;
@@ -459,7 +476,7 @@ Begin
       ftWideString, ftFixedWideChar {$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}:
         Result := ttWideString;
      {$ENDIF}
-      ftFloat, ftCurrency, ftBCD,{$IFDEF LEVEL6}ftFMTBcd,ftTimeStamp,{$ENDIF}ftDate,
+      ftFloat, ftCurrency, ftBCD,{$IFDEF LEVEL6}ftFMTBcd, ftTimeStamp,{$ENDIF}ftDate,
         ftTime, ftDateTime:
         Result := ttFloat; { changed by fduenas: ftLargeInt moved below}
       ftAutoInc, ftSmallInt, {$IFDEF Delphi2009Up} ftShortInt, {$ENDIF} ftInteger, ftWord:
@@ -621,7 +638,7 @@ Begin
   Result := 0;
   If FxQuery.IsDataSetDisabled( fField.DataSet ) Then
     Exit;
-  Result := {$IFDEF Delphi2010Up}fField.AsLargeInt{$ELSE}Trunc(fField.AsFloat){$ENDIF};
+  Result := {$IFDEF Delphi2009Up}fField.AsLargeInt{$ELSE}Trunc(fField.AsFloat){$ENDIF};
 
 End;
 
@@ -888,37 +905,38 @@ Begin
   Result := ttFloat;
 End;
 
-//TISNULLExpr
-
-function TISNULLExpr.CheckParameters: Boolean;
+{ TISNULLExpr }
+{ use IFNULL to get a default value if the field has a NULL value }
+function TIFNULLExpr.CheckParameters: Boolean;
 var _errorMsg: string;
 begin
  result := (ParameterCount >=1) and (ParameterCount <=2);
  If not Result then
-    _errorMsg:= SEXPR_WRONGPARAMETERCOUNT;
- {else if (ParameterCount=2) then
+    _errorMsg:= SEXPR_WRONGPARAMETERCOUNT
+ else if (ParameterCount=2) then
  begin
   result := (Param[0].ExprType = Param[1].ExprType);
   if not result then
      _errorMsg:= SEXPR_PARAMETERSTYPEDIFFERENT
- end;}
+ end;
 
  If Not result Then
     raise EExpression.CreateFmt( _errorMsg,
       [GetExprName])
 end;
 
-Function TISNULLExpr.GetAsBoolean: Boolean;
+Function TIFNULLExpr.GetAsBoolean: Boolean;
 Begin
   CheckParameters;
   Result := Param[0].IsNull;
-  if (ParameterCount=2) and
-     (Param[1].ExprType=ttBoolean) and
-     (Param[1].AsBoolean=False) then
-      Result := Not Result;
+  if (ParameterCount=2) then
+      if Result then
+         Result := Param[1].AsBoolean
+       else
+         Result := Param[0].AsBoolean
 End;
 
-function TISNULLExpr.GetAsFloat: Double;
+function TIFNULLExpr.GetAsFloat: Double;
 begin
   CheckParameters;
   if (Param[0].IsNull) then
@@ -936,7 +954,7 @@ begin
              Result := 0;
 end;
 
-function TISNULLExpr.GetAsInteger: Integer;
+function TIFNULLExpr.GetAsInteger: Integer;
 begin
   CheckParameters;
   if (Param[0].IsNull) then
@@ -954,7 +972,7 @@ begin
              Result := 0;
 end;
 
-function TISNULLExpr.GetAsLargeInt: Int64;
+function TIFNULLExpr.GetAsLargeInt: Int64;
 begin
   CheckParameters;
   if (Param[0].IsNull) then
@@ -972,7 +990,7 @@ begin
              Result := 0;
 end;
 
-function TISNULLExpr.GetAsString: String;
+function TIFNULLExpr.GetAsString: String;
 begin
   CheckParameters;
     if (Param[0].IsNull) then
@@ -980,14 +998,14 @@ begin
           Result := Param[1].AsString
       else
           Result := Param[0].AsString
-  else
+    else
       if (ParameterCount=2) then
           Result := Param[0].AsString
       else
          Result := NBoolean[GetAsBoolean];
 end;
 {$IFDEF LEVEL4}
-function TISNULLExpr.GetAsWideString: WideString;
+function TIFNULLExpr.GetAsWideString: WideString;
 begin
   CheckParameters;
     if (Param[0].IsNull) then
@@ -1002,7 +1020,7 @@ begin
          Result := NBoolean[GetAsBoolean];
 end;
 {$ENDIF}
-function TISNULLExpr.GetExprType: TExprtype;
+function TIFNULLExpr.GetExprType: TExprtype;
 Begin
  if (ParameterCount=2) then
      result := Param[1].ExprType
@@ -1010,7 +1028,7 @@ Begin
      result := ttBoolean;
 End;
 
-function TISNULLExpr.GetMaxString: String;
+function TIFNULLExpr.GetMaxString: String;
 begin
   CheckParameters;
     if (Param[0].IsNull) then
@@ -1026,7 +1044,7 @@ begin
           Result := NBoolean[False];
 end;
 {$IFDEF LEVEL4}
-function TISNULLExpr.GetMaxWideString: WideString;
+function TIFNULLExpr.GetMaxWideString: WideString;
 begin
   CheckParameters;
     if (Param[0].IsNull) then
@@ -1180,7 +1198,8 @@ Begin
       ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo {$ENDIF}:
         Result := ttWideString;
      (*$ENDIF*)
-      ftFloat, ftCurrency, ftBCD, {$IFDEF LEVEL6}ftFMTBcd, {$ENDIF} ftDate, ftTime, ftDateTime: Result := ttFloat;
+      ftFloat, ftCurrency, ftBCD, {$IFDEF LEVEL6}ftFMTBcd, ftTimeStamp,{$ENDIF}
+      ftDate, ftTime, ftDateTime: Result := ttFloat; {ftTimeStamp added 2013-04-25}
       ftAutoInc, ftSmallInt, {$IFDEF Delphi2009Up}ftShortInt,{$ENDIF} ftInteger, ftWord:
        Result := ttInteger;
 (*$IFDEF LEVEL4*)
@@ -1218,7 +1237,7 @@ End;
 
 function TFilterFieldExpr.GetAsLargeInt: Int64;
 begin
-  Result := fField.{$IFDEF Delphi2010Up}AsLargeInt{$ELSE}Value{$ENDIF};
+  Result := fField.{$IFDEF Delphi2009Up}AsLargeInt{$ELSE}Value{$ENDIF};
 end;
 
 Function TFilterFieldExpr.GetAsBoolean: Boolean;
@@ -1264,7 +1283,8 @@ Begin
       ftWideString, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo  {$ENDIF}:
          Result := ttWideString;
       (*$ENDIF*)
-      ftFloat, ftCurrency, ftBCD,{$IFDEF LEVEL6}ftFMTBcd, {$ENDIF} ftDate, ftTime, ftDateTime: Result := ttFloat;
+      ftFloat, ftCurrency, ftBCD,{$IFDEF LEVEL6}ftFMTBcd, ftTimeStamp,{$ENDIF}
+      ftDate, ftTime, ftDateTime: Result := ttFloat; {ftTimeStamp added 2013-04-25}
       ftAutoInc, ftSmallInt,{$IFDEF Delphi2009Up}ftShortint, {$ENDIF} ftInteger, ftWord:
         Result := ttInteger;
 (*$IFDEF LEVEL4*)
@@ -1362,7 +1382,7 @@ Begin
     if DataSet.Active = False Then DataSet.Open;
     fld := DataSet.FindField(fParam.Name);
     if fld = nil then Exit;
-    Result := fld.{$IFDEF Delphi2010Up}AsLargeInt{$ELSE}Value{$ENDIF};
+    Result := fld.{$IFDEF Delphi2009Up}AsLargeInt{$ELSE}Value{$ENDIF};
   end else
     Result := fParam.{$IFDEF Delphi2009Up}AsLargeInt{$ELSE}Value{$ENDIF};
 End;
@@ -1436,7 +1456,7 @@ begin
   inherited Destroy;
 end;
 
-Procedure TExprParser.IDFunc( Sender: TObject; Const Group, Identifier: String;
+Procedure TExprParser.IDFunc( Sender: TObject; Const Group, Identifier: TxNativeString;
   ParameterList: TParameterList; Var Expression: TExpression );
 Var
   TmpDataSet: TDataSet;
@@ -1505,8 +1525,8 @@ Begin
       If Assigned( F ) Then
       Begin
         _Params := TParameterList.Create(yyRuntimeFormatSettings, yySystemFormatSettings);
-        _Params.Add( TStringLiteral.Create( Group, yyRuntimeFormatSettings, yySystemFormatSettings ) );
-        _Params.Add( TStringLiteral.Create( Identifier, yyRuntimeFormatSettings, yySystemFormatSettings ) );
+        _Params.Add( CreateStringLiteralObj( Group, yyRuntimeFormatSettings, yySystemFormatSettings ) );
+        _Params.Add( CreateStringLiteralObj( Identifier, yyRuntimeFormatSettings, yySystemFormatSettings ) );
         Expression := TFieldExpr.Create( _Params, F, TSqlAnalizer(fAnalizer).xQuery, Self );
         If CheckData.RefCount = 1 Then
           CheckData.Field := F;
@@ -1553,7 +1573,16 @@ Begin
       //Else
       //  NumError := 1;
     End
-    Else If (Identifier = 'ISNULL') or (Identifier = 'IFNULL') Then // for use in sql select only
+    Else If (Identifier = 'IFNULL') Then // for use in sql select only
+    Begin
+      CheckData.HasMorefunctions := True;
+      // not enough checking for now
+      If Assigned( ParameterList ) And (ParameterList.Count > 0) Then
+         Expression := TIFNULLExpr.Create(Identifier, ParameterList, yyRuntimeFormatSettings, yySystemFormatSettings );
+      //Else
+      //  NumError := 1;
+    End
+    Else If (Identifier = 'ISNULL') Then // for use in sql select only
     Begin
       CheckData.HasMorefunctions := True;
       // not enough checking for now
@@ -1585,16 +1614,20 @@ Begin
       Accept := False;
       Datatype:= ttString;
       MaxLen:= 0;
-      if assigned(ParameterList) then
-         _Params := ParameterList;
+      if Assigned(ParameterList) then
+         _Params := ParameterList
+      else
+         _Params := TParameterList.Create(yyRuntimeFormatSettings, yySystemFormatSettings); {To make sure an object is passed, 2012-04-24}
       xQuery.OnUDFCheck( xQuery, Identifier, _Params, Datatype, MaxLen, Accept );
       If Accept Then
       Begin
-        if not assigned(_params) then
+        if not assigned(_Params) then
            _Params := TParameterList.Create(yyRuntimeFormatSettings, yySystemFormatSettings);
         CheckData.HasMorefunctions := True;
         Expression := TUDFExpr.Create(_Params, xQuery, Identifier, DataType, MaxLen );
-      End;
+      End
+      else if (_Params <> ParameterList) then
+              FreeAndNil(_Params);
     End;
   End;
 
@@ -1602,14 +1635,14 @@ Begin
     //Raise EExpression.CreateFmt( SWrongParameters, [Identifier] );
 End;
 
-Procedure TExprParser.ParseExpression( Const ExprStr: String );
+Procedure TExprParser.ParseExpression( Const ExprStr: TxNativeString );
 Var
   lexer: TCustomLexer;
   outputStream: TMemoryStream;
   errorStream: TMemoryStream;
   stream: TMemoryStream;
   ErrLine, ErrCol: Integer;
-  ErrMsg, Errtxt: String;
+  ErrMsg, Errtxt: TxNativeString;
 Begin
   If Length( ExprStr ) = 0 Then Exit;
   FillChar( CheckData, SizeOf( TCheckData ), #0 ); {must be #0 instead of 0}
@@ -1619,7 +1652,7 @@ Begin
     If Length( ExprStr ) > 0 Then
     Begin
       stream := TMemoryStream.create;
-      stream.write( ExprStr[1], Length( ExprStr ) * SizeOf(Char) ); { patched by ccy }
+      stream.write( ExprStr[1], Length( ExprStr ) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} ); { patched by ccy }
       stream.seek( 0, 0 );
       outputStream := TMemoryStream.create;
       errorStream := TMemoryStream.create;
@@ -1661,14 +1694,14 @@ Begin
   End;
 End;
 
-Function TExprParser.CheckExpression( Const ExprStr: String ): Boolean;
+Function TExprParser.CheckExpression( Const ExprStr: TxNativeString ): Boolean;
 Var
   lexer: TCustomLexer;
   outputStream: TMemoryStream;
   errorStream: TMemoryStream;
   stream: TMemoryStream;
   ErrLine, ErrCol: Integer;
-  ErrMsg, Errtxt: String;
+  ErrMsg, Errtxt: TxNativeString;
 Begin
   FillChar( CheckData, SizeOf( TCheckData ), #0 ); {must be #0 instead of 0}
   Result := false;
@@ -1678,7 +1711,7 @@ Begin
     If Length( ExprStr ) > 0 Then
     Begin
       stream := TMemoryStream.create;
-      stream.write( ExprStr[1], Length( ExprStr ) * SizeOf(Char) ); { patched by ccy }
+      stream.write( ExprStr[1], Length( ExprStr ) * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} ); { patched by ccy }
       stream.seek( 0, 0 );
       outputStream := TMemoryStream.create;
       errorStream := TMemoryStream.create;
@@ -1719,7 +1752,7 @@ Begin
   End;
 End;
 
-Function TExprParser.GetString( const s: string ): string;
+Function TExprParser.GetString( const s: TxNativestring ): TxNativestring;
 begin
   Result:= Copy( s, 2, Length(s) - 2);
 end;
@@ -1743,13 +1776,13 @@ begin
     NumParams:= 0
   else
   begin
-    NumParams:= Longint(FStackedParamCount[FStackedParamCount.Count-1]);
+    NumParams:= TxNativeInt(FStackedParamCount[FStackedParamCount.Count-1]);
     FStackedParamCount.Delete(FStackedParamCount.Count-1);
   end;
   if (FExprList.Count=0) or (NumParams=0) or (NumParams>FExprList.Count) then Exit;
   Result:= TParameterList.Create(yyRuntimeFormatSettings, yySystemFormatSettings);
   for I:= 0 to NumParams - 1 do
-    Result.Add(FExprList[FExprList.Count - NumParams + I]);
+      Result.Add(FExprList[FExprList.Count - NumParams + I]);
   while NumParams > 0 do
   begin
     FExprList.Delete(FExprList.Count-1);
@@ -1791,7 +1824,7 @@ end;
 
 procedure TExprParser.AddParam;
 begin
-  FParamCount:= Longint(FStackedParamCount[FStackedParamCount.Count-1]);
+  FParamCount:= TxNativeInt(FStackedParamCount[FStackedParamCount.Count-1]);
   Inc(FParamCount);
   FStackedParamCount[FStackedParamCount.Count-1]:= Pointer(FParamCount);
 end;
@@ -1803,7 +1836,7 @@ begin
   Result:= Expression;
 end;
 
-Function TExprParser.GetExplicitParam( const ParamName: string ): string;
+Function TExprParser.GetExplicitParam( const ParamName: TxNativeString ): TxNativeString;
 var
   pf: TParamsAsFieldsItem;
   Param: TParam;
@@ -1880,6 +1913,8 @@ begin
                   IDF:= AddExpression(TStringFunctionExprLib.Create(FIdentifier, FTempParams, sfLTrim))
           else if CompareText(FIdentifier,'RTRIM')=0 then
                   IDF:= AddExpression(TStringFunctionExprLib.Create(FIdentifier, FTempParams, sfRTrim))
+          else if CompareText(FIdentifier,'CHR')=0 then
+                  IDF:= AddExpression(TStringFunctionExprLib.Create(FIdentifier, FTempParams, sfChr))
           else if CompareText(FIdentifier,'TRUNC')=0 then
                   IDF:= AddExpression(TMathFunctionExprLib.Create(FIdentifier, FTempParams, mfTrunc))
           else if CompareText(FIdentifier,'ROUND')=0 then
@@ -1972,7 +2007,7 @@ begin
                   IDF:= AddExpression(TSQLLikeExpr.Create(fIdentifier, FTempParams, False))
           else if CompareText(FIdentifier,'SQLNOTLIKE')=0 then
                   IDF:= AddExpression(TSQLLikeExpr.Create(fIdentifier, FTempParams, True))
-          else if CompareText(FIdentifier,'ASCII')=0 then
+          else if (CompareText(FIdentifier,'ASCII')=0) or (CompareText(FIdentifier,'ORD')=0) then
                   IDF:= AddExpression(TASCIIExpr.Create(FIdentifier, FTempParams));
          end;
          if IDF=nil then
@@ -2212,7 +2247,7 @@ begin
          FExprList.Add(TFloatLiteral.Create(StrToFloat(yyv[yysp-0].yystring{$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF}), yyRuntimeFormatSettings, yySystemFormatSettings));
        end;
   57 : begin
-         FExprList.Add(TStringLiteral.Create( GetString( yyv[yysp-0].yystring ), yyRuntimeFormatSettings, yySystemFormatSettings ));
+         FExprList.Add(CreateStringLiteralObj( GetString( yyv[yysp-0].yystring ), yyRuntimeFormatSettings, yySystemFormatSettings ))
        end;
   58 : begin
          FExprList.Add(TBooleanLiteral.Create(True, yyRuntimeFormatSettings, yySystemFormatSettings));
@@ -2224,10 +2259,10 @@ begin
          yyval.yystring := GetExplicitParam( yyv[yysp-0].yystring );
        end;
   61 : begin
-         FExprList.Add(TStringLiteral.Create('', yyRuntimeFormatSettings, yySystemFormatSettings));
+         FExprList.Add(CreateStringLiteralObj('', yyRuntimeFormatSettings, yySystemFormatSettings));
        end;
   62 : begin
-         FExprList.Add(TStringLiteral.Create(GetString( yyv[yysp-0].yystring ), yyRuntimeFormatSettings, yySystemFormatSettings));
+         FExprList.Add(CreateStringLiteralObj(GetString( yyv[yysp-0].yystring ), yyRuntimeFormatSettings, yySystemFormatSettings));
        end;
   end;
 end(*yyaction*);
@@ -2493,5 +2528,81 @@ abort:
   yyparse := 1; exit;
 
 end(*yyparse*);
+
+{ TISNULLExpr }
+{ use ISNULL to test only if a Field has a NULL value }
+function TISNULLExpr.CheckParameters: Boolean;
+var _errorMsg: string;
+begin
+ result := (ParameterCount >=1) and (ParameterCount <=2);
+ If not Result then
+    _errorMsg:= SEXPR_WRONGPARAMETERCOUNT
+ else if (ParameterCount=2) then
+ begin
+  result := (Param[1].ExprType = ttBoolean) ;
+  if not result then
+     _errorMsg:= '%s: '+Format(SEXPR_INVALIDPARAMETERTYPEMUSTBE,[NExprType[Param[1].ExprType], NExprType[ttBoolean]]);
+ end;
+
+ If Not result Then
+    raise EExpression.CreateFmt( _errorMsg,
+      [GetExprName])
+end;
+
+Function TISNULLExpr.GetAsBoolean: Boolean;
+Begin
+  CheckParameters;
+  Result := Param[0].IsNull;
+  if (ParameterCount=2) and
+     (Param[1].AsBoolean=false) then
+      Result := Not Result;
+End;
+
+function TISNULLExpr.GetAsFloat: Double;
+begin
+  Result := GetAsInteger;
+end;
+
+function TISNULLExpr.GetAsInteger: Integer;
+begin
+  if GetAsBoolean then
+     Result := 1
+  else
+     Result := 0;
+end;
+
+function TISNULLExpr.GetAsLargeInt: Int64;
+begin
+  CheckParameters;
+  Result := GetAsInteger;
+end;
+
+function TISNULLExpr.GetAsString: String;
+begin
+ Result := NBoolean[GetAsBoolean];
+end;
+{$IFDEF LEVEL4}
+function TISNULLExpr.GetAsWideString: WideString;
+begin
+ Result := NBoolean[GetAsBoolean];
+end;
+{$ENDIF}
+function TISNULLExpr.GetExprType: TExprtype;
+Begin
+ result := ttBoolean;
+End;
+
+function TISNULLExpr.GetMaxString: String;
+begin
+  CheckParameters;
+  Result := NBoolean[False];
+end;
+{$IFDEF LEVEL4}
+function TISNULLExpr.GetMaxWideString: WideString;
+begin
+  CheckParameters;
+  Result := NBoolean[False];
+end;
+{$ENDIF}
 
 end.

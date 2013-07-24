@@ -3,7 +3,7 @@ unit OQBExqry;
 {*******************************************************}
 {                                                       }
 {       Delphi Visual Component Library                 }
-{       Open QBuilder Engine for TCustomxQuery sources        }
+{       Open QBuilder Engine for TCustomxQuery sources  }
 {                                                       }
 {       Adapted by Alfonso moreno                       }
 {                                                       }

@@ -39,13 +39,13 @@ unit QExprLex;
 interface
 
 uses
-  SysUtils, QLexLib, QExprYacc;
+  SysUtils, QLexLib, QExprYacc, XQTypes;
 
 type
     TExprLexer = Class(TCustomLexer)
     public
       // utility functions
-      function IsKeyword(const id : String; var token : integer) : boolean;
+      function IsKeyword(const id : TxNativeString; var token : integer) : boolean;
       // Lexer main functions
       function yylex( var yylval: YYSType ): Integer; override; {modified by fduenas: make TP Yacc/Lex thread safe)}
       procedure yyaction( yyruleno : integer; var yylval: YYSType ); {modified by fduenas: make TP Yacc/Lex thread safe)}
@@ -57,7 +57,7 @@ type
 //===============================================
   type
     TRWord = record
-       rword: string;
+       rword: TxNativeString;
        token: smallint;
     end;
 
@@ -93,9 +93,9 @@ type
 
 implementation
 
-uses CnvStrUtils, QFormatSettings;
+uses QCnvStrUtils, QFormatSettings{$IFDEF UNICODE}, Character{$ENDIF};
 
-function TExprLexer.IsKeyword(const id : string; var token : integer) : boolean;
+function TExprLexer.IsKeyword(const id : TxNativeString; var token : integer) : boolean;
 (* returns corresponding token number in token *)
 
 var
@@ -120,7 +120,7 @@ procedure TExprLexer.yyaction ( yyruleno : Integer; var yylval: YYSType ); {modi
   (* local definitions: *)
 
    var
-      c: char;
+      c: TxNativeChar;
       token, code, value: Integer;
      {$IFNDEF Delphi7Up}
       sfs: TFormatSettings;
@@ -186,13 +186,15 @@ begin
   end;
   9:
 
-  if Length( yylval.yystring ) >= 10 then
+  if (Length( yylval.yystring ) >= Length(yyRuntimeFormatSettings.ShortDateFormat)) or
+     (Length( yylval.yystring ) >= Length(yyRuntimeFormatSettings.ShortTimeFormat)) {before was 10} then
   begin
-   { section to handle dates in the format m/d/yyyy, specified in SDefaultDateFormat }
+   { section to handle dates/time in the format specified by TXQuery.FormatSettings.Parser,
+     default values are specified in SFmtDefaultXXXXXXXXX constants (QFormatSettings.pas) }
    {$IFNDEF Delphi7Up}
     RestoreFormatSettings( yyRuntimeFormatSettings );
    {$ENDIF}
-    yylval.yystring := FloatToStr(StrToDate(Copy(yylval.yystring, 2, yyTextLen - 2){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF}){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF});
+    yylval.yystring := FloatToStr(StrToDateTime(Copy(yylval.yystring, 2, yyTextLen - 2){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF}){$IFDEF Delphi7Up},yyRuntimeFormatSettings{$ENDIF});
    {$IFNDEF Delphi7Up}
     RestoreFormatSettings( yySystemFormatSettings );
    {$ENDIF}
@@ -248,6 +250,7 @@ function TExprLexer.yylex( var yylval: YYSType ) : Integer;
 
 type YYTRec = record
                 cc : {$IFNDEF Delphi7_UP} set of AnsiChar {$ELSE} TSysCharSet {$ENDIF}; { patched by ccy }  {changed to char}
+{$IFDEF UNICODE}uc : set of TUnicodeCategory; {$ENDIF}
                 s  : SmallInt;
               end;
 
@@ -473,7 +476,7 @@ yym : array [1..yynmatches] of SmallInt = (
 yyt : array [1..yyntrans] of YYTrec = (
 { 0: }
   ( cc: [ #1..#8,#11..#31,'!','%','&',';','?','@','\',']',
-            '`','{'..#127 ]; s: 25),
+            '`','{'..#127 ];{$IFDEF UNICODE}uc:[];{$ENDIF} s: 25),
   ( cc: [ #9 ]; s: 24),
   ( cc: [ #10 ]; s: 23),
   ( cc: [ ' ' ]; s: 22),
@@ -489,12 +492,12 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ '-' ]; s: 4),
   ( cc: [ '.' ]; s: 6),
   ( cc: [ '/' ]; s: 21),
-  ( cc: [ '0'..'9' ]; s: 5),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 5),
   ( cc: [ ':' ]; s: 17),
   ( cc: [ '<' ]; s: 15),
   ( cc: [ '=' ]; s: 16),
   ( cc: [ '>' ]; s: 14),
-  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ]; s: 2),
+  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 2),
   ( cc: [ '[' ]; s: 3),
   ( cc: [ '^' ]; s: 20),
 { 1: }
@@ -515,36 +518,36 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ '-' ]; s: 4),
   ( cc: [ '.' ]; s: 6),
   ( cc: [ '/' ]; s: 21),
-  ( cc: [ '0'..'9' ]; s: 5),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 5),
   ( cc: [ ':' ]; s: 17),
   ( cc: [ '<' ]; s: 15),
   ( cc: [ '=' ]; s: 16),
   ( cc: [ '>' ]; s: 14),
-  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ]; s: 2),
+  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 2),
   ( cc: [ '[' ]; s: 3),
   ( cc: [ '^' ]; s: 20),
 { 2: }
-  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ]; s: 26),
+  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsAlpha;{$ENDIF} s: 26),
 { 3: }
-  ( cc: [ #1..'Z','\','^'..#255 ]; s: 27),
+  ( cc: [ #1..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 27),
   ( cc: [ ']' ]; s: 28),
 { 4: }
-  ( cc: [ '0'..'9' ]; s: 29),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 29),
 { 5: }
   ( cc: [ '.' ]; s: 31),
-  ( cc: [ '0'..'9' ]; s: 30),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 30),
 { 6: }
-  ( cc: [ '0'..'9' ]; s: 32),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 32),
 { 7: }
   ( cc: [ '0'..'9','A'..'F','a'..'f' ]; s: 33),
 { 8: }
-  ( cc: [ #1..'&','('..#255 ]; s: 34),
+  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 34),
   ( cc: [ '''' ]; s: 35),
 { 9: }
-  ( cc: [ #1..'!','#'..#255 ]; s: 36),
+  ( cc: [ #1..'!','#'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 36),
   ( cc: [ '"' ]; s: 37),
 { 10: }
-  ( cc: [ #1..'"','$'..#255 ]; s: 38),
+  ( cc: [ #1..'"','$'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 38),
   ( cc: [ '#' ]; s: 39),
 { 11: }
 { 12: }
@@ -558,7 +561,7 @@ yyt : array [1..yyntrans] of YYTrec = (
 { 17: }
 { 18: }
 { 19: }
-  ( cc: [ '0'..'9' ]; s: 29),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 29),
 { 20: }
 { 21: }
   ( cc: [ '*' ]; s: 43),
@@ -567,44 +570,44 @@ yyt : array [1..yyntrans] of YYTrec = (
 { 24: }
 { 25: }
 { 26: }
-  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ]; s: 26),
+  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsAlpha;{$ENDIF} s: 26),
 { 27: }
-  ( cc: [ #1..'Z','\','^'..#255 ]; s: 27),
+  ( cc: [ #1..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 27),
   ( cc: [ ']' ]; s: 28),
 { 28: }
 { 29: }
   ( cc: [ '.' ]; s: 44),
-  ( cc: [ '0'..'9' ]; s: 29),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 29),
 { 30: }
   ( cc: [ '.' ]; s: 31),
-  ( cc: [ '0'..'9' ]; s: 30),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 30),
 { 31: }
-  ( cc: [ '0'..'9' ]; s: 31),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 31),
 { 32: }
-  ( cc: [ '0'..'9' ]; s: 32),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 32),
   ( cc: [ 'E','e' ]; s: 45),
 { 33: }
   ( cc: [ '0'..'9','A'..'F','a'..'f' ]; s: 33),
 { 34: }
-  ( cc: [ #1..'&','('..#255 ]; s: 34),
+  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 34),
   ( cc: [ '''' ]; s: 35),
 { 35: }
 { 36: }
-  ( cc: [ #1..'!','#'..#255 ]; s: 36),
+  ( cc: [ #1..'!','#'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 36),
   ( cc: [ '"' ]; s: 37),
 { 37: }
 { 38: }
-  ( cc: [ #1..'"','$'..#255 ]; s: 38),
+  ( cc: [ #1..'"','$'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 38),
   ( cc: [ '#' ]; s: 39),
 { 39: }
 { 40: }
 { 41: }
 { 42: }
 { 43: }
-  ( cc: [ #1..')','+'..#255 ]; s: 43),
+  ( cc: [ #1..')','+'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 43),
   ( cc: [ '*' ]; s: 46),
 { 44: }
-  ( cc: [ '0'..'9' ]; s: 31),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 31),
 { 45: }
   ( cc: [ '+','-' ]; s: 44),
 { 46: }
@@ -947,7 +950,7 @@ scan:
   (* determine action: *)
 
   yyn := yytl[yystate];
-  while (yyn<=yyth[yystate]) and not CharInSet(yyactchar, yyt[yyn].cc) do inc(yyn);
+  while (yyn<=yyth[yystate]) and not (CharInSet(yyactchar, yyt[yyn].cc{$IFDEF UNICODE},yyt[yyn].uc{$ENDIF})) do inc(yyn);
   if yyn>yyth[yystate] then goto action;
     (* no transition on yyactchar in this state *)
 

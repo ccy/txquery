@@ -38,28 +38,28 @@ Unit QLexLib;
 {$I XQ_FLAG.INC}
 Interface
 
-Uses Classes, SysUtils{, QFormatSettings};
+Uses Classes, SysUtils, QFormatSettings, XQTypes;
 
 Const
   nl = #10; (* newline character *)
-  max_chars = maxint div SizeOf(Char); { patched by ccy }
+  max_chars = maxint div {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}; { patched by ccy }
   intial_bufsize = 16384;
 
 Type
 
   PCharArray = ^TCharArray;
-  TCharArray = array [1..max_chars] of Char;
+  TCharArray = array [1..max_chars] of TxNativeChar;
 
   {modified by fduenas: move YYSType here to make TP Yacc/Lex thread safe)}
   YYSType = record
-               yystring : string
+               yystring : TxNativeString
             end
   (*YYSType*);
 
   TCustomLexer = Class
   private
-    function GetBuf(Index: Integer): Char;
-    procedure SetBuf(Index: Integer; Value: Char);
+    function GetBuf(Index: Integer): TxNativeChar;
+    procedure SetBuf(Index: Integer; Value: TxNativeChar);
   Public
     //yyinput, yyoutput : Text;      (* input and output file            *)
     //yyerrorfile       : Text;      (* standard error file              *)
@@ -67,7 +67,7 @@ Type
     yySystemFormatSettings: TFormatSettings;
     yyinput, yyoutput: TStream; (* input and output file            *)
     yyerrorfile: TStream; (* standard error file              *)
-    yyline: String; (* current input line               *)
+    yyline: TxNativeString; (* current input line               *)
     yylineno, yycolno: Integer; (* current input position           *)
     //yytext: String; (* matched text                     *)
     yyTextBuf         : PCharArray;
@@ -100,15 +100,15 @@ to the input buffer), you can easily replace get_char, unget_char and
 put_char by another suitable set of routines, e.g. if you want to read
 from/write to memory, etc. *)
 
-    Function get_char: Char;
+    Function get_char: TxNativeChar;
     (* obtain one character from the input file (null character at end-of-
        file) *)
 
-    Procedure unget_char( c: Char );
+    Procedure unget_char( c: TxNativeChar );
     (* return one character to the input file to be reread in subsequent
        calls to get_char *)
 
-    Procedure put_char( c: Char );
+    Procedure put_char( c: TxNativeChar );
     (* write one character to the output file *)
 
   (* Utility routines: *)
@@ -132,7 +132,7 @@ from/write to memory, etc. *)
        when rejecting a match. *)
 
     Procedure returni( n: Integer );
-    Procedure returnc( c: Char );
+    Procedure returnc( c: TxNativeChar );
     (* sets the return value of yylex *)
 
     Procedure start( state: Integer );
@@ -162,19 +162,19 @@ from/write to memory, etc. *)
     destructor Destroy; override;
     procedure CheckBuffer(Index : integer);
     procedure CheckyyTextBuf(Size : integer);
-    procedure GetyyText(var s : string);
-    property Buf[Index: Integer]: Char read GetBuf write SetBuf;
+    procedure GetyyText(var s : TxNativeString);
+    property Buf[Index: Integer]: TxNativeChar read GetBuf write SetBuf;
 
   Protected
     yystate: Integer; (* current state of lexical analyzer *)
-    yyactchar: Char; (* current character *)
-    yylastchar: Char; (* last matched character (#0 if none) *)
+    yyactchar: TxNativeChar; (* current character *)
+    yylastchar: TxNativeChar; (* last matched character (#0 if none) *)
     yyrule: Integer; (* matched rule *)
     yyreject: Boolean; (* current match rejected? *)
     yydone: Boolean; (* yylex return value set? *)
     yyretval: Integer; (* yylex return value *)
     bufptr: Integer;
-    //buf: Array[1..max_chars] Of Char;
+    //buf: Array[1..max_chars] Of TxNativeChar;
     bufSize : Integer;
     FBuf : PCharArray;
 
@@ -206,20 +206,20 @@ from/write to memory, etc. *)
     (* reinitializes state information after lexical analysis has been
        finished *)
 
-    Procedure fatal( msg: String );
+    Procedure fatal( msg: TxNativeString );
     (* writes a fatal error message and halts program *)
 
   End; (* TCustomLexeer *)
 
 Function eof( aStream: Tstream ): boolean;
-Procedure readln( aStream: TStream; Var aLine: String );
-Procedure writeln( aStream: TStream; aline: String );
-Procedure write( aStream: TStream; aLine: String );
+Procedure readln( aStream: TStream; Var aLine: TxNativeString );
+Procedure writeln( aStream: TStream; aline: TxNativeString );
+Procedure write( aStream: TStream; aLine: TxNativeString );
 
 Implementation
 
 uses
-  math, CnvStrUtils;
+  math, QCnvStrUtils;
 
 (* utility procedures *)
 
@@ -228,13 +228,13 @@ Begin
   result := aStream.position >= aStream.size;
 End;
 
-Procedure readln( aStream: TStream; Var aLine: String );
+Procedure readln( aStream: TStream; Var aLine: TxNativeString );
 Var
   //aBuffer: String;
-  CRBuf : string;
+  CRBuf : TxNativeString;
   trouve: boolean;
-  unCar: Char;
-  Buf : PChar;
+  unCar: TxNativeChar;
+  Buf : TxNativePChar;
   BufSize : Integer;
   i : Integer;
 
@@ -243,14 +243,17 @@ Var
      repeat
       //we need to take into account size of char - we are increasing
       //position in stream by SizeOf(char) and not by a byte
-      if (i * SizeOf(Char)) >= (BufSize - SizeOf(Char)) then
+      if (i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}) >=
+         (BufSize - {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}) then
       //(- SizeOf(Char) is needed if BufSize is odd number and
       //GetMem works in chunks of 1 byte
       begin
-        BufSize := Max (BufSize * SizeOf(Char), 256 );
+        BufSize := Max (BufSize *
+         {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}, 256 );
         ReallocMem (Buf, BufSize);
       end;
-    until (i * SizeOf(Char)) < (BufSize - SizeOf(Char));
+    until (i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}) <
+          (BufSize - {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF});
 
   end;
 
@@ -259,12 +262,12 @@ Begin
   //aBuffer := '';
   BufSize := 256;
   i := 0;
-  GetMem (Buf, BufSize * SizeOf(Char)); { patched by ccy }
-  FillChar(Buf^, BufSize * SizeOf(Char), #0); {added by fduenas}
+  GetMem (Buf, BufSize * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
+  FillChar(Buf^, BufSize * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}, #0); {added by fduenas}
   try
     trouve := false;
     Repeat
-      aStream.read( unCar, 1 * SizeOf(Char) ); { patched by ccy }
+      aStream.read( unCar, 1 * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF} ); { patched by ccy }
       If aStream.Position >= aStream.Size Then
       Begin
         trouve := true;
@@ -273,15 +276,15 @@ Begin
           //aLine := aBuffer+unCar
           Inc (i);
           CheckBuffer;
-          Move (uncar, Buf [i - 1], 1 * SizeOf(Char)); { patched by ccy }
+          Move (uncar, Buf [i - 1], 1 * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
           SetLength (aLine, i);
-          Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
+          Move (Buf^, aLine [1], i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
         end else
         begin
           if i > 0 then
           begin
             SetLength (aLine, i);
-            Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
+            Move (Buf^, aLine [1], i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
           end else
             aLine:='';
         end;
@@ -294,14 +297,14 @@ Begin
               if i>0 then
               begin
                 SetLength (aLine, i);
-                Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
+                Move (Buf^, aLine [1], i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
                 trouve := true;
               end else
                 aLine:= '';
             End;
           #13:
             Begin
-              aStream.read( unCar, 1 * SizeOf(Char)); { patched by ccy }
+              aStream.read( unCar, 1 * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
               If {$if RtlVersion <= 18.5} unCar in [#10,#11] {$else} CharInSet(unCar, [#10, #11]) {$ifend} Then {patched by fduenas: some times a char(11) is added to end of each line
                                                     when assigning TRichEdit.Lines.Text to SQL | SQL Script property}
               Begin
@@ -309,7 +312,7 @@ Begin
                 if i > 0 then
                 begin
                   SetLength (aLine, i);
-                  Move (Buf^, aLine [1], i * SizeOf(Char)); { patched by ccy }
+                  Move (Buf^, aLine [1], i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
                   trouve := true;
                 end else
                   aLine:='';
@@ -319,7 +322,7 @@ Begin
                 Inc (i, 2);
                 CheckBuffer;
                 CRBuf := #13 + unCar;
-                Move (CRBuf [1], Buf [i - 2], 2 * SizeOf(Char)); { patched by ccy }
+                Move (CRBuf [1], Buf [i - 2], 2 * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
                 //aBuffer := aBuffer + #13 + unCar;
               End;
             End;
@@ -328,31 +331,31 @@ Begin
         begin
           Inc (i);
           CheckBuffer;
-          Move (unCar, Buf [i - 1], 1 * SizeOf(Char)); { patched by ccy }
+          Move (unCar, Buf [i - 1], 1 * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
           //aBuffer := aBuffer+unCar;
         end;
 
         End;
     Until trouve;
   finally
-    FreeMem (Buf, BufSize * SizeOf(Char));  { patched by ccy }
+    FreeMem (Buf, BufSize * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF});  { patched by ccy }
   end;
 End;
 
-Procedure writeln( aStream: TStream; aline: String );
+Procedure writeln( aStream: TStream; aline: TxNativeString );
 Const
-  FINLIGNE: Array[1..2] Of char = ( #13, #10 );
+  FINLIGNE: Array[1..2] Of TxNativeChar = ( #13, #10 );
 Begin
   // ??????
   write( aStream, aLine );
   aStream.write( FINLIGNE, 2 );
 End;
 
-Procedure write( aStream: TStream; aLine: String );
+Procedure write( aStream: TStream; aLine: TxNativeString );
 Const
   WRITEBUFSIZE = 8192;
 Var
-  aBuffer: Array[1..WRITEBUFSIZE] Of char;
+  aBuffer: Array[1..WRITEBUFSIZE] Of TxNativeChar;
   j, nbuf: integer;
   k, nreste: integer;
 Begin
@@ -369,7 +372,7 @@ Begin
   aStream.write( aBuffer, nreste );
 End;
 
-Procedure TCustomLexer.fatal( msg: String );
+Procedure TCustomLexer.fatal( msg: TxNativeString );
 (* writes a fatal error message and halts program *)
 Begin
   writeln( yyerrorfile, 'LexLib: ' + msg );
@@ -378,7 +381,7 @@ End;
 
 (* I/O routines: *)
 
-Function TCustomLexer.get_char: Char;
+Function TCustomLexer.get_char: TxNativeChar;
 Var
   i: Integer;
 Begin
@@ -404,7 +407,7 @@ Begin
     get_char := #0;
 End;
 
-Procedure TCustomLexer.unget_char( c: Char );
+Procedure TCustomLexer.unget_char( c: TxNativeChar );
 Begin
   If bufptr = max_chars Then
     fatal( 'input buffer overflow' );
@@ -413,7 +416,7 @@ Begin
   buf[bufptr] := c;
 End;
 
-Procedure TCustomLexer.put_char( c: Char );
+Procedure TCustomLexer.put_char( c: TxNativeChar );
 Begin
   If c = #0 Then
     { ignore }
@@ -449,7 +452,7 @@ Const
 
 Var
 
-  yystext: String;
+  yystext: TxNativeString;
   yysstate, yylstate: Integer;
   yymatches: Integer;
   yystack: Array[1..max_matches] Of Integer;
@@ -516,7 +519,7 @@ Begin
   yydone := true;
 End;
 
-Procedure TCustomLexer.returnc( c: Char );
+Procedure TCustomLexer.returnc( c: TxNativeChar );
 Begin
   yyretval := ord( c );
   yydone := true;
@@ -653,19 +656,19 @@ begin
   repeat
     if Index > BufSize then
     begin
-      bufSize := max (bufSize * SizeOf(Char), intial_bufsize); {changed bye fduenas, 2 to SizeOf(Char)}
+      bufSize := max (bufSize * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}, intial_bufsize); {changed bye fduenas, 2 to SizeOf(Char)}
       ReallocMem (FBuf, bufSize);
     end;
   until Index <= bufSize;
 end;
 
-function TCustomLexer.GetBuf(Index: Integer): Char;
+function TCustomLexer.GetBuf(Index: Integer): TxNativeChar;
 begin
   CheckBuffer (Index);
   Result := FBuf^ [Index];
 end;
 
-procedure TCustomLexer.SetBuf(Index: Integer; Value: Char);
+procedure TCustomLexer.SetBuf(Index: Integer; Value: TxNativeChar);
 begin
   CheckBuffer (Index);
   FBuf^ [Index] := Value;
@@ -676,18 +679,18 @@ begin
   repeat
     if Size > yyTextBufSize then
     begin
-      yyTextBufSize := max (yyTextBufSize * SizeOf(Char), intial_bufsize); {changed bye fduenas, 2 to SizeOf(Char)}
+      yyTextBufSize := max (yyTextBufSize * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}, intial_bufsize); {changed bye fduenas, 2 to SizeOf(Char)}
       ReallocMem (yyTextBuf, yyTextBufSize);
     end;
   until Size <= yyTextBufSize;
 end;
 
-procedure TCustomLexer.GetyyText(var s : string);
+procedure TCustomLexer.GetyyText(var s : TxNativeString);
 begin
   if yyTextLen > 0 then
   begin
     SetLength (s, yyTextLen);
-    Move (yytextbuf^, s[1], yyTextLen * SizeOf(Char)); { patched by ccy }
+    Move (yytextbuf^, s[1], yyTextLen * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}); { patched by ccy }
   end
   else
     s:= '';

@@ -39,25 +39,25 @@ unit XQLex;
 interface
 
 uses
-  SysUtils, Classes, QLexLib, xqYacc;
+  SysUtils, Classes, QLexLib, xqYacc, XQTypes;
 
 type
   TxqLexer = Class( TCustomLexer)
   private
     FIsWhereActive : Boolean;
-    FDateFormat    : String;
+   // FDateFormat    : TxNativeString;
     FIgnoreBadDates: Boolean;
   public
 
     // utility functions
-    function IsKeyword(const id : String; var token : integer) : boolean;
+    function IsKeyword(const id : TxNativeString; var token : integer) : boolean;
     // Lexer main functions
     function yylex( var yylval: YYSType ) : Integer; override; {modified by fduenas: make TP Yacc/Lex thread safe)}
     procedure yyaction( yyruleno : integer; var yylval: YYSType); {modified by fduenas: make TP Yacc/Lex thread safe)}
     procedure commenteof;
 
     property IsWhereActive: Boolean read FIsWhereActive write FIsWhereActive;
-    property DateFormat: String read FDateFormat write FDateFormat;
+    //property DateFormat: TxNativeString read FDateFormat write FDateFormat;
     property IgnoreBadDates: Boolean read FIgnoreBadDates write FIgnoreBadDates;
   end;
 
@@ -66,7 +66,7 @@ type
 //===============================================
   type
     TRWord = record
-       rword: string;
+       rword: TxNativestring;
        token: smallint;
     end;
 
@@ -178,9 +178,10 @@ type
 
 implementation
 
-uses xqConsts, xquery, CnvStrUtils;
+uses xqConsts, xquery, QCnvStrUtils{$IFNDEF Delphi7Up}, QFormatSettings {$ENDIF}
+{$IFDEF UNICODE}, Character{$ENDIF};
 
-function TxqLexer.IsKeyword(const id : string; var token : integer) : boolean;
+function TxqLexer.IsKeyword(const id : TxNativestring; var token : integer) : boolean;
 (* returns corresponding token number in token *)
 
 var
@@ -210,11 +211,11 @@ procedure TXQLexer.yyaction ( yyruleno : Integer; var yylval: YYSType ); {modifi
   (* local definitions: *)
 
    var
-      c: char;
+      c: TxNativeChar;
       token, code, value: Integer;
       {SaveDate: String;}
 
-      Function ReturnDate( const ADate: String ): string;
+      Function ReturnDate( const ADate: TxNativeString ): TxNativeString;
       begin
         (*
         SaveDate := {$IFDEF LEVEL14}FormatSettings.{$ENDIF}ShortDateFormat;
@@ -416,6 +417,7 @@ function TXQLexer.yylex( var yylval: YYSType ) : Integer; {modified by fduenas: 
 
 type YYTRec = record
                 cc : {$IFNDEF Delphi7_UP} set of AnsiChar {$ELSE} TSysCharSet {$ENDIF}; { patched by ccy }
+{$IFDEF UNICODE}uc : Set of TUnicodeCategory; {$ENDIF}
                 s  : SmallInt;
               end;
 
@@ -705,13 +707,13 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ '-' ]; s: 5),
   ( cc: [ '.' ]; s: 7),
   ( cc: [ '/' ]; s: 3),
-  ( cc: [ '0'..'9' ]; s: 6),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 6),
   ( cc: [ ':' ]; s: 18),
   ( cc: [ ';' ]; s: 19),
   ( cc: [ '<' ]; s: 17),
   ( cc: [ '=' ]; s: 20),
   ( cc: [ '>' ]; s: 16),
-  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ]; s: 2),
+  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 2),
   ( cc: [ '[' ]; s: 4),
   ( cc: [ ']' ]; s: 15),
   ( cc: [ '^' ]; s: 23),
@@ -734,42 +736,42 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ '-' ]; s: 5),
   ( cc: [ '.' ]; s: 7),
   ( cc: [ '/' ]; s: 3),
-  ( cc: [ '0'..'9' ]; s: 6),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 6),
   ( cc: [ ':' ]; s: 18),
   ( cc: [ ';' ]; s: 19),
   ( cc: [ '<' ]; s: 17),
   ( cc: [ '=' ]; s: 20),
   ( cc: [ '>' ]; s: 16),
-  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ]; s: 2),
+  ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 2),
   ( cc: [ '[' ]; s: 4),
   ( cc: [ ']' ]; s: 15),
   ( cc: [ '^' ]; s: 23),
   ( cc: [ '|' ]; s: 24),
 { 2: }
-  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ]; s: 29),
+  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsAlpha;{$ENDIF} s: 29),
 { 3: }
   ( cc: [ '*' ]; s: 30),
 { 4: }
-  ( cc: [ #1..')','+'..'Z','\','^'..#255 ]; s: 32),
+  ( cc: [ #1..')','+'..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 32),
   ( cc: [ '*' ]; s: 31),
   ( cc: [ ']' ]; s: 33),
 { 5: }
   ( cc: [ '-' ]; s: 34),
 { 6: }
   ( cc: [ '.' ]; s: 36),
-  ( cc: [ '0'..'9' ]; s: 35),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 35),
 { 7: }
-  ( cc: [ '0'..'9' ]; s: 37),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 37),
 { 8: }
   ( cc: [ '0'..'9','A'..'F','a'..'f' ]; s: 38),
 { 9: }
-  ( cc: [ #1..'&','('..#255 ]; s: 39),
+  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 39),
   ( cc: [ '''' ]; s: 40),
 { 10: }
-  ( cc: [ #1..'!','#'..#255 ]; s: 41),
+  ( cc: [ #1..'!','#'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 41),
   ( cc: [ '"' ]; s: 42),
 { 11: }
-  ( cc: [ #1..'"','$'..#255 ]; s: 43),
+  ( cc: [ #1..'"','$'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 43),
   ( cc: [ '#' ]; s: 44),
 { 12: }
 { 13: }
@@ -793,42 +795,42 @@ yyt : array [1..yyntrans] of YYTrec = (
 { 27: }
 { 28: }
 { 29: }
-  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ]; s: 29),
+  ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsAlpha;{$ENDIF} s: 29),
 { 30: }
-  ( cc: [ #1..')','+'..#255 ]; s: 30),
+  ( cc: [ #1..')','+'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 30),
   ( cc: [ '*' ]; s: 49),
 { 31: }
-  ( cc: [ #1..')','+'..'Z','\','^'..#255 ]; s: 31),
+  ( cc: [ #1..')','+'..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 31),
   ( cc: [ '*' ]; s: 60),
   ( cc: [ '[' ]; s: 59),
   ( cc: [ ']' ]; s: 50),
 { 32: }
-  ( cc: [ #1..'Z','\','^'..#255 ]; s: 32),
+  ( cc: [ #1..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 32),
   ( cc: [ ']' ]; s: 33),
 { 33: }
 { 34: }
-  ( cc: [ #1..',','.'..#255 ]; s: 34),
+  ( cc: [ #1..',','.'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 34),
   ( cc: [ '-' ]; s: 51),
 { 35: }
   ( cc: [ '.' ]; s: 36),
-  ( cc: [ '0'..'9' ]; s: 35),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 35),
 { 36: }
-  ( cc: [ '0'..'9' ]; s: 36),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 36),
 { 37: }
-  ( cc: [ '0'..'9' ]; s: 37),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 37),
   ( cc: [ 'E','e' ]; s: 52),
 { 38: }
   ( cc: [ '0'..'9','A'..'F','a'..'f' ]; s: 38),
 { 39: }
-  ( cc: [ #1..'&','('..#255 ]; s: 39),
+  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 39),
   ( cc: [ '''' ]; s: 40),
 { 40: }
 { 41: }
-  ( cc: [ #1..'!','#'..#255 ]; s: 41),
+  ( cc: [ #1..'!','#'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 41),
   ( cc: [ '"' ]; s: 42),
 { 42: }
 { 43: }
-  ( cc: [ #1..'"','$'..#255 ]; s: 43),
+  ( cc: [ #1..'"','$'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 43),
   ( cc: [ '#' ]; s: 44),
 { 44: }
 { 45: }
@@ -838,7 +840,7 @@ yyt : array [1..yyntrans] of YYTrec = (
 { 49: }
   ( cc: [ '/' ]; s: 53),
 { 50: }
-  ( cc: [ #1..')','+'..#255 ]; s: 59),
+  ( cc: [ #1..')','+'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 59),
   ( cc: [ '*' ]; s: 54),
 { 51: }
   ( cc: [ '-' ]; s: 56),
@@ -850,13 +852,13 @@ yyt : array [1..yyntrans] of YYTrec = (
 { 55: }
 { 56: }
 { 57: }
-  ( cc: [ '0'..'9' ]; s: 36),
+  ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 36),
 { 58: }
 { 59: }
-  ( cc: [ #1..')','+'..#255 ]; s: 59),
+  ( cc: [ #1..')','+'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 59),
   ( cc: [ '*' ]; s: 54),
 { 60: }
-  ( cc: [ #1..'Z','\','^'..#255 ]; s: 32),
+  ( cc: [ #1..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 32),
   ( cc: [ ']' ]; s: 55)
 );
 
@@ -1273,7 +1275,7 @@ scan:
   (* determine action: *)
 
   yyn := yytl[yystate];
-  while (yyn<=yyth[yystate]) and not CharInSet(yyactchar, yyt[yyn].cc) do inc(yyn);
+  while (yyn<=yyth[yystate]) and not (CharInSet(yyactchar, yyt[yyn].cc{$IFDEF UNICODE},yyt[yyn].uc{$ENDIF})) do inc(yyn);
   if yyn>yyth[yystate] then goto action;
     (* no transition on yyactchar in this state *)
 

@@ -33,11 +33,17 @@
 {                                                                             }
 {*****************************************************************************}
 
-{$DEFINE XQTESTING}      { Remove for the finished program }
+{$DEFINE XQTESTING}  { Remove for the finished program
+                       But be CAREFULL, disabling "XQTESTING" will prevent you from debugging
+                       inside TXQuery Code (No break points will be allowed inside TxQuery Source code) }
 //{$DEFINE XQDEMO}     { Remove for the finished program }
 
-{$DEFINE XQ_THREAD_SAFE_FORMATSETTINGS} {Used in QFormatSettings, Use a Thread TFormatSettings Variable}
-{$DEFINE XQ_FASTCOMPARE_FUNCTIONS}      {Used in XQBase.pas Use DoCompareFast intead of DoCompare}
+//OPTIMIZATION DIRECTIVES
+{$DEFINE XQ_USE_THREAD_SAFE_FORMATSETTINGS}  {Used in QFormatSettings, Use a Thread TFormatSettings Variable}
+{$DEFINE XQ_USE_FASTCOMPARE_FUNCTIONS}       {Used in XQBase.pas Use DoCompareFast intead of DoCompare}
+{$DEFINE XQ_USE_OPTIMIZED_STRING_FIELD_SIZE} {Use to calculate the max size of a calculated string field (largest string obtained from a query string expression)}
+{$DEFINE XQ_USE_INLINE_METHODS}              {Use The "InLine" Compiler Directive in Some Methods}
+{$DEFINE XQ_USE_SIZEOF_CONSTANTS}            {Use The XQ_SizeOf_XXX constants}
 
 { ==== Determination of compiler and others (do NOT change) ==== }
 {$IFDEF VER100}      // Delphi 3
@@ -118,200 +124,132 @@
   {$DEFINE DELPHI}
 {$ENDIF}
 
-{$IFDEF VER170}      // Delphi 2005, 2006
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL8}
-  {$DEFINE LEVEL9}
-  {$DEFINE LEVEL10}
-  {$DEFINE BDS}
-  {$DEFINE BDS3}
-  {$DEFINE DELPHI9}
-  {$DEFINE DELPHI2005}
-  {$DEFINE DELPHI}
-{$ENDIF}
+{$IFDEF CONDITIONALEXPRESSIONS}
+  {$IF CompilerVersion >= 17.0}       // Delphi 2005, 2006
+    {$DEFINE LEVEL4}
+    {$DEFINE LEVEL5}
+    {$DEFINE LEVEL6}
+    {$DEFINE LEVEL7}
+    {$DEFINE LEVEL8}
+    {$DEFINE LEVEL9}
+    {$DEFINE LEVEL10}
+    {$DEFINE BDS}
+    {$DEFINE BDS3}
+    {$DEFINE DELPHI9}
+    {$DEFINE DELPHI2005}
+    {$DEFINE DELPHI}
+  {$IFEND}
 
-{$IFDEF VER180}      // Delphi 10
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$IFDEF BCB}
-    {$DEFINE BCB11}
-  {$ENDIF}
-  {$DEFINE BDS}
-  {$IFDEF CLR}
-    {$DEFINE CLR11}
-    {$DEFINE LEVEL11Net}
-  {$ENDIF CLR}
-  {$IFDEF VER185}
-    {$DEFINE LEVEL11}
-    {$DEFINE BDS5}
-    {$DEFINE DELPHI11}
-    {$DEFINE DELPHI2007} // synonym to DELPHI11
+  {$IF CompilerVersion >= 18.0}       // Delphi 10
     {$IFDEF BCB}
       {$DEFINE BCB11}
     {$ENDIF}
-  {$ELSE ~~VER185}
-    {$DEFINE BDS4}
-    {$DEFINE DELPHI10}
-    {$DEFINE DELPHI2006} // synonym to DELPHI10
+    {$DEFINE BDS}
+    {$IFDEF CLR}
+      {$DEFINE CLR11}
+      {$DEFINE LEVEL11Net}
+    {$ENDIF CLR}
+    {$IF CompilerVersion >= 18.5}
+      {$DEFINE LEVEL11}
+      {$DEFINE BDS5}
+      {$DEFINE DELPHI11}
+      {$DEFINE DELPHI2007} // synonym to DELPHI11
+      {$IFDEF BCB}
+        {$DEFINE BCB11}
+      {$ENDIF}
+    {$ELSE ~~VER185}
+      {$DEFINE BDS4}
+      {$DEFINE DELPHI10}
+      {$DEFINE DELPHI2006} // synonym to DELPHI10
+      {$IFDEF BCB}
+        {$DEFINE BCB10}
+      {$ENDIF}
+    {$IFEND ~VER185}
+  {$IFEND}
+
+  {$IF CompilerVersion >= 19.0}  // Delphi 2007 for .NET
+    {$IFDEF CLR}
+      {$DEFINE CLR20}
+      {$DEFINE LEVEL11Net}
+    {$ENDIF CLR}
+    {$DEFINE DELPHI11}
+    {$DEFINE DELPHI2007} // synonym to DELPHI11
+  {$IFEND VER190}
+
+  {$IF CompilerVersion >= 20.0}       // Delphi 12
+    {$DEFINE LEVEL12}
+    {$DEFINE BDS6}
     {$IFDEF BCB}
-      {$DEFINE BCB10}
+      {$DEFINE BCB12}
     {$ENDIF}
-  {$ENDIF ~VER185}
+    {$IFDEF CLR}
+      {$DEFINE CLR20}
+    {$ENDIF CLR}
+    {$DEFINE DELPHI12}
+    {$DEFINE DELPHI2009}
+    {$DEFINE DELPHI}
+  {$IFEND}
+
+  {$IF CompilerVersion >= 21.0}      // Delphi 14
+    {$DEFINE LEVEL13}
+    {$DEFINE LEVEL14}
+    {$DEFINE BDS7}
+    {$IFDEF BCB}
+      {$DEFINE BCB14}
+    {$ENDIF}
+    {$DEFINE DELPHI14}
+    {$DEFINE DELPHI2010}
+    {$DEFINE DELPHI}
+  {$IFEND}
+
+  {$IF CompilerVersion >= 22.0}      // Delphi 15, XE
+    {$DEFINE LEVEL15}
+    {$DEFINE BDS8}
+    {$IFDEF BCB}
+      {$DEFINE BCB15}
+    {$ENDIF}
+    {$DEFINE DELPHI15}
+    {$DEFINE DELPHIXE}
+    {$DEFINE DELPHI}
+  {$IFEND}
+
+  {$IF CompilerVersion >= 23.0}      // Delphi 16, XE2
+    {$DEFINE LEVEL16}
+    {$DEFINE BDS9}
+    {$IFDEF BCB}
+      {$DEFINE BCB16}
+    {$ENDIF}
+    {$DEFINE DELPHI16}
+    {$DEFINE DELPHIXE2}
+    {$DEFINE DELPHI}
+  {$IFEND}
+
+  {$IF CompilerVersion >= 24.0}      // Delphi 17, XE3
+    {$DEFINE LEVEL17}
+    {$DEFINE BDS10}
+    {$IFDEF BCB}
+      {$DEFINE BCB17}
+    {$ENDIF}
+    {$DEFINE DELPHI17}
+    {$DEFINE DELPHIXE3}
+    {$DEFINE DELPHI}
+  {$IFEND}
+
+  {$IF CompilerVersion >= 25.0}      // Delphi 18, XE4
+    {$DEFINE LEVEL18}
+    {$DEFINE BDS11}
+    {$IFDEF BCB}
+      {$DEFINE BCB18}
+    {$ENDIF}
+    {$DEFINE DELPHI18}
+    {$DEFINE DELPHIXE4}
+    {$DEFINE DELPHI}
+  {$IFEND}
 {$ENDIF}
 
-{$IFDEF VER190} // Delphi 2007 for .NET
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE BDS}
-  {$DEFINE BDS5}
-  {$IFDEF CLR}
-    {$DEFINE CLR20}
-    {$DEFINE LEVEL11Net}
-  {$ENDIF CLR}
-  {$DEFINE DELPHI11}
-  {$DEFINE DELPHI2007} // synonym to DELPHI11
-{$ENDIF VER190}
-
-{$IFDEF VER200}      // Delphi 12
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE LEVEL12}
-  {$DEFINE BDS}
-  {$DEFINE BDS6}
-  {$IFDEF BCB}
-    {$DEFINE BCB12}
-  {$ENDIF}
-  {$IFDEF CLR}
-    {$DEFINE CLR20}
-  {$ENDIF CLR}
-  {$DEFINE DELPHI12}
-  {$DEFINE DELPHI2009}
-  {$DEFINE DELPHI}
-{$ENDIF}
-
-{$IFDEF VER210}      // Delphi 14
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE LEVEL12}
-  {$DEFINE LEVEL14}
-  {$DEFINE BDS}
-  {$DEFINE BDS7}
-  {$IFDEF BCB}
-    {$DEFINE BCB14}
-  {$ENDIF}
-  {$DEFINE DELPHI14}
-  {$DEFINE DELPHI2010}
-  {$DEFINE DELPHI}
-{$ENDIF}
-
-{$IFDEF VER220}      // Delphi 15, XE
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE LEVEL12}
-  {$DEFINE LEVEL14}
-  {$DEFINE LEVEL15}
-  {$DEFINE BDS}
-  {$DEFINE BDS8}
-  {$IFDEF BCB}
-    {$DEFINE BCB15}
-  {$ENDIF}
-  {$DEFINE DELPHI15}
-  {$DEFINE DELPHIXE}
-  {$DEFINE DELPHI}
-{$ENDIF}
-
-{$IFDEF VER230}      // Delphi 16, XE2
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE LEVEL12}
-  {$DEFINE LEVEL14}
-  {$DEFINE LEVEL15}
-  {$DEFINE LEVEL16}
-  {$DEFINE BDS}
-  {$DEFINE BDS9}
-  {$IFDEF BCB}
-    {$DEFINE BCB16}
-  {$ENDIF}
-  {$DEFINE DELPHI16}
-  {$DEFINE DELPHIXE2}
-  {$DEFINE DELPHI}
-{$ENDIF}
-
-{$IFDEF VER240}      // Delphi 17, XE3
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE LEVEL12}
-  {$DEFINE LEVEL14}
-  {$DEFINE LEVEL15}
-  {$DEFINE LEVEL16}
-  {$DEFINE LEVEL17}
-  {$DEFINE BDS}
-  {$DEFINE BDS10}
-  {$IFDEF BCB}
-    {$DEFINE BCB17}
-  {$ENDIF}
-  {$DEFINE DELPHI17}
-  {$DEFINE DELPHIXE3}
-  {$DEFINE DELPHI}
-{$ENDIF}
-
-{$IFDEF VER250}      // Delphi 18, XE4
-  {$DEFINE LEVEL4}
-  {$DEFINE LEVEL5}
-  {$DEFINE LEVEL6}
-  {$DEFINE LEVEL7}
-  {$DEFINE LEVEL10}
-  {$DEFINE LEVEL11}
-  {$DEFINE LEVEL12}
-  {$DEFINE LEVEL14}
-  {$DEFINE LEVEL15}
-  {$DEFINE LEVEL16}
-  {$DEFINE LEVEL17}
-  {$DEFINE LEVEL18}
-  {$DEFINE BDS}
-  {$DEFINE BDS10}
-  {$IFDEF BCB}
-    {$DEFINE BCB17}
-  {$ENDIF}
-  {$DEFINE DELPHI17}
-  {$DEFINE DELPHI18}
-  {$DEFINE DELPHIXE4}
-  {$DEFINE DELPHI}
-{$ENDIF}
-
-{$IFDEF LEVEL1}       {$DEFINE Delphi1Up}       {$ENDIF}
-{$IFDEF LEVEL2}       {$DEFINE Delphi2Up}       {$ENDIF}
-{$IFDEF LEVEL3}       {$DEFINE Delphi3Up}       {$ENDIF}
+{$IFDEF LEVEL1}       {$DEFINE Delphi1}         {$ENDIF}
+{$IFDEF LEVEL2}       {$DEFINE Delphi2}         {$ENDIF}
+{$IFDEF LEVEL3}       {$DEFINE Delphi3}         {$ENDIF}
 {$IFDEF LEVEL4}       {$DEFINE Delphi4Up}       {$ENDIF}
 {$IFDEF LEVEL5}       {$DEFINE Delphi5Up}       {$ENDIF}
 {$IFDEF LEVEL6}       {$DEFINE Delphi6Up}       {$ENDIF}
@@ -327,6 +265,18 @@
 {$IFDEF LEVEL16}      {$DEFINE DelphiXE2Up}     {$ENDIF}
 {$IFDEF LEVEL17}      {$DEFINE DelphiXE3Up}     {$ENDIF}
 {$IFDEF LEVEL18}      {$DEFINE DelphiXE4Up}     {$ENDIF}
+
+{$IFDEF UNICODE}
+  {.$DEFINE XQ_UNICODE_TO_ANSI_SCRIPT} //This option convert the SQL script to ANSI chars
+{$ELSE}
+  {$IFDEF Delphi4Up}
+    {.$DEFINE XQ_USE_WIDESTRINGS} //For use only with No-Unicode IDEs (D2007 and older)
+                                  //Enable it and test it please.
+    {$IFDEF XQ_USE_WIDESTRINGS}
+      {$DEFINE XQ_USE_WIDESTRINGS_IN_SCRIPT}
+    {$ENDIF}      
+  {$ENDIF}
+{$ENDIF}
 
 //***********************************************************************
 
