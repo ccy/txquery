@@ -4349,8 +4349,10 @@ Begin
       Else
         vTempType := ttInteger; // the COUNT(*) aggregate
       vTempS := FPivotInList[I];
+      {$IFDEF XQ_NEW_TRANSFORM_NAMING}
       if vTransfAggCount > 1 then {added by fduenas: give correct field names to transform aggregate fields}
          vTempS := SAggregateKind[vColumn[J].AggregateList[0].Aggregate] +SAggregateKindOf+ FPivotInList[I];
+      {$ENDIF}
 
       vTempResultSet.AddField(
        vTemps{ FPivotInList[I]}, vTemps{ FPivotInList[I]}, {added by fduenas: give correct field names to transform aggregate fields}
