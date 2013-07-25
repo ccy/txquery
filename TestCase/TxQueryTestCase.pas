@@ -222,9 +222,27 @@ type{$M+}
     procedure Test_HasEmptyDataSet;
   end;
 
+  TTest_DirectAccess = class(TTest_TxQuery)
+  protected
+    procedure SetUp; override;
+  published
+    procedure Test_AnsiString;
+    procedure Test_Boolean;
+    procedure Test_Date;
+    procedure Test_DateTime;
+    procedure Test_FmtBcd;
+    procedure Test_Integer;
+    procedure Test_LargeInt;
+    procedure Test_Memo;
+    procedure Test_Time;
+    procedure Test_TimeStamp;
+    procedure Test_WideMemo;
+    procedure Test_WideString;
+  end;
+
 implementation
 
-uses StrUtils, DateUtils, Variants,
+uses StrUtils, DateUtils, Variants, FmtBcd,
 {$IFDEF LEVEL4}
     SqlTimSt,
 {$ENDIF}
@@ -2174,6 +2192,128 @@ begin
   end;
 end;
 
+procedure TTest_DirectAccess.SetUp;
+begin
+  inherited;
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := 'SELECT * FROM Main';
+  FQuery.Open;
+end;
+
+procedure TTest_DirectAccess.Test_AnsiString;
+begin
+  FQuery.Edit;
+  FQuery.FindField('DocNo').AsString := 'NewValue';
+  FQuery.Post;
+  CheckEquals('NewValue', FQuery.FindField('DocNo').AsString);
+end;
+
+procedure TTest_DirectAccess.Test_Boolean;
+begin
+  FQuery.Edit;
+  FQuery.FindField('RecordActive').AsBoolean := True;
+  FQuery.Post;
+  CheckTrue(FQuery.FindField('RecordActive').AsBoolean);
+
+  FQuery.Edit;
+  FQuery.FindField('RecordActive').AsBoolean := False;
+  FQuery.Post;
+  CheckFalse(FQuery.FindField('RecordActive').AsBoolean);
+end;
+
+procedure TTest_DirectAccess.Test_Date;
+begin
+  FQuery.Edit;
+  FQuery.FindField('DocDate').AsDateTime := Date;
+  FQuery.Post;
+  CheckEquals(Date, FQuery.FindField('DocDate').AsDateTime);
+end;
+
+procedure TTest_DirectAccess.Test_DateTime;
+var T: TDateTime;
+begin
+  T := Now;
+  FQuery.Edit;
+  FQuery.FindField('DocDateTime').AsDateTime := T;
+  FQuery.Post;
+  CheckEquals(T, FQuery.FindField('DocDateTime').AsDateTime);
+end;
+
+procedure TTest_DirectAccess.Test_FmtBcd;
+var B: TBcd;
+begin
+  B := StrToBcd('999');
+  FQuery.Edit;
+  FQuery.FindField('Qty').AsBCD := B;
+  FQuery.Post;
+  CheckEquals(0, BcdCompare(B, FQuery.FindField('Qty').AsBcd));
+end;
+
+procedure TTest_DirectAccess.Test_Integer;
+begin
+  FQuery.Edit;
+  FQuery.FindField('DocKey').AsInteger := High(Integer);
+  FQuery.Post;
+  CheckEquals(High(Integer), FQuery.FindField('DocKey').AsInteger);
+end;
+
+procedure TTest_DirectAccess.Test_LargeInt;
+var F: TLargeintField;
+begin
+  FQuery.Edit;
+  F := FQuery.FindField('LargeKey') as TLargeintField;
+  F.Value := High(Int64);
+  FQuery.Post;
+  CheckEquals(High(Int64), F.Value);
+end;
+
+procedure TTest_DirectAccess.Test_Memo;
+begin
+  FQuery.Edit;
+  FQuery.FindField('Memo').AsString := 'NewValue';
+  FQuery.Post;
+  CheckEquals('NewValue', FQuery.FindField('Memo').AsString);
+end;
+
+procedure TTest_DirectAccess.Test_Time;
+var T: TDateTime;
+begin
+  T := Time;
+  FQuery.Edit;
+  FQuery.FindField('DocTime').AsDateTime := T;
+  FQuery.Post;
+  CheckEquals(T, FQuery.FindField('DocTime').AsDateTime);
+end;
+
+procedure TTest_DirectAccess.Test_TimeStamp;
+var T: TSQLTimeStamp;
+begin
+{$ifdef Delphi2009}
+  T := DateTimeToSQLTimeStamp(Now);
+  FQuery.Edit;
+  FQuery.FindField('DocTimeStamp').AsSQLTimeStamp := T;
+  FQuery.Post;
+  CheckEquals(SQLTimeStampToDateTime(T), SQLTimeStampToDateTime(FQuery.FindField('DocTimeStamp').AsSQLTimeStamp));
+{$endif}
+end;
+
+procedure TTest_DirectAccess.Test_WideMemo;
+begin
+  FQuery.Edit;
+  FQuery.FindField('WMemo').AsWideString := 'NewValue';
+  FQuery.Post;
+  CheckEquals('NewValue', FQuery.FindField('WMemo').AsWideString);
+end;
+
+procedure TTest_DirectAccess.Test_WideString;
+begin
+  FQuery.Edit;
+  FQuery.FindField('WDocNo').AsWideString := 'NewValue';
+  FQuery.Post;
+  CheckEquals('NewValue', FQuery.FindField('WDocNo').AsWideString);
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -2203,6 +2343,8 @@ initialization
     AddSuite(TTest_DateTime.Suite);
     AddSuite(TTest_Hardcode_String.Suite);
     AddSuite(TTest_Select.Suite);
+
+    AddSuite(TTest_DirectAccess.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);
