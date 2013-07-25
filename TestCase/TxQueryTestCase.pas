@@ -204,6 +204,7 @@ type{$M+}
     procedure Test_LargeInteger_Fields;
     procedure Test_Calculated_Fields;
     procedure Test_Is_Null;
+    procedure Test_Date;
   end;
 
   TTest_DateTime = class(TTest_TxQuery)
@@ -2032,6 +2033,14 @@ begin
  end;
  FMainDataSet.AutoCalcFields := false;
  FMainDataSet.OnCalcFields := nil;
+end;
+
+procedure TTest_Fields.Test_Date;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := Format('SELECT * FROM Main WHERE DocDate = #%s#', [FormatDateTime(FQuery.DateFormat, FDate)]);
+  FQuery.Open;
 end;
 
 procedure TTest_Fields.Test_Is_Null;

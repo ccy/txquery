@@ -292,7 +292,7 @@ const
   CxFmtDefaultCurrencyDecimals:Byte = 2;
   CxFmtDefaultCurrencyFormat:Byte   = 0;
   CxFmtDefaultCurrencyString:Char   = '$';
-  CxFmtDefaultDateSeparator:Char = '/';
+  CxFmtDefaultDateSeparator:Char = '-';
   CxFmtDefaultDecimalSeparator:Char = '.';
   CxFmtDefaultListSeparator:Char     = ',';
   CxFmtDefaultLongDateFormat: string = 'dddd, MMMM dd, yyyy' {For Spanish-Mexico set: 'dddd, dd'+''' of '''+'MMMM'+''' of '''+'yyyy'};
