@@ -101,6 +101,7 @@ type{$M+}
 
   TTest_LIKE = class(TTest_TxQuery)
   published
+    procedure Test_LIKE_Mix;
     procedure Test_LIKE_Multiple_Contains;
     procedure Test_LIKE_Multiple_EndWith;
     procedure Test_LIKE_Multiple_StartWith;
@@ -846,6 +847,27 @@ begin
     lLastDocNo := FQuery.FindField('DocNo').AsString;
     FQuery.Next;
   end;
+  FQuery.Close;
+end;
+
+procedure TTest_LIKE.Test_LIKE_Mix;
+begin
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Underwater Club';
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+    Add( 'WHERE DocNo LIKE ''%C_ub''');
+  end;
+  FQuery.Open;
+  CheckEquals(1,         FQuery.RecordCount,        'FQuery Record Count incorrect.');
+  CheckEquals('Underwater Club', FQuery.Fields[0].AsString, 'DocNo incorrect.');
   FQuery.Close;
 end;
 
