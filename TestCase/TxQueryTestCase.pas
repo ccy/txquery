@@ -169,6 +169,18 @@ type{$M+}
     procedure Test_Insert_WithValues;
   end;
 
+  TTest_Clone = class(TTest_TxQuery)
+  private
+    FCloneDataSet: TClientDataSet;
+  protected
+    procedure Execute(const aFieldNames: string);
+    procedure SetUp; override;
+    procedure TearDown; override;
+  published
+    procedure Test_ByAsterisk;
+    procedure Test_ByFieldNames;
+  end;
+
   TTest_Min = class(TTest_TxQuery)
   published
     procedure Test_Min;
@@ -193,7 +205,6 @@ type{$M+}
   end;
 
   TTest_Fields = class(TTest_TxQuery)
-  public
   published
     procedure Test_Boolean_Fields_False;
     procedure Test_Boolean_Fields_True;
@@ -205,6 +216,7 @@ type{$M+}
     procedure Test_Calculated_Fields;
     procedure Test_Is_Null;
     procedure Test_Date;
+    procedure Test_Required_Fields;
   end;
 
   TTest_DateTime = class(TTest_TxQuery)
@@ -2136,6 +2148,24 @@ begin
   end;
 end;
 
+procedure TTest_Fields.Test_Required_Fields;
+var D: TClientDataSet;
+begin
+  D := TClientDataSet.Create(nil);
+  try
+    D.FieldDefs.Add('DocKey', ftInteger, 0, True);
+    D.CreateDataSet;
+
+    FQuery.DataSets.Clear;
+    FQuery.AddDataSet(FMainDataSet, 'Main');
+    FQuery.AddDataSet(D, 'Data');
+    FQuery.SQL.Text := 'INSERT INTO Data (DocKey) (SELECT DocKey FROM Main)';
+    FQuery.ExecSQL;
+  finally
+    D.Free;
+  end;
+end;
+
 procedure TTest_Fields.Test_String_Fields;
 var F1, F2: TField;
 begin
@@ -2388,6 +2418,61 @@ begin
   CheckEquals('NewValue', FQuery.FindField('WDocNo').AsWideString);
 end;
 
+procedure TTest_Clone.Execute(const aFieldNames: string);
+var i: integer;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.AddDataSet(FCloneDataSet, 'Data');
+  FQuery.SQL.Text := Format('INSERT INTO Data (%s) (SELECT %s FROM Main)', [aFieldNames, aFieldNames]);
+  FQuery.ExecSQL;
+
+  CheckEquals(FMainDataSet.RecordCount, FCloneDataSet.RecordCount);
+
+  FCloneDataSet.First;
+  FMainDataset.First;
+  while not FMainDataSet.Eof do begin
+    CheckFalse(FCloneDataSet.Eof);
+    for i := 0 to FMainDataSet.Fields.Count - 1 do
+      CheckTrue(FMainDataSet.Fields[i].Value = FCloneDataSet.Fields[i].Value, Format('Fail at row %d fields %s', [FMainDataSet.RecNo, FMainDataSet.Fields[i].FieldName]));
+    FMainDataSet.Next;
+    FCloneDataSet.Next;
+  end;
+end;
+
+procedure TTest_Clone.SetUp;
+begin
+  inherited;
+  FCloneDataSet := TClientDataSet.Create(nil);
+  FCloneDataSet.FieldDefs.Assign(FMainDataSet.FieldDefs);
+  FCloneDataSet.CreateDataSet;
+  FCloneDataSet.LogChanges := False;
+
+  FMainDataSet.LogChanges := False;
+end;
+
+procedure TTest_Clone.TearDown;
+begin
+  inherited;
+  FCloneDataSet.Free;
+end;
+
+procedure TTest_Clone.Test_ByAsterisk;
+begin
+  Execute('*');
+end;
+
+procedure TTest_Clone.Test_ByFieldNames;
+var i: Integer;
+    S: string;
+begin
+  S := FCloneDataSet.Fields[0].FieldName;
+  for i := 1 to FCloneDataSet.Fields.Count - 1 do
+    S := S + ', ' + FCloneDataSet.Fields[i].FieldName;
+
+  Execute(S);
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -2407,6 +2492,7 @@ initialization
     AddSuite(TTest_Update.Suite);
     AddSuite(TTest_Delete.Suite);
     AddSuite(TTest_Insert.Suite);
+    AddSuite(TTest_Clone.Suite);
 
     AddSuite(TTest_Max.Suite);
     AddSuite(TTest_Min.Suite);
