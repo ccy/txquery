@@ -75,9 +75,11 @@ type{$M+}
 
   TTest_Transform = class(TTest_TxQuery)
   published
-    procedure Test_Transform_SQL_WithoutOrderBy;
     procedure Test_Transform_Data;
     procedure Test_Transform_FormatDateTime;
+    procedure Test_Transform_Naming_1;
+    procedure Test_Transform_Naming_2;
+    procedure Test_Transform_SQL_WithoutOrderBy;
   end;
 
   TTest_Distinct = class(TTest_TxQuery)
@@ -544,6 +546,117 @@ begin
   end;
 end;
 
+procedure TTest_Transform.Test_Transform_Data;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('TRANSFORM SUM(Amount)');
+    Add(   'SELECT DocNo');
+    Add(     'FROM Main');
+    Add(    'GROUP BY DocNo');
+    Add(    'ORDER BY DocNo');
+    Add(    'PIVOT Agent IN ("ABC", "DEF", "GHI")');
+  end;
+  FQuery.Open;
+  CheckEquals(10, FQuery.RecordCount, 'FQuery Record Count incorrect.');
+
+  FQuery.First;
+  CheckEquals(2,         FQuery.FindField('ABC').AsCurrency, 'Record 1 Field "ABC" incorrect');
+  CheckEquals(0,         FQuery.FindField('DEF').AsCurrency, 'Record 1 Field "DEF" incorrect');
+  CheckEquals(0,         FQuery.FindField('GHI').AsCurrency, 'Record 1 Field "GHI" incorrect');
+  CheckEquals('IV-0001', FQuery.FindField('DocNo').AsString, 'Record 1 Field "DocNo" incorrect');
+
+  FQuery.Next;
+  CheckEquals(8,         FQuery.FindField('ABC').AsCurrency, 'Record 2 Field "ABC" incorrect');
+  CheckEquals(0,         FQuery.FindField('DEF').AsCurrency, 'Record 2 Field "DEF" incorrect');
+  CheckEquals(0,         FQuery.FindField('GHI').AsCurrency, 'Record 2 Field "GHI" incorrect');
+  CheckEquals('IV-0002', FQuery.FindField('DocNo').AsString, 'Record 2 Field "DocNo" incorrect');
+
+  FQuery.RecNo := 5;
+  CheckEquals(50,        FQuery.FindField('DEF').AsCurrency, 'Record 5 Field "DEF" incorrect');
+  CheckEquals(0,         FQuery.FindField('ABC').AsCurrency, 'Record 5 Field "ABC" incorrect');
+  CheckEquals(0,         FQuery.FindField('GHI').AsCurrency, 'Record 5 Field "GHI" incorrect');
+  CheckEquals('IV-0005', FQuery.FindField('DocNo').AsString, 'Record 5 Field "DocNo" incorrect');
+
+  FQuery.RecNo := 10;
+  CheckEquals(200,       FQuery.FindField('GHI').AsCurrency, 'Record 10 Field "GHI" incorrect');
+  CheckEquals(0,         FQuery.FindField('ABC').AsCurrency, 'Record 10 Field "ABC" incorrect');
+  CheckEquals(0,         FQuery.FindField('DEF').AsCurrency, 'Record 10 Field "DEF" incorrect');
+  CheckEquals('IV-0010', FQuery.FindField('DocNo').AsString, 'Record 10 Field "DocNo" incorrect');
+  FQuery.Close;
+end;
+
+procedure TTest_Transform.Test_Transform_FormatDateTime;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  with FQuery.SQL do begin
+    Clear;
+    Add('TRANSFORM SUM(Amount)');
+    Add(   'SELECT Agent');
+    Add(     'FROM Main');
+    Add(    'GROUP BY Agent');
+    Add(   'PIVOT FormatDateTime("yyyy", DocDate)');
+  end;
+  FQuery.Open;
+  CheckEquals(3, FQuery.RecordCount);
+
+  FQuery.First;
+  CheckEquals(28,    FQuery.FindField('2005').AsCurrency,  'Record 1 Field "2005" incorrect');
+  CheckEquals('ABC', FQuery.FindField('Agent').AsString,   'Record 1 Field "Agent" incorrect');
+  FQuery.Next;
+  CheckEquals(252,   FQuery.FindField('2005').AsCurrency,  'Record 2 Field "2005" incorrect');
+  CheckEquals('DEF', FQuery.FindField('Agent').AsString,   'Record 2 Field "Agent" incorrect');
+  FQuery.Next;
+  CheckEquals(490,   FQuery.FindField('2005').AsCurrency,  'Record 3 Field "2005" incorrect');
+  CheckEquals('GHI', FQuery.FindField('Agent').AsString,   'Record 3 Field "Agent" incorrect');
+  FQuery.Close;
+end;
+
+procedure TTest_Transform.Test_Transform_Naming_1;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  with FQuery.SQL do begin
+    Clear;
+    Add('TRANSFORM SUM(Amount)');
+    Add(   'SELECT Agent');
+    Add(     'FROM Main');
+    Add(    'GROUP BY Agent');
+    Add(    'PIVOT Agent IN ("ABC", "DEF", "GHI")');
+  end;
+  FQuery.Open;
+  CheckEquals('Agent', FQuery.Fields[0].FieldName);
+  CheckEquals('ABC', FQuery.Fields[1].FieldName);
+  CheckEquals('DEF', FQuery.Fields[2].FieldName);
+  CheckEquals('GHI', FQuery.Fields[3].FieldName);
+end;
+
+procedure TTest_Transform.Test_Transform_Naming_2;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  with FQuery.SQL do begin
+    Clear;
+    Add('TRANSFORM SUM(Amount), Max(Amount)');
+    Add(   'SELECT Agent');
+    Add(     'FROM Main');
+    Add(    'GROUP BY Agent');
+    Add(    'PIVOT Agent IN ("ABC", "DEF", "GHI")');
+  end;
+  FQuery.Open;
+  CheckEquals('Agent', FQuery.Fields[0].FieldName);
+  CheckEquals('ABC',   FQuery.Fields[1].FieldName);
+  CheckEquals('ABC_1', FQuery.Fields[2].FieldName);
+  CheckEquals('DEF',   FQuery.Fields[3].FieldName);
+  CheckEquals('DEF_1', FQuery.Fields[4].FieldName);
+  CheckEquals('GHI',   FQuery.Fields[5].FieldName);
+  CheckEquals('GHI_1', FQuery.Fields[6].FieldName);
+end;
+
 procedure TTest_Transform.Test_Transform_SQL_WithoutOrderBy;
 var lDataSet: TClientDataSet;
     i: integer;
@@ -627,76 +740,6 @@ begin
   finally
     lDataSet.Free;
   end;
-end;
-
-procedure TTest_Transform.Test_Transform_Data;
-begin
-  FQuery.DataSets.Clear;
-  FQuery.AddDataSet(FMainDataSet, 'Main');
-
-  with FQuery.SQL do begin
-    Clear;
-    Add('TRANSFORM SUM(Amount)');
-    Add(   'SELECT DocNo');
-    Add(     'FROM Main');
-    Add(    'GROUP BY DocNo');
-    Add(    'ORDER BY DocNo');
-    Add(    'PIVOT Agent IN ("ABC", "DEF", "GHI")');
-  end;
-  FQuery.Open;
-  CheckEquals(10, FQuery.RecordCount, 'FQuery Record Count incorrect.');
-
-  FQuery.First;
-  CheckEquals(2,         FQuery.FindField('ABC').AsCurrency, 'Record 1 Field "ABC" incorrect');
-  CheckEquals(0,         FQuery.FindField('DEF').AsCurrency, 'Record 1 Field "DEF" incorrect');
-  CheckEquals(0,         FQuery.FindField('GHI').AsCurrency, 'Record 1 Field "GHI" incorrect');
-  CheckEquals('IV-0001', FQuery.FindField('DocNo').AsString, 'Record 1 Field "DocNo" incorrect');
-
-  FQuery.Next;
-  CheckEquals(8,         FQuery.FindField('ABC').AsCurrency, 'Record 2 Field "ABC" incorrect');
-  CheckEquals(0,         FQuery.FindField('DEF').AsCurrency, 'Record 2 Field "DEF" incorrect');
-  CheckEquals(0,         FQuery.FindField('GHI').AsCurrency, 'Record 2 Field "GHI" incorrect');
-  CheckEquals('IV-0002', FQuery.FindField('DocNo').AsString, 'Record 2 Field "DocNo" incorrect');
-
-  FQuery.RecNo := 5;
-  CheckEquals(50,        FQuery.FindField('DEF').AsCurrency, 'Record 5 Field "DEF" incorrect');
-  CheckEquals(0,         FQuery.FindField('ABC').AsCurrency, 'Record 5 Field "ABC" incorrect');
-  CheckEquals(0,         FQuery.FindField('GHI').AsCurrency, 'Record 5 Field "GHI" incorrect');
-  CheckEquals('IV-0005', FQuery.FindField('DocNo').AsString, 'Record 5 Field "DocNo" incorrect');
-
-  FQuery.RecNo := 10;
-  CheckEquals(200,       FQuery.FindField('GHI').AsCurrency, 'Record 10 Field "GHI" incorrect');
-  CheckEquals(0,         FQuery.FindField('ABC').AsCurrency, 'Record 10 Field "ABC" incorrect');
-  CheckEquals(0,         FQuery.FindField('DEF').AsCurrency, 'Record 10 Field "DEF" incorrect');
-  CheckEquals('IV-0010', FQuery.FindField('DocNo').AsString, 'Record 10 Field "DocNo" incorrect');
-  FQuery.Close;
-end;
-
-procedure TTest_Transform.Test_Transform_FormatDateTime;
-begin
-  FQuery.DataSets.Clear;
-  FQuery.AddDataSet(FMainDataSet, 'Main');
-  with FQuery.SQL do begin
-    Clear;
-    Add('TRANSFORM SUM(Amount)');
-    Add(   'SELECT Agent');
-    Add(     'FROM Main');
-    Add(    'GROUP BY Agent');
-    Add(   'PIVOT FormatDateTime("yyyy", DocDate)');
-  end;
-  FQuery.Open;
-  CheckEquals(3, FQuery.RecordCount);
-
-  FQuery.First;
-  CheckEquals(28,    FQuery.FindField('2005').AsCurrency,  'Record 1 Field "2005" incorrect');
-  CheckEquals('ABC', FQuery.FindField('Agent').AsString,   'Record 1 Field "Agent" incorrect');
-  FQuery.Next;
-  CheckEquals(252,   FQuery.FindField('2005').AsCurrency,  'Record 2 Field "2005" incorrect');
-  CheckEquals('DEF', FQuery.FindField('Agent').AsString,   'Record 2 Field "Agent" incorrect');
-  FQuery.Next;
-  CheckEquals(490,   FQuery.FindField('2005').AsCurrency,  'Record 3 Field "2005" incorrect');
-  CheckEquals('GHI', FQuery.FindField('Agent').AsString,   'Record 3 Field "Agent" incorrect');
-  FQuery.Close;
 end;
 
 procedure TTest_Distinct.Test_Distinct_Aggregate;
