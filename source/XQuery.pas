@@ -3383,8 +3383,8 @@ Begin
                             InsertItem.DataSet.Fields[J].AsLargeInt :=
                               TmpAnalizer.ResultSet.Fields[J].AsLargeInt;
                            {$ELSE}
-                            InsertItem.DataSet.Fields[J].AsFloat :=
-                              TmpAnalizer.ResultSet.Fields[J].AsFloat;
+                            InsertItem.DataSet.Fields[J].Value :=
+                              TmpAnalizer.ResultSet.Fields[J].AsLargeInt;
                            {$ENDIF}
                           ttBoolean:
                             InsertItem.DataSet.Fields[J].AsBoolean :=
@@ -3503,7 +3503,7 @@ Begin
                       {$IFDEF Delphi2010Up}
                         AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                       {$ELSE}
-                         AsFloat := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+                         Value := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                       {$ENDIF}
 
                     ttBoolean:
@@ -3554,7 +3554,7 @@ Begin
                     {$IFDEF Delphi2010Up}
                      AsLargeInt := Resolver.Expression.AsLargeInt;
                     {$ELSE}
-                     AsFloat := Resolver.Expression.AsLargeInt;
+                     Value := Resolver.Expression.AsLargeInt;
                     {$ENDIF}
                   ttBoolean:
                     AsBoolean := Resolver.Expression.AsBoolean;

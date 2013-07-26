@@ -638,7 +638,7 @@ Begin
   Result := 0;
   If FxQuery.IsDataSetDisabled( fField.DataSet ) Then
     Exit;
-  Result := {$IFDEF Delphi2010Up}fField.AsLargeInt{$ELSE}Trunc(fField.AsFloat){$ENDIF};
+  Result := {$IFDEF Delphi2010Up}fField.AsLargeInt{$ELSE}fField.Value{$ENDIF};
 
 End;
 

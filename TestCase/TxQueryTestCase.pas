@@ -2034,12 +2034,10 @@ begin
                     FormatDateTime('yyyy-mm-dd HH:nn:ss', fld.AsDateTime, GetUSFormatSettings) , testMsg );
     if fld.DataType in [ftFloat, ftFMTBcd] then
        CheckEquals( Fields[i].AsFloat, fld.AsFloat, testMsg );
-    {$IFDEF Delphi2010Up}
-    if fld.DataType in [ftInteger, ftShortInt] then
+    if fld.DataType in [ftInteger{$IFDEF Delphi2010Up}, ftShortInt{$ENDIF}] then
        CheckEquals( Fields[i].AsInteger, fld.AsInteger, testMsg );
     if fld.DataType in [ftLargeint] then
-       CheckEquals( Fields[i].AsLargeInt, fld.AsLargeInt, testMsg );
-    {$ENDIF }
+       CheckTrue( Fields[i].{$IFDEF Delphi2010Up}AsLargeInt{$ELSE}Value{$ENDIF} = fld.{$IFDEF Delphi2010Up}AsLargeInt{$ELSE}Value{$ENDIF}, testMsg );
    end;
    Next;
   end;
