@@ -2004,9 +2004,11 @@ begin
           else if CompareText(FIdentifier,'MAXOF')=0 then
                   IDF:= AddExpression(TMinMaxOfExpr.Create(FIdentifier, FTempParams, False))
           else if CompareText(FIdentifier,'SQLLIKE')=0 then
-                  IDF:= AddExpression(TSQLLikeExpr.Create(fIdentifier, FTempParams, False))
+                  IDF:= AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(fIdentifier, FTempParams, False))
           else if CompareText(FIdentifier,'SQLNOTLIKE')=0 then
-                  IDF:= AddExpression(TSQLLikeExpr.Create(fIdentifier, FTempParams, True))
+                  IDF:= AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(fIdentifier, FTempParams, True))
+          else if CompareText(FIdentifier,'MATCH')=0 then
+                  IDF:= AddExpression(TSQLMatchLikeExpr.Create(fIdentifier, FTempParams, False))
           else if (CompareText(FIdentifier,'ASCII')=0) or (CompareText(FIdentifier,'ORD')=0) then
                   IDF:= AddExpression(TASCIIExpr.Create(FIdentifier, FTempParams));
          end;
@@ -2062,10 +2064,10 @@ begin
          AddExpression( TSQLInPredicateExpr.Create(ForceParamList(FParamCount + 1), TRUE) );
        end;
   16 : begin
-         AddExpression(TSQLLikeExpr.Create(ForceParamList(3), FALSE));
+         AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(ForceParamList(3), FALSE));
        end;
   17 : begin
-         AddExpression(TSQLLikeExpr.Create(ForceParamList(3), TRUE));
+         AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(ForceParamList(3), TRUE));
        end;
   18 : begin
          GetOneOperator;

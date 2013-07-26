@@ -330,7 +330,7 @@ Type
     Function Add(DataType: TExprType): TxqField;
     Procedure Clear;
     Procedure Delete(Index: Integer);
-    Function FindField(Const FieldName: String): TxqField;
+    Function FindField(Const FieldName: String; const UseFieldNameOnly: boolean=false): TxqField;
     Function FindByDataSetFieldName(Const DataSetFieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
     function PrepareDataSetFieldNames( OnQueryDataSetFieldName:TQueryDataSetFieldNameEvent=nil): Boolean; {modified by fduenas: use Field name instead of Field Index}
     Property Count: Integer Read GetCount;
@@ -374,7 +374,7 @@ Type
       pCastType: Integer; pCastLen: Integer; pUseDisplayLabel: Boolean);
     Procedure Insert; Virtual; Abstract;
     Procedure Delete; Virtual; Abstract;
-    Function FindField(Const FieldName: String): TxqField;
+    Function FindField(Const FieldName: String; const UseFieldNameOnly: boolean=false): TxqField;
     Function FieldByName(Const FieldName: String): TxqField;
     Function FindFieldByDataSetFieldName(Const FieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
     Function FieldByDataSetFieldName(Const FieldName: String): TxqField; {modified by fduenas: use Field name instead of Field Index}
@@ -2122,17 +2122,27 @@ Begin
   End;
 End;
 
-Function TxqFields.FindField(Const FieldName: String): TxqField;
+Function TxqFields.FindField(Const FieldName: String; const UseFieldNameOnly: boolean): TxqField;
 Var
   I: Integer;
 Begin
   For I := 0 To FItems.Count - 1 Do
   Begin
     Result := FItems[I];
-    If (AnsiCompareText(Result.FFieldName, FieldName) = 0) Or
-    { fduenas changed to CompareText }
-      (AnsiCompareText(Result.FAlias, FieldName) = 0) Then
-      Exit;
+    if UseFieldNameOnly then
+    begin
+     If (AnsiCompareText(XQExtractFieldName(Result.FFieldName, true),XQExtractFieldName(FieldName, true)) = 0) Or
+       { fduenas changed to CompareText }
+       (AnsiCompareText(XQExtractFieldName(Result.FAlias, true), XQExtractFieldName(FieldName, true)) = 0) Then
+       Exit;
+    end
+    else
+    begin
+     If (AnsiCompareText(Result.FFieldName, FieldName) = 0) Or
+     { fduenas changed to CompareText }
+       (AnsiCompareText(Result.FAlias, FieldName) = 0) Then
+       Exit;
+    end;
   End;
   Result := Nil;
 End;
@@ -2257,9 +2267,9 @@ Begin
   FFields.Clear;
 End;
 
-Function TResultSet.FindField(Const FieldName: String): TxqField;
+Function TResultSet.FindField(Const FieldName: String; const UseFieldNameOnly: boolean): TxqField;
 Begin
-  Result := FFields.FindField(FieldName);
+  Result := FFields.FindField(FieldName, UseFieldNameOnly);
 End;
 
 function TResultSet.FindFieldByDataSetFieldName(
@@ -4352,7 +4362,7 @@ Begin
       Else
         vTempType := ttInteger; // the COUNT(*) aggregate
       vTempS := FPivotInList[I];
-      {$IFDEF XQ_NEW_TRANSFORM_NAMING}
+      {$IFDEF XQ_USE_NEW_TRANSFORM_NAMING}
       if vTransfAggCount > 1 then {added by fduenas: give correct field names to transform aggregate fields}
          vTempS := SAggregateKind[vColumn[J].AggregateList[0].Aggregate] +SAggregateKindOf+ FPivotInList[I];
       {$ENDIF}

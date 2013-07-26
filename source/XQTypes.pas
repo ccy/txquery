@@ -95,7 +95,9 @@ interface
   {                          Main exception                                       }
   {-------------------------------------------------------------------------------}
 
-  ExQueryError = Class( Exception );
+  ExException  = Class( Exception );
+  ExQueryError = Class( ExException );
+  ExMatchMaskError = Class( ExException );
 
   {Custom Types}
   TxByteBool         = ByteBool;

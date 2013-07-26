@@ -104,6 +104,7 @@ type{$M+}
   TTest_LIKE = class(TTest_TxQuery)
   published
     procedure Test_LIKE_Mix;
+    procedure Test_LIKE_EscapeChar_Mix;
     procedure Test_LIKE_Multiple_Contains;
     procedure Test_LIKE_Multiple_EndWith;
     procedure Test_LIKE_Multiple_StartWith;
@@ -323,7 +324,7 @@ begin
     FieldDefs.Add('Qty',       ftFmtBCD,  8);
     FieldDefs.Add('UnitPrice', ftFmtBCD,  8);
     FieldDefs.Add('Amount',    ftFmtBCD,  8);
-    FieldDefs.Add('WDocNo',    ftWideString, 10);
+    FieldDefs.Add('WDocNo',    ftWideString, 20);
     FieldDefs.Add('Memo',      ftMemo,     80);
     FieldDefs.Add('WMemo',     ftWideMemo, 80);
     FieldDefs.Add('LargeKey',  ftLargeint, 0);
@@ -907,6 +908,27 @@ begin
   FQuery.Close;
 end;
 
+procedure TTest_LIKE.Test_LIKE_EscapeChar_Mix;
+begin
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Under_water\Club';
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+    Add( 'WHERE DocNo LIKE ''%der\_wa_er\\Club'' ESCAPE ''\'' ');
+  end;
+  FQuery.Open;
+  CheckEquals(1,         FQuery.RecordCount,        'FQuery Record Count incorrect.');
+  CheckEquals('Under_water\Club', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  FQuery.Close;
+end;
+
 procedure TTest_LIKE.Test_LIKE_Mix;
 begin
   FMainDataSet.Append;
@@ -920,7 +942,7 @@ begin
     Clear;
     Add('SELECT DocNo');
     Add(  'FROM Main');
-    Add( 'WHERE DocNo LIKE ''%C_ub''');
+    Add( 'WHERE DocNo LIKE ''%Cl_b'' ');
   end;
   FQuery.Open;
   CheckEquals(1,         FQuery.RecordCount,        'FQuery Record Count incorrect.');

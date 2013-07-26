@@ -101,6 +101,8 @@ type
 
   TTest_Unicode_LIKE = class(TTest_TxQuery_Unicode)
   published
+    procedure Test_LIKE_Mix;
+    procedure Test_LIKE_EscapeChar_Mix;
     procedure Test_LIKE_Multiple_Contains;
     procedure Test_LIKE_Multiple_EndWith;
     procedure Test_LIKE_Multiple_StartWith;
@@ -718,6 +720,48 @@ begin
   finally
     lDataSet.Free;
   end;
+end;
+
+procedure TTest_Unicode_LIKE.Test_LIKE_EscapeChar_Mix;
+begin
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Under_water\Club';
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+    Add( 'WHERE DocNo LIKE ''%der\_wa_er\\Club'' ESCAPE ''\'' ');
+  end;
+  FQuery.Open;
+  CheckEquals(1,         FQuery.RecordCount,        'FQuery Record Count incorrect.');
+  CheckEquals('Under_water\Club', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  FQuery.Close;
+end;
+
+procedure TTest_Unicode_LIKE.Test_LIKE_Mix;
+begin
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Underwater Club';
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+    Add( 'WHERE DocNo LIKE ''%Cl_b'' ');
+  end;
+  FQuery.Open;
+  CheckEquals(1,         FQuery.RecordCount,        'FQuery Record Count incorrect.');
+  CheckEquals('Underwater Club', FQuery.Fields[0].AsString, 'DocNo incorrect.');
+  FQuery.Close;
 end;
 
 procedure TTest_Unicode_LIKE.Test_LIKE_Multiple_Contains;

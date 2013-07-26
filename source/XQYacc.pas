@@ -1280,13 +1280,13 @@ begin
          yyval.yystring := yyv[yysp-1].yystring + yyv[yysp-0].yystring;
        end;
  154 : begin
-         if fEscapeChar = '' then fEscapeChar := #39#39;
+         if fEscapeChar = '' then fEscapeChar := #39#39 else fEscapeChar := QuotedStr(fEscapeChar);
          yyval.yystring := Format('SQLNOTLIKE(%s, %s, %s)',[yyv[yysp-4].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
        end;
  155 : begin
-         if fEscapeChar = '' then fEscapeChar := #39#39;
+         if fEscapeChar = '' then fEscapeChar := #39#39 else fEscapeChar := QuotedStr(fEscapeChar);
          yyval.yystring := Format('SQLLIKE(%s, %s, %s)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
@@ -1389,13 +1389,13 @@ begin
          end;
        end;
  180 : begin
-         if fEscapeChar = '' then fEscapeChar := #39#39;
+         if fEscapeChar = '' then fEscapeChar := #39#39 else fEscapeChar := QuotedStr(fEscapeChar);
          yyval.yystring := Format('SQLLIKE(%s, %s, %s)',[yyv[yysp-3].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 
        end;
  181 : begin
-         if fEscapeChar = '' then fEscapeChar := #39#39;
+         if fEscapeChar = '' then fEscapeChar := #39#39 else fEscapeChar := QuotedStr(fEscapeChar);
          yyval.yystring := Format('SQLNOTLIKE(%s, %s, %s)',[yyv[yysp-4].yystring, yyv[yysp-1].yystring, fEscapeChar]{$IFDEF Delphi7Up}, yyRuntimeFormatSettings{$ENDIF});
          fEscapeChar:= '';
 

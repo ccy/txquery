@@ -37,13 +37,15 @@
                        But be CAREFULL, disabling "XQTESTING" will prevent you from debugging
                        inside TXQuery Code (No break points will be allowed inside TxQuery Source code) }
 //{$DEFINE XQDEMO}     { Remove for the finished program }
-
+ 
 //OPTIMIZATION DIRECTIVES
 {$DEFINE XQ_USE_THREAD_SAFE_FORMATSETTINGS}  {Used in QFormatSettings, Use a Thread TFormatSettings Variable}
 {$DEFINE XQ_USE_FASTCOMPARE_FUNCTIONS}       {Used in XQBase.pas Use DoCompareFast intead of DoCompare}
 {$DEFINE XQ_USE_OPTIMIZED_STRING_FIELD_SIZE} {Use to calculate the max size of a calculated string field (largest string obtained from a query string expression)}
 {$DEFINE XQ_USE_INLINE_METHODS}              {Use The "InLine" Compiler Directive in Some Methods}
 {$DEFINE XQ_USE_SIZEOF_CONSTANTS}            {Use The XQ_SizeOf_XXX constants}
+{$DEFINE XQ_USE_NEW_SQLLIKE_FUNCTION}        {New SQLLike function, uses Masks.TMask class, used in LIKE 'XX' boolean expressions}
+{.$DEFINE XQ_USE_NEW_TRANSFORM_NAMING        {Give correct 'normalized' field name to transform aggregate fields, like SumOF_XXX}
 
 { ==== Determination of compiler and others (do NOT change) ==== }
 {$IFDEF VER100}      // Delphi 3

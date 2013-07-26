@@ -102,8 +102,16 @@ Type
   Function VarMin( const Value1, Value2: Variant): Variant; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   Function VarMax( const Value1, Value2: Variant): Variant; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   Function AddCorrectStrDelim(Const S: TxNativeString) : TxNativeString;
-  Function XQStringIsUnicode( const aString: {$IFDEF UNICODE}String{$ELSE}TxNativeWideString{$ENDIF} ): boolean;{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
-Implementation
+  Function XQStringIsUnicode( const aString: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF} ): boolean;{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function XQStripTableFieldName( const aTableFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                                  const aTrimSquareBrakets: boolean;
+                                  var   aTableName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                                  var   aFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF} ): boolean;{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function XQExtractTableName( const aTableFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                               const aTrimSquareBrakets: boolean=true):{$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Function XQExtractFieldName( const aTableFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                               const aTrimSquareBrakets: boolean=true):{$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+  Implementation
 
 Uses
   xqbase, xquery, xqconsts, qexprlex, QCnvStrUtils;
@@ -644,7 +652,7 @@ Function QualifiedFieldAddSquareBrackets( Const Ident: TxNativeString ): TxNativ
 Var
   P: Integer;
 Begin
-  P:= AnsiPos('.', Ident);
+  P:= Pos('.', Ident);
   If P > 0 then
     Result:= AddSquareBrackets(Copy(Ident,1,P-1)) + '.' +
       AddSquareBrackets(Copy(Ident,P+1, Length(Ident)))
@@ -664,7 +672,44 @@ begin
  end;
 end;
 
-Initialization
+Function XQStripTableFieldName( const aTableFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                                const aTrimSquareBrakets: boolean;
+                                  var   aTableName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                                  var   aFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF} ): boolean;{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+var P: Integer;
+begin
+  P:= AnsiPos('.', aTableFieldName);
+  If P > 0 then
+  begin
+   aTableName := Copy(aTableName,1,P-1);
+   aFieldName := Copy(aTableFieldName,P+1, Length(aTableFieldName));
+  end
+  else
+  begin
+   aTableName := '';
+   aFieldName := aTableFieldName;
+  end;
+  if  aTrimSquareBrakets then
+  begin
+   aTableName := TrimSquareBrackets(aTableName);
+   aFieldName := TrimSquareBrackets(aFieldName);
+  end;
+  result := (aTableName <> '') or (aFieldName <> '')
+end;
+
+Function XQExtractTableName( const aTableFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                             const aTrimSquareBrakets: boolean=true):{$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+var  aFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+begin
+ XQStripTableFieldName(aTableFieldName, aTrimSquareBrakets, Result, aFieldName);
+end;
+
+Function XQExtractFieldName( const aTableFieldName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+                               const aTrimSquareBrakets: boolean=true):{$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};{$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
+var  aTableName: {$IFDEF UNICODE}string{$ELSE}TxNativeWideString{$ENDIF};
+begin
+ XQStripTableFieldName(aTableFieldName, aTrimSquareBrakets, aTableName, Result);
+end;
 
 End.
 

@@ -483,6 +483,74 @@ type
     Procedure AddToList( Like: TLikeItem );
   End;
 
+  { TSQLMatchLikeExpr }
+  { New proposed TSQLLikeExpr replacement }
+  { TxMatchmask is bases in TMask class }
+  { You can use:
+     *, %: As Multiple Match
+     ?,_: as Single Match
+     [0-9|a-z]: Character sets
+  }
+  TxMatchMask = class;
+  TSQLMatchLikeExpr = Class( TFunctionExpr )
+  Protected
+    fMatchMask: TxMatchMask;
+    fIsNotLike: Boolean;
+    function GetAsBoolean: Boolean; Override;
+    function GetExprType: TExprtype; override;
+    procedure DoSetup; virtual;
+  Public
+    Constructor Create( ParameterList: TParameterList; IsNotLike: Boolean ); overload;
+    Constructor Create( aName: String; ParameterList: TParameterList; IsNotLike: Boolean ); overload;
+    Destructor Destroy; Override;
+  End;
+
+  { Helper Class For  TSQLMatchLikeExpr }
+  TxMatchMask = class( TObject)
+  protected
+    const
+     MaxCards = 30;
+    type
+     PMaskSet = ^TMaskSet;
+     TMaskSet = set of AnsiChar;
+     TMaskStates = (msLiteral, msAny, msSet, msMBCSLiteral);
+     TMaskState = record
+       SkipTo: Boolean;
+       case State: TMaskStates of
+         msLiteral: (Literal: Char);
+         msAny: ();
+         msSet: (
+           Negate: Boolean;
+           CharSet: PMaskSet);
+         msMBCSLiteral: (LeadByte, TrailByte: Char);
+     end;
+     PMaskStateArray = ^TMaskStateArray;
+     TMaskStateArray = array[0..128] of TMaskState;
+  protected
+   fExprName: string;
+   fMask: string;
+   fMaskPtr: Pointer;
+   fSize: Integer;
+   fEscapeChar, fAnyMultipleChar, fSingleChar,
+   fAnyMultipleCharStrict, fSingleCharStrict: Char;
+  protected
+   function InitMaskStates(const AMask: string;
+    var AMaskStates: array of TMaskState): Integer;
+   function MatchesMaskStates(const AString: string;
+    const AMaskStates: array of TMaskState): Boolean;
+   procedure DoneMaskStates(var AMaskStates: array of TMaskState);
+  public
+    constructor Create(const AExprName, AMaskValue: string); reintroduce;
+    constructor CreateWithParams(const AExprName, AMaskValue: string;
+     AEscapeChar:char='\'; AAnyMultipleChar:char='*';
+     ASingleChar:char='?'; AAnyMultipleCharStrict:char='%'; ASingleCharStrict:char='_');
+    destructor Destroy; override;
+    procedure Setup(const AMaskValue: string;
+     AEscapeChar:char='\'; AAnyMultipleChar:char='*';
+     ASingleChar:char='?'; AAnyMultipleCharStrict:char='%'; ASingleCharStrict:char='_');
+    function Matches(const AString: string): Boolean;
+  end;
+
   { TSQLInPredicateExpr }
   { This function is used exclusively for the IN predicate in SQL SELECT
      something like this : SELECT * FROM customer WHERE CustNo IN (1,10,8) }
@@ -3628,5 +3696,356 @@ function TMinMaxOfExpr.GetExprType: TExprtype;
 Begin
   Result := ttFloat;
 End;
+
+{ TxMatchMask }
+
+constructor TxMatchMask.Create(const AExprName, AMaskValue: string);
+begin
+ fExprName := AExprName;
+ Setup( AMaskValue );
+end;
+
+constructor TxMatchMask.CreateWithParams(const AExprName, AMaskValue: string; AEscapeChar, AAnyMultipleChar,
+  ASingleChar, AAnyMultipleCharStrict, ASingleCharStrict: char);
+begin
+ fExprName := AExprName;
+ Setup( AMaskValue, AEscapeChar, AAnyMultipleChar,
+        ASingleChar, AAnyMultipleCharStrict, ASingleCharStrict );
+end;
+
+destructor TxMatchMask.Destroy;
+begin
+ if fMaskPtr <> nil then
+ begin
+   DoneMaskStates(Slice(PMaskStateArray(fMaskPtr)^, fSize));
+   FreeMem(fMaskPtr, fSize * SizeOf(TMaskState));
+ end;
+ inherited;
+end;
+
+procedure TxMatchMask.DoneMaskStates(var AMaskStates: array of TMaskState);
+var
+  I: Integer;
+begin
+  for I := Low(AMaskStates) to High(AMaskStates) do
+    if AMaskStates[I].State = msSet then Dispose(AMaskStates[I].CharSet);
+end;
+
+procedure TxMatchMask.Setup(const AMaskValue: string; AEscapeChar, AAnyMultipleChar, ASingleChar,
+  AAnyMultipleCharStrict, ASingleCharStrict: char);
+var
+  A: array[0..0] of TMaskState;
+begin
+  fMask := AMaskValue;
+  fEscapeChar := AEscapeChar;
+  fAnyMultipleChar :=  AAnyMultipleChar;
+  fAnyMultipleCharStrict := AAnyMultipleCharStrict;
+  fSingleChar := ASingleChar;
+  fSingleCharStrict := ASingleCharStrict;
+
+  fSize := InitMaskStates(AMaskValue, A);
+  DoneMaskStates(A);
+
+  fMaskPtr := AllocMem(fSize * SizeOf(TMaskState));
+  InitMaskStates(AMaskValue, Slice(PMaskStateArray(fMaskPtr)^, fSize));
+end;
+
+function TxMatchMask.InitMaskStates(const AMask: string;
+  var AMaskStates: array of TMaskState): Integer;
+var
+  I: Integer;
+  SkipTo, Accept: Boolean;
+  Literal: Char;
+  LeadByte, TrailByte: Char;
+  P: PChar;
+  Negate: Boolean;
+  CharSet: TMaskSet;
+  Cards: Integer;
+  PreviousChar: Char;
+  procedure InvalidMask;
+  begin
+    raise ExMatchMaskError.CreateResFmt(@SEXPR_MATCHINVALIDMASK, [fExprName, AMask,
+      P - PChar(AMask) + 1]);
+  end;
+
+  procedure Reset;
+  begin
+    SkipTo := False;
+    Negate := False;
+    CharSet := [];
+  end;
+
+  procedure WriteScan(MaskState: TMaskStates);
+  begin
+    if I <= High(AMaskStates) then
+    begin
+      if SkipTo then
+      begin
+        Inc(Cards);
+        if Cards > MaxCards then InvalidMask;
+      end;
+      AMaskStates[I].SkipTo := SkipTo;
+      AMaskStates[I].State := MaskState;
+      case MaskState of
+        msLiteral: AMaskStates[I].Literal := UpCase(Literal);
+        msSet:
+          begin
+            AMaskStates[I].Negate := Negate;
+            New(AMaskStates[I].CharSet);
+            AMaskStates[I].CharSet^ := CharSet;
+          end;
+        msMBCSLiteral:
+          begin
+            AMaskStates[I].LeadByte := LeadByte;
+            AMaskStates[I].TrailByte := TrailByte;
+          end;
+      end;
+    end;
+    Inc(I);
+    Reset;
+  end;
+
+  procedure ScanSet;
+  var
+    LastChar: Char;
+    C: Char;
+  begin
+    Inc(P);
+    if P^ = '!' then
+    begin
+      Negate := True;
+      Inc(P);
+    end;
+    LastChar := #0;
+    while not (P^ in [#0, ']']) do
+    begin
+      // MBCS characters not supported in msSet!
+      if {$IFDEF Unicode}IsLeadChar(P^){$ELSE}False{$ENDIF} then
+         Inc(P)
+      else
+      case P^ of
+        '-':
+          if LastChar = #0 then InvalidMask
+          else
+          begin
+            Inc(P);
+            for C := LastChar to UpCase(P^) do
+
+              Include(CharSet, AnsiChar(C));
+          end;
+      else
+        LastChar := UpCase(P^);
+
+        Include(CharSet, AnsiChar(LastChar));
+      end;
+      Inc(P);
+    end;
+    if (P^ <> ']') or (CharSet = []) then InvalidMask;
+    WriteScan(msSet);
+  end;
+
+begin
+  P := PChar(AMask);
+  I := 0;
+  Cards := 0;
+  Reset;
+  PreviousChar:=#0;
+  while P^ <> #0 do
+  begin
+    Accept := ( (( P^ = fAnyMultipleChar ) or ( P^ = fAnyMultipleCharStrict )) And ( fEscapeChar = #0 ) ) Or
+        ( (( P^ = fAnyMultipleChar ) or ( P^ = fAnyMultipleCharStrict )) And ( PreviousChar <> fEscapeChar ) and (not SkipTo) ) Or
+        ( (( P^ = fSingleChar ) or ( P^ = fSingleCharStrict )) And ( fEscapeChar = #0 ) and (not SkipTo) ) Or
+        ( (( P^ = fSingleChar ) or ( P^ = fSingleCharStrict )) And ( PreviousChar <> fEscapeChar ) ) Or
+        ( ( P^ = '[' ) And ( PreviousChar <> fEscapeChar ) );
+    if Accept  then
+    begin
+     if (P^ = fAnyMultipleChar) or (P^ = fAnyMultipleCharStrict) then
+        SkipTo := True
+     else if ((P^ = fSingleChar) or (P^ = fSingleCharStrict)) and (not SkipTo) then
+              WriteScan(msAny)
+     else if (P^ = '[') then  ScanSet;
+    end
+    else
+    begin
+      if {$IFDEF Unicode}IsLeadChar(P^){$ELSE}False{$ENDIF} then
+      begin
+        LeadByte := P^;
+        Inc(P);
+        TrailByte := P^;
+        If ( fEscapeChar = #0 ) Or Not ( (P^ = fEscapeChar) and (PreviousChar<>fEscapeChar) ) Then
+            WriteScan(msMBCSLiteral);
+      end
+      else
+      begin
+        Literal := P^;
+        If ( fEscapeChar = #0 ) Or Not ( (P^ = fEscapeChar )and (PreviousChar<>fEscapeChar) ) Then
+           WriteScan(msLiteral);
+      end;
+    end;
+    if ( (P^ = fEscapeChar) and (PreviousChar=fEscapeChar) ) then
+       PreviousChar := #0
+    else
+       PreviousChar := P^;
+    Inc(P);
+  end;
+  Literal := #0;
+  WriteScan(msLiteral);
+  Result := I;
+end;
+
+function TxMatchMask.Matches(const AString: string): Boolean;
+begin
+ Result := MatchesMaskStates(AString, Slice(PMaskStateArray(fMaskPtr)^, fSize));
+end;
+
+function TxMatchMask.MatchesMaskStates(const AString: string;
+  const AMaskStates: array of TMaskState): Boolean;
+type
+  TStackRec = record
+    sP: PChar;
+    sI: Integer;
+  end;
+var
+  T: Integer;
+  S: array[0..MaxCards - 1] of TStackRec;
+  I: Integer;
+  P: PChar;
+
+  procedure Push(P: PChar; I: Integer);
+  begin
+    with S[T] do
+    begin
+      sP := P;
+      sI := I;
+    end;
+    Inc(T);
+  end;
+
+  function Pop(var P: PChar; var I: Integer): Boolean;
+  begin
+    if T = 0 then
+      Result := False
+    else
+    begin
+      Dec(T);
+      with S[T] do
+      begin
+        P := sP;
+        I := sI;
+      end;
+      Result := True;
+    end;
+  end;
+
+  function Matches(P: PChar; Start: Integer): Boolean;
+  var
+    I: Integer;
+  begin
+    Result := False;
+    for I := Start to High(AMaskStates) do
+      with AMaskStates[I] do
+      begin
+        if SkipTo then
+        begin
+          case State of
+            msLiteral:
+              while (P^ <> #0) and (UpCase(P^) <> Literal) do Inc(P);
+            msSet:
+              while (P^ <> #0) and not (Negate xor (UpCase(P^) in CharSet^)) do Inc(P);
+            msMBCSLiteral:
+              while (P^ <> #0) do
+              begin
+                if (P^ <> LeadByte) then Inc(P, 2)
+                else
+                begin
+                  Inc(P);
+                  if (P^ = TrailByte) then Break;
+                  Inc(P);
+                end;
+              end;
+          end;
+          if P^ <> #0 then
+            Push(@P[1], I);
+        end;
+        case State of
+          msLiteral: if UpCase(P^) <> Literal then Exit;
+          msSet: if not (Negate xor (UpCase(P^) in CharSet^)) then Exit;
+          msMBCSLiteral:
+            begin
+              if P^ <> LeadByte then Exit;
+              Inc(P);
+              if P^ <> TrailByte then Exit;
+            end;
+          msAny:
+            if P^ = #0 then
+            begin
+              Result := False;
+              Exit;
+            end;
+        end;
+        Inc(P);
+      end;
+    Result := True;
+  end;
+
+begin
+  Result := True;
+  T := 0;
+  P := PChar(AString);
+  I := Low(AMaskStates);
+  repeat
+    if Matches(P, I) then Exit;
+  until not Pop(P, I);
+  Result := False;
+end;
+
+{ TSQLMatchLikeExpr }
+
+constructor TSQLMatchLikeExpr.Create(ParameterList: TParameterList; IsNotLike: Boolean);
+begin
+  Inherited Create('LIKE', ParameterList );
+  fIsNotLike := IsNotLike;
+  DoSetup;
+end;
+
+constructor TSQLMatchLikeExpr.Create(aName: String; ParameterList: TParameterList;
+  IsNotLike: Boolean);
+begin
+ inherited Create( fExprName, ParameterList);
+ fIsNotLike := IsNotLike;
+ fExprName := aName;
+ DoSetup;
+end;
+
+destructor TSQLMatchLikeExpr.Destroy;
+begin
+  fMatchMask.Free;
+  inherited;
+end;
+
+function TSQLMatchLikeExpr.GetAsBoolean: Boolean;
+begin
+ result := fMatchMask.Matches(Param[0].AsString);
+ if fIsNotLike then
+    result := not result;
+end;
+
+function TSQLMatchLikeExpr.GetExprType: TExprtype;
+begin
+ Result := ttBoolean;
+end;
+
+procedure TSQLMatchLikeExpr.DoSetup;
+var LEscapeChar: Char;
+begin
+  If ( ParameterCount > 2 ) And ( Length( Param[2].AsString ) > 0 ) Then
+    LEscapeChar := Param[2].AsString[1]
+  Else
+    LEscapeChar := #0;
+  if not Assigned(fMatchMask) then
+     fMatchMask := TxMatchMask.CreateWithParams(fExprName, Param[1].AsString, LEscapeChar)
+  else
+     fMatchMask.Setup(Param[1].AsString, LEscapeChar);
+end;
 
 End.

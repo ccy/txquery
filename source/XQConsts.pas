@@ -174,6 +174,7 @@ Resourcestring
   SEXPR_INVALIDPARAMETERTYPEMUSTBE = 'Invalid parameter type %s, it must be of type %s';
   SEXPR_WRONGPARAMETERCOUNT = '%s: Incorrect number of arguments';
   SEXPR_PARAMETERSTYPEDIFFERENT = '%s: All parameters must be of the same type';
+  SEXPR_MATCHINVALIDMASK = '%s: Invalid Mask "%s", "%s"';
 {$ENDIF}
 
 {$IFDEF LANG_SPA}
