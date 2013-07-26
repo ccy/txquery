@@ -53,6 +53,9 @@ Uses
 {$if RTLVersion >= 20}
     , Generics.Collections
 {$ifend}
+{$IFDEF DelphiXE4Up}
+    , AnsiStrings
+{$ENDIF}
   , XQTypes, QFormatSettings ;
 const
   SAggregateKind: array[TAggregateKind] of string=('Sum', 'Avg','StDev', 'Min', 'Max', 'Count'); {added by fduenas: to give correct field names to transform aggregated fields}
@@ -1500,13 +1503,13 @@ Begin
   begin
    FillChar(AnsiBuffer, dsMaxStringSize, #0); { added by fduenas }
    A := AnsiString(Value);
-   StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
+   {$IFDEF DelphiXE4Up}AnsiStrings.{$ENDIF}StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
    SetData(@AnsiBuffer);
   end
   else
   begin
    FillChar(Buffer, dsMaxstringSize, #0); { added by fduenas }
-   CopyMemory(@Buffer[0], PWideChar(Value), Length(Value) * NativeExprTypeSize); { changed by fduenas }
+   CopyMemory(@Buffer[0], TxNativePChar(Value), Length(Value) * NativeExprTypeSize); { changed by fduenas }
    SetData(@Buffer);
   end
   {else Assert(False, 'Unsupported data type in procedure TxqStringField.SetAsstring')};
@@ -1523,7 +1526,7 @@ Begin
   begin
    FillChar(AnsiBuffer, dsMaxstringSize, #0); { added by fduenas }
     A := AnsiString(Value);
-    StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
+    {$IFDEF DelphiXE4Up}AnsiStrings.{$ENDIF}StrLCopy(AnsiBuffer, PAnsiChar(A), Length(A));
     //CopyMemory(@AnsiBuffer[0], PAnsiChar(Value), L);
     SetData(@AnsiBuffer);
   end
@@ -3335,6 +3338,7 @@ Begin
                   Begin
                     If DataType In ftNonTextTypes Then
                     Begin
+                      TmpField := nil;
                       if assigned(TmpAnalizer.ResultSet.FindField(InsertItem.DataSet.Fields[J].FieldName)) then
                          TmpField := TmpAnalizer.ResultSet.FindField(InsertItem.DataSet.Fields[J].FieldName).SourceField; {search by fieldname}
                       if not assigned(tmpField) then
@@ -3399,6 +3403,7 @@ Begin
               For J := 0 To InsertItem.FieldNames.Count - 1 Do
                 With InsertItem.DataSet.FieldByName(InsertItem.FieldNames[J]) Do
                 begin
+                  TmpField := nil;
                   if assigned(TmpAnalizer.ResultSet.FindField(InsertItem.FieldNames[J])) then
                       TmpField := TmpAnalizer.ResultSet.FindField
                                    (InsertItem.FieldNames[J]).SourceField; {changed by fduenas:  serach field by name}
@@ -3667,7 +3672,7 @@ Var
   vIsNull: Boolean;
   DValue: Double;
   ResultSetHasRecords: Boolean;
-  B: TBookmark; { pathced by ccy }
+  {$if RTLVersion >= 18.5}B: TBookmark;{$ifend} { pathced by ccy }
 Begin
   // GROUP BY clause
   If Not(  (ResultSet.RecordCount > 0) And  {patched by cy}
@@ -10028,7 +10033,7 @@ Begin
             IMin( xqField.DataSize, Field.DataSize ) { Length(PChar(Buffer)) * SizeOf(Char) } );
           { patched by fduenas, allow update string data }
           { StrLCopy(PChar(RecBuffer + Offset), Buffer, StrLen(PChar(Buffer))); }
-          xqField.AsString := PAnsiChar(Buffer);
+          xqField.AsString := string(PAnsiChar(Buffer));
         End;
      {$IFDEF LEVEL4}
       ftWidestring, ftFixedWideChar{$IFDEF Delphi2006Up}, ftWideMemo{$ENDIF}: { patched by fduenas added ftWideString }

@@ -178,7 +178,7 @@ type
 
 implementation
 
-uses xqConsts, xquery, QCnvStrUtils{$IFNDEF Delphi7Up}, QFormatSettings {$ENDIF}
+uses Windows, xqConsts, xquery, QCnvStrUtils{$IFNDEF Delphi7Up}, QFormatSettings {$ENDIF}
 {$IFDEF UNICODE}, Character{$ENDIF};
 
 function TxqLexer.IsKeyword(const id : TxNativestring; var token : integer) : boolean;

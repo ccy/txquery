@@ -322,7 +322,7 @@ const
   SxFmtDefaultTimeAMString = 'a.m.';
   SxFmtDefaultTimePMString = 'p.m.';*)
 implementation
-
+{$WARN SYMBOL_PLATFORM OFF}
 { Initialize the Global SFFormatSettings }
 procedure InitializeFormatSettings( var aFormatSettings: TFormatSettings;
    aGetRuntimeSettings: boolean {$IFDEF Delphi7Up}; aLocale: {$IFDEF DelphiXEUp}string{$ELSE}Cardinal{$ENDIF}{$ENDIF} );
@@ -476,7 +476,11 @@ Begin
 
   SysUtils.TwoDigitYearCenturyWindow := aSFS.TwoDigitYearCenturyWindow;
  {$ELSE}
+   {$IFDEF DelphiXEUp}
+   Result.Create(LOCALE_USER_DEFAULT);
+   {$ELSE}
    GetLocaleFormatSettings(LOCALE_USER_DEFAULT,  Result);
+   {$ENDIF}
  {$ENDIF}
  {$IFDEF XQ_USE_THREAD_SAFE_FORMATSETTINGS}
   CSQFormatSettings.Leave;

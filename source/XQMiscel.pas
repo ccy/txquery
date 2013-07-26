@@ -430,7 +430,7 @@ Begin
 
   FCurrentSector := -1; { any sector available }
 
-  Seek( F.Position, 0 );
+  F.Position := 0;
 
 End;
 

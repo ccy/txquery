@@ -3817,7 +3817,7 @@ var
       Inc(P);
     end;
     LastChar := #0;
-    while not (P^ in [#0, ']']) do
+    while not CharInSet(P^, [#0, ']']) do
     begin
       // MBCS characters not supported in msSet!
       if {$IFDEF Unicode}IsLeadChar(P^){$ELSE}False{$ENDIF} then
@@ -3951,7 +3951,7 @@ var
             msLiteral:
               while (P^ <> #0) and (UpCase(P^) <> Literal) do Inc(P);
             msSet:
-              while (P^ <> #0) and not (Negate xor (UpCase(P^) in CharSet^)) do Inc(P);
+              while (P^ <> #0) and not (Negate xor CharInSet(UpCase(P^), CharSet^)) do Inc(P);
             msMBCSLiteral:
               while (P^ <> #0) do
               begin
@@ -3969,7 +3969,7 @@ var
         end;
         case State of
           msLiteral: if UpCase(P^) <> Literal then Exit;
-          msSet: if not (Negate xor (UpCase(P^) in CharSet^)) then Exit;
+          msSet: if not (Negate xor CharInSet(UpCase(P^), CharSet^)) then Exit;
           msMBCSLiteral:
             begin
               if P^ <> LeadByte then Exit;

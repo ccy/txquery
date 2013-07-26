@@ -414,18 +414,19 @@ begin
 end;
 function CharInSet(C: WideChar; const CharSet: TSysCharSet): Boolean; overload; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
 begin
-  Result := (C in CharSet);
+  Result := (AnsiChar(C) in CharSet);
 end;
 {$ifend}
 
 {$IFDEF UNICODE}
  function CharInSet(C: AnsiChar; const CharSet: TSysCharSet; UnicodeCategories: TUniCodeCategorySet): Boolean; overload; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
  begin
-  Result := ({(UnicodeCategories<>[]) and} (TCharacter.GetUnicodeCategory(WideChar(C)) in UnicodeCategories)) or CharInSet(C, CharSet);
+   Result := ({(UnicodeCategories<>[]) and} ({$IFDEF DelphiXE4Up}WideChar(C).GetUnicodeCategory{$ELSE}TCharacter.GetUnicodeCategory(WideChar(C)){$ENDIF} in UnicodeCategories)) or CharInSet(C, CharSet);
  end;
+
  function CharInSet(C: WideChar; const CharSet: TSysCharSet; UnicodeCategories: TUniCodeCategorySet): Boolean; overload; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
  begin
-  Result := (TCharacter.GetUnicodeCategory(C) in UnicodeCategories) or CharInSet(C, CharSet);
+   Result := ({$IFDEF DelphiXE4Up}C.GetUnicodeCategory{$ELSE}TCharacter.GetUnicodeCategory(C){$ENDIF} in UnicodeCategories) or CharInSet(C, CharSet);
  end;
 {$ENDIF}
 Function XQStringUpperCase( const aString: String ): String; Overload;
@@ -437,7 +438,7 @@ begin
 {$IFDEF UNICODE}
  _strBuilder := TStringBuilder.Create;
  for _count := 1 to Length(aString) do
-     _strBuilder.Append( TCharacter.ToUpper(aString[_count]) );
+     _strBuilder.Append( {$IFDEF DelphiXE4Up}aString[_count].ToUpper{$ELSE}TCharacter.ToUpper(aString[_count]){$ENDIF} );
  result := _strBuilder.ToString;
  FreeAndNil(_strBuilder);
  {$ELSE}
@@ -453,7 +454,7 @@ begin
 {$IFDEF UNICODE}
  result := '';
  for _count := 1 to Length(aString) do
-     result := result+ TCharacter.ToLower(aString[_count]);
+     result := result + {$IFDEF DelphiXE4Up}aString[_count].ToLower{$ELSE}TCharacter.ToLower(aString[_count]){$ENDIF};
 {$ELSE}
  Result := LowerCase(aString);
 {$ENDIF}
@@ -468,7 +469,7 @@ begin
 {$IFDEF UNICODE}
  result := '';
  for _count := 1 to Length(aString) do
-     result := result+ TCharacter.ToUpper(aString[_count]);
+     result := result + {$IFDEF DelphiXE4Up}aString[_count].ToUpper{$ELSE}TCharacter.ToUpper(aString[_count]){$ENDIF};
 {$ELSE}
  Result := WideUpperCase(aString);
 {$ENDIF}
@@ -482,7 +483,7 @@ begin
 {$IFDEF UNICODE}
  result := '';
  for _count := 1 to Length(aString) do
-     result := result+ TCharacter.ToLower(aString[_count]);
+     result := result + {$IFDEF DelphiXE4Up}aString[_count].ToLower{$ELSE}TCharacter.ToLower(aString[_count]){$ENDIF};
 {$ELSE}
  Result := WideLowerCase(aString);
 {$ENDIF}

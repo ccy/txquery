@@ -39,7 +39,7 @@ Unit XQBase;
 Interface
 
 Uses
-  Windows, Classes, Db, SysUtils,
+  Windows, Classes, Db, SysUtils, Types,
   XQMiscel, XQSparseArray, QbaseExpr, QExprYacc
 {$IFDEF WITHBDE}
   , DBTables, bde
@@ -1838,7 +1838,7 @@ Begin
   FillChar( Buffer, dsMaxStringSize, #0 ); {pacthed by fduenas} {added by fduenas} {this prevents some DISTINCT errors}
   //L := Length( Value );
   {StrLCopy( Buffer, PChar( Value ), L );}
-  CopyMemory(@Buffer[0], PWideChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
+  CopyMemory(@Buffer[0], TxNativePChar(Value), Length( Value ) * NativeExprTypeSize); { changed by fduenas }
   SetData( @Buffer );
 End;
 
@@ -1913,7 +1913,7 @@ Begin
     SetAsFloat( 0 )
   Else
   Begin
-    If Not TextToFloat( {$IFDEF Delphi2009Up}PChar{$ELSE}PChar{$ENDIF}( Value ), F, fvExtended{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} ) Then
+    If Not TextToFloat( TxNativePChar( string(Value) ), F, fvExtended{$IFDEF Delphi7Up}, FFields.fRuntimeFormatSettings{$ENDIF} ) Then
       raise EXQueryError.CreateFmt( SIsInvalidFloatValue, [Value] );
     SetAsFloat( F );
   End;

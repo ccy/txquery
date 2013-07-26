@@ -2432,7 +2432,7 @@ begin
 end;
 
 procedure TTest_DirectAccess.Test_TimeStamp;
-var T: TSQLTimeStamp;
+{$ifdef Delphi2009}var T: TSQLTimeStamp;{$endif}
 begin
 {$ifdef Delphi2009}
   T := DateTimeToSQLTimeStamp(Now);

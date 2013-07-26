@@ -93,7 +93,7 @@ type
 
 implementation
 
-uses QCnvStrUtils, QFormatSettings{$IFDEF UNICODE}, Character{$ENDIF};
+uses Windows, QCnvStrUtils, QFormatSettings{$IFDEF UNICODE}, Character{$ENDIF};
 
 function TExprLexer.IsKeyword(const id : TxNativeString; var token : integer) : boolean;
 (* returns corresponding token number in token *)

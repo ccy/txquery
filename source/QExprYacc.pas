@@ -1836,6 +1836,7 @@ end;
 
 // function yylex : Integer; forward;  // addition 1
 
+{$HINTS OFF}
 function TExprParser.yyparse : Integer; // addition 2
 
 var yystate, yysp, yyn : SmallInt;
@@ -2502,6 +2503,7 @@ abort:
   yyparse := 1; exit;
 
 end(*yyparse*);
+{$HINTS ON}
 
 { TISNULLExpr }
 { use ISNULL to test only if a Field has a NULL value }
