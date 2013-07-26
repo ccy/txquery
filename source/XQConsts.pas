@@ -42,7 +42,7 @@ Interface
 
 Resourcestring
 
-  SXQUERY_ABOUT = 'TxQuery Version 2.0 (Ene 2009)';
+  SXQUERY_ABOUT = 'TxQuery Version 3.0';
 
   SAggrSUM = 'SumOF_';
   SAggrAVG = 'AvgOF_';
