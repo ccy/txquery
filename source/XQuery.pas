@@ -3349,8 +3349,10 @@ Begin
                   Begin
                     If DataType In ftNonTextTypes Then
                     Begin
-                      TmpField := TmpAnalizer.ResultSet.FieldByName(InsertItem.DataSet.Fields[J].FieldName).SourceField; {search by fieldname}
-                      //TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
+                      if assigned(TmpAnalizer.ResultSet.FindField(InsertItem.DataSet.Fields[J].FieldName)) then
+                         TmpField := TmpAnalizer.ResultSet.FindField(InsertItem.DataSet.Fields[J].FieldName).SourceField; {search by fieldname}
+                      if not assigned(tmpField) then
+                         TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
                       If Assigned(TmpField) And
                         (TmpField.DataType In ftNonTextTypes) And
                         Not(TmpField.IsNull) Then
@@ -3406,13 +3408,14 @@ Begin
           Else
           Begin
             // insertion on specific fields
-            InsertItem.DataSet.Insert;
+            InsertItem.DataSet.Append;
             Try
               For J := 0 To InsertItem.FieldNames.Count - 1 Do
                 With InsertItem.DataSet.FieldByName(InsertItem.FieldNames[J]) Do
                 begin
-                  TmpField := TmpAnalizer.ResultSet.FieldByName
-                                (InsertItem.FieldNames[J]).SourceField; {changed by fduenas:  serach field by name}
+                  if assigned(TmpAnalizer.ResultSet.FindField(InsertItem.FieldNames[J])) then
+                      TmpField := TmpAnalizer.ResultSet.FindField
+                                   (InsertItem.FieldNames[J]).SourceField; {changed by fduenas:  serach field by name}
                   if not assigned (TmpField ) then
                      TmpField := TmpAnalizer.ResultSet.Fields[J].SourceField;
                   If DataType In ftNonTextTypes Then
@@ -3425,7 +3428,7 @@ Begin
                       Assign(TmpField);
                     // AsString := TmpAnalizer.ResultSet.FieldByName(InsertItem.FieldNames[J]).AsString
                   End
-                  Else If assigned(TmpField) and (TmpField.IsNull) Then
+                  Else If assigned(TmpField) and (not TmpField.IsNull) Then
                   Begin
                     Case Field2ExprType(DataType) Of
                       ttstring:
@@ -3469,7 +3472,7 @@ Begin
       If InsertItem.FieldNames.Count = 0 Then
       Begin
         { insertion on all fields }
-        InsertItem.DataSet.Insert;
+        InsertItem.DataSet.Append;
         Try
           For I := 0 To InsertItem.DataSet.FieldCount - 1 Do
             If I <= InsertItem.ResolverList.Count - 1 Then
@@ -3522,7 +3525,7 @@ Begin
       Else
       Begin
         { insertion on specific fields }
-        InsertItem.DataSet.Insert;
+        InsertItem.DataSet.Append;
         Try
           For I := 0 To InsertItem.FieldNames.Count - 1 Do
           Begin
@@ -7046,7 +7049,7 @@ Begin
                 dsEdit:
                   DataSet.Edit;
                 dsInsert:
-                  DataSet.Insert;
+                  DataSet.Append;
               End;
 
               // restore field values
