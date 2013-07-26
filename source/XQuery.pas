@@ -3432,23 +3432,23 @@ Begin
                   Begin
                     Case Field2ExprType(DataType) Of
                       ttstring:
-                        AsString := TmpField.AsString;
+                        AsString := TmpAnalizer.ResultSet.Fields[J].AsString;
                      {$IFDEF LEVEL4}
                       ttWideString:
-                        AsWideString := TmpField.AsWideString;
+                        AsWideString := TmpAnalizer.ResultSet.Fields[J].AsWideString;
                      {$ENDIF}
                       ttFloat:
-                        AsFloat := TmpField.AsFloat;
+                        AsFloat := TmpAnalizer.ResultSet.Fields[J].AsFloat;
                       ttInteger:
-                        AsInteger := TmpField.AsInteger;
+                        AsInteger := TmpAnalizer.ResultSet.Fields[J].AsInteger;
                       ttLargeInt:
                         {$IFDEF Delphi2010Up}
-                          AsLargeInt := TmpField.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
+                          AsLargeInt := TmpAnalizer.ResultSet.Fields[J].AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                         {$ELSE}
-                          AsFloat := TmpField.AsFloat; {added by fduenas: added LargeInt (Int64) support}
+                          Value := TmpAnalizer.ResultSet.Fields[J].AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
                         {$ENDIF}
                       ttBoolean:
-                        AsBoolean := TmpField.AsBoolean;
+                        AsBoolean := TmpAnalizer.ResultSet.Fields[J].AsBoolean;
                     End;
                   End;
                 end;
