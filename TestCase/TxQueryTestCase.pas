@@ -236,6 +236,7 @@ type{$M+}
   TTest_Select = class(TTest_TxQuery)
   published
     procedure Test_HasEmptyDataSet;
+    procedure Test_MaxLengthPerLine;
   end;
 
   TTest_DirectAccess = class(TTest_TxQuery)
@@ -2294,6 +2295,26 @@ begin
   finally
     D.Free;
   end;
+end;
+
+procedure TTest_Select.Test_MaxLengthPerLine;
+var S: string;
+    i: integer;
+begin
+  // Max length per single line in SQL Statement define in "procedure readln" of unit QLexLib is 256 characters
+  // The buffer size should increase automatically if it reach the limit
+  
+  S := FMainDataSet.Fields[0].FieldName;
+  while Length(S) < 1024 do begin
+    for i := 1 to FMainDataSet.Fields.Count - 1 do
+      S := S + ', ' + FMainDataSet.Fields[i].FieldName;
+  end;
+
+  S := Format('SELECT %s FROM Main', [S]);
+
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  FQuery.SQL.Text := S;
+  FQuery.Open;
 end;
 
 procedure TTest_DirectAccess.SetUp;

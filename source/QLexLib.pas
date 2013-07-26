@@ -249,7 +249,7 @@ Var
       //GetMem works in chunks of 1 byte
       begin
         BufSize := Max (BufSize *
-         {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}, 256 );
+         {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}, BufSize + 256 );
         ReallocMem (Buf, BufSize);
       end;
     until (i * {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}) <
