@@ -39,7 +39,7 @@ Unit XQBase;
 Interface
 
 Uses
-  Windows, Classes, Dialogs, Db, SysUtils,
+  Windows, Classes, Db, SysUtils,
   XQMiscel, XQSparseArray, QbaseExpr, QExprYacc
 {$IFDEF WITHBDE}
   , DBTables, bde

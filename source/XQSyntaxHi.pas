@@ -40,7 +40,8 @@ Interface
 {$I XQ_FLAG.INC}
 Uses
   Windows, Messages, Classes, Graphics, Controls, Forms, Dialogs,
-  xqlex, xqyacc, StdCtrls, Inifiles, ComCtrls, Buttons, RichEdit, xquery;
+  ComCtrls, RichEdit,
+  xqlex, xqyacc, xquery;
 
 Type
 

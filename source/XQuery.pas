@@ -39,7 +39,7 @@ Unit XQuery;
 Interface
 
 Uses
-  SysUtils, Windows, Classes, Controls, Forms, Db,
+  SysUtils, Windows, Classes, Db,
   xqbase, Qlexlib, Qyacclib, Qbaseexpr, QExprYacc, XQJoins
 {$IFDEF LEVEL3}
     , DBTables
@@ -4619,7 +4619,7 @@ Var
   S: TxNativeString;
   TableName: String;
   TempList: TList;
-  OldCursor: TCursor;
+//  OldCursor: TCursor;
   ReadOnly: Boolean;
   Cancel: Boolean;
   Canceled: Boolean;
@@ -4964,11 +4964,11 @@ Begin
   If FIsJoinInWhere Then
     FJoinInWhereResolver := TExprParser.Create(Self, FDefDataSet, fRuntimeFormatSettings, fSystemFormatSettings); { used in FJoinInWhereExpres }
 
-  If (FxQuery.ShowWaitCursor) Then
-  Begin
-    OldCursor := Screen.Cursor;
-    Screen.Cursor := crSQLWait;
-  End;
+//  If (FxQuery.ShowWaitCursor) Then
+//  Begin
+//    OldCursor := Screen.Cursor;
+//    Screen.Cursor := crSQLWait;
+//  End;
   Try
 
     { INSERT statement }
@@ -5462,10 +5462,10 @@ Begin
     FreeObject(SubqExpr); { patched by fduenas: Pointer was no set to Nil }
     If Assigned(FxQuery.FOnProgress) Then
       FxQuery.FOnProgress(FxQuery, psXEnd, 0, 0, 0);
-    If (FxQuery.ShowWaitCursor) Then
-    Begin
-     Screen.Cursor := OldCursor;
-    End;
+//    If (FxQuery.ShowWaitCursor) Then
+//    Begin
+//     Screen.Cursor := OldCursor;
+//    End;
   End;
 
   { LAS: 4/jun/2003 }
@@ -8912,7 +8912,6 @@ end;
 
 Procedure TCustomxQuery.InternalHandleException;
 Begin
-  Application.HandleException(Self);
 End;
 
 Procedure TCustomxQuery.InternalPost;
@@ -9663,19 +9662,19 @@ Var
   AbortScript: Boolean;
   S, ns: {$IFNDEF XQ_USE_WIDESTRINGS_IN_SCRIPT}TxNativeString{$ELSE}WideString{$ENDIF};
   SaveState: Boolean;
-  SaveCursor: TCursor;
+//  SaveCursor: TCursor;
 Begin
-  SaveCursor := crDefault;
+//  SaveCursor := crDefault;
 
   S := Trim( {$IFDEF XQ_UNICODE_TO_ANSI_SCRIPT}AnsiString{$ENDIF}(FSQLScript.Text));
   If Length(S) = 0 Then
     Raise ExQueryError.Create(SSQLIsEmpty);
 
-  If FShowWaitCursor Then
-  Begin
-    SaveCursor := Screen.Cursor;
-    Screen.Cursor := crSQLWait;
-  End;
+//  If FShowWaitCursor Then
+//  Begin
+//    SaveCursor := Screen.Cursor;
+//    Screen.Cursor := crSQLWait;
+//  End;
   SaveState := FShowWaitCursor;
   FShowWaitCursor := False;
   FScriptIsRunning := True;
@@ -9742,10 +9741,10 @@ Begin
     FScriptIsRunning := False;
     FShowWaitCursor := SaveState;
     DoRestoreFormatSettings(fOldRunTimeFormatSettings);
-    If FShowWaitCursor Then
-    Begin
-      Screen.Cursor := SaveCursor;
-    End;
+//    If FShowWaitCursor Then
+//    Begin
+//      Screen.Cursor := SaveCursor;
+//    End;
   End;
 End;
 

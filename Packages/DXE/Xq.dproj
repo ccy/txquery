@@ -10,7 +10,7 @@
 			<Base>True</Base>
 			<Platform>Win32</Platform>
 			<AppType>Package</AppType>
-			<FrameworkType>VCL</FrameworkType>
+			<FrameworkType>None</FrameworkType>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
 			<Base>true</Base>
@@ -103,7 +103,6 @@
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
 			<DCCReference Include="dbrtl.dcp"/>
-			<DCCReference Include="vcl.dcp"/>
 			<DCCReference Include="..\..\source\QCnvStrUtils.pas"/>
 			<DCCReference Include="..\..\source\XQSparseArray.pas"/>
 			<DCCReference Include="..\..\source\QFormatSettings.pas"/>

@@ -31,8 +31,7 @@ package Xq;
 {$IMPLICITBUILD OFF}
 
 requires
-  dbrtl,
-  vcl;
+  dbrtl;
 
 contains
   QCnvStrUtils in '..\..\source\QCnvStrUtils.pas',

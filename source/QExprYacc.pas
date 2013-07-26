@@ -40,7 +40,7 @@ unit QExprYacc;
 interface
 
 uses
-  SysUtils, Classes, Windows, Dialogs, QYaccLib, QBaseExpr, Db
+  SysUtils, Classes, Windows,  QYaccLib, QBaseExpr, Db
 (*$IFDEF LEVEL6*)
   , Variants
 (*$ENDIF*)
@@ -339,12 +339,6 @@ Type
     Function GetIsNull: boolean; Override;
   Public
     Constructor Create( ParameterList: TParameterList; xqField: TxqField );
-  End;
-
-  TStrToDateExpr = Class( TFunctionExpr )
-  Protected
-    Function GetAsFloat: Double; Override;
-    function GetExprType: TExprtype; override;
   End;
 
   TNowExpr = Class( TFunctionExpr )
@@ -720,26 +714,6 @@ function TNowExpr.GetExprType: TExprtype;
 begin
   Result:= ttFloat;
 end;
-
-//TStrToDate
-
-Function TStrToDateExpr.GetAsFloat: Double;
-Begin
-  Try
-    Result := StrToDate( Param[0].AsString{$IFDEF Delphi7Up}, fRuntimeFormatSettings{$ENDIF} );
-  Except
-    On E: Exception Do
-    Begin
-      MessageToUser( E.Message, mtError );
-      Result := 0;
-    End;
-  End;
-End;
-
-function TStrToDateExpr.GetExprType: TExprtype;
-Begin
-  Result := ttFloat;
-End;
 
 //TSQLTrimExpr
 
@@ -1688,7 +1662,6 @@ Begin
     On E: Exception Do
     Begin
       Expression := Nil;
-      //MessageToUser(E.Message, smsgerror,MB_ICONERROR);
       Raise;
     End;
   End;
@@ -1746,7 +1719,6 @@ Begin
     On E: Exception Do
     Begin
       Expression := Nil;
-      //MessageToUser(E.Message, smsgerror,MB_ICONERROR);
       Raise;
     End;
   End;

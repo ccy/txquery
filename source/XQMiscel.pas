@@ -39,8 +39,8 @@ Unit XQMiscel;
 Interface
 
 Uses
-  SysUtils, Windows, Messages, Classes, Graphics, Controls, Forms, Dialogs,
-  StdCtrls, IniFiles, ExtCtrls, DB, Qbaseexpr, QFormatSettings
+  SysUtils, Windows, Messages, Classes,
+  DB, Qbaseexpr, QFormatSettings
 {$IFDEF LEVEL4}, FMTBcd, SqlTimSt{$ENDIF}
 {$IFDEF LEVEL6}, Variants{$ENDIF}
   , XQTypes
@@ -79,7 +79,6 @@ Type
   Procedure FreeObject( Var Obj );
   Procedure ReplaceString( Var Work: TxNativeString; Const Old, NNew: TxNativeString );
   Function TrimCRLF( Const s: TxNativeString ): TxNativeString;
-  Function MessageToUser( Const Msg: TxNativeString; Atype: TMsgDlgtype ): Word;
   Function Max( Const A, B: Double ): Double; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   Function Min( Const A, B: Double ): Double; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
   Function IMax( A, B: TxNativeInt ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}
@@ -264,11 +263,6 @@ Begin
   ReplaceString( result, #13, '' );
   ReplaceString( result, #10, '' );
   ReplaceString( result, #11, '' ); {added by fduenas}
-End;
-
-Function MessageToUser( Const Msg: TxNativeString; Atype: TMsgDlgtype ): Word;
-Begin
-  Result := MessageDlg( Msg, Atype, [mbOk], 0 );
 End;
 
 Function IMax( A, B: TxNativeInt ): TxNativeInt; {$IFDEF XQ_USE_INLINE_METHODS}inline;{$ENDIF}

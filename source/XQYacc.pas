@@ -40,7 +40,7 @@ unit XQYacc;
 interface
 
 uses
-   SysUtils, Classes, Windows, Dialogs, QLexLib, QYaccLib, xqBase, xquery,
+   SysUtils, Classes, Windows, QLexLib, QYaccLib, xqBase, xquery,
    DB, xqmiscel, QCnvStrUtils, xqJoins
 {$IFDEF LEVEL3}
    , DBTables

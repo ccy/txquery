@@ -39,7 +39,7 @@ Unit XQSparseArray;
 Interface
 
 Uses
-  Windows, SysUtils, Classes, Controls, StdCtrls
+  Windows, SysUtils, Classes
 {$IFDEF LEVEL6}
   , Variants
 {$ENDIF}

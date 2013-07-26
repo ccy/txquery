@@ -51,7 +51,6 @@
 				<MainSource>MainSource</MainSource>
 			</DelphiCompile>
 			<DCCReference Include="dbrtl.dcp"/>
-			<DCCReference Include="vcl.dcp"/>
 			<DCCReference Include="..\..\source\QCnvStrUtils.pas"/>
 			<DCCReference Include="..\..\source\XQSparseArray.pas"/>
 			<DCCReference Include="..\..\source\QFormatSettings.pas"/>
