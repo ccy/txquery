@@ -50,10 +50,6 @@ Resourcestring
   SAggrMIN = 'MinOF_';
   SAggrMAX = 'MaxOF_';
   SAggrCOUNT = 'COUNT(*)';
-{$IFDEF xqdemo}
-  SDelphiIsNotRunning = 'TxQuery Dataset (c) 2004 Alfonso Moreno' + #13#10 +
-    'This is a demo version. Delphi must be running !';
-{$ENDIF}
 
 {$IFDEF LANG_ENG}
   SExprParserError = ' %s at line : %d, Column: %d, token: %s';

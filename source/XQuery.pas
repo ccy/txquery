@@ -1175,10 +1175,6 @@ Type
     Property OnCancelFilter;
   End;
 
-{$IFDEF XQDEMO}
-Procedure ShowAbout;
-{$ENDIF}
-
 {$IFDEF DELPHI3}
 Const
   ftNonTextTypes = [ftBytes, ftvarBytes, ftBlob, ftMemo, ftGraphic, ftFmtMemo,
@@ -1194,9 +1190,6 @@ Implementation
 }
 
 Uses
-{$IFDEF XQDEMO}
-  DemoReg,
-{$ENDIF}
   xqLex, xqYacc, xqConsts, QCnvStrUtils, XQMiscel;
 
 Function VarTypeToExprType(Const Value: Variant): TExprType;
@@ -1219,23 +1212,6 @@ End;
 { ------------------------------------------------------------------------------- }
 { Define as a demo section }
 { ------------------------------------------------------------------------------- }
-
-{$IFDEF xqdemo}
-Var
-  IsFirstTime: Boolean = True;
-
-Procedure ShowAbout;
-Begin
-  With TfrmRegister.Create(Nil) Do
-  Begin
-    Try
-      ShowModal;
-    Finally
-      free;
-    End;
-  End;
-End;
-{$ENDIF}
 
 { ------------------------------------------------------------------------------- }
 { Implements TxqField }
@@ -7887,17 +7863,6 @@ Var
 Begin
   ClearTempDatasets;
 
-{$IFDEF XQDEMO}
-  If IsFirstTime Or (Not(csDesigning In ComponentState) And
-    Not IsDelphiRunning) Then
-  Begin
-    IsFirstTime := False;
-    If Not(csDesigning In ComponentState) Then
-      ShowAbout;
-    If Not IsDelphiRunning Then
-      Raise Exception.Create(SDelphiIsNotRunning);
-  End;
-{$ENDIF}
   FRowsAffected := 0;
 
   ClearTempDatasets;
@@ -9042,10 +9007,6 @@ Begin
 
   ClearTempDatasets;
 
-{$IFDEF XQDEMO}
-  If Not(csDesigning In ComponentState) And Not IsDelphiRunning Then
-    Raise Exception.Create(SDelphiIsNotRunning);
-{$ENDIF}
   If Length(Trim(FSQL.Text)) = 0 Then
     Raise ExQueryError.Create(SSQLIsEmpty);
 
@@ -9710,10 +9671,6 @@ Begin
   If Length(S) = 0 Then
     Raise ExQueryError.Create(SSQLIsEmpty);
 
-{$IFDEF XQDEMO}
-  If Not(csDesigning In ComponentState) And Not IsDelphiRunning Then
-    Raise Exception.Create(SDelphiIsNotRunning);
-{$ENDIF}
   If FShowWaitCursor Then
   Begin
     SaveCursor := Screen.Cursor;

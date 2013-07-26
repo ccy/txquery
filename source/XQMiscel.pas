@@ -88,9 +88,6 @@ Type
   Function GetRecordNumber( DataSet: TDataSet ): TxNativeInt;
   Procedure SetRecordNumber( DataSet: TDataSet; RecNum: TxNativeInt );
   {$ENDIF}
-  {$IFDEF XQDEMO}
-  Function IsDelphiRunning: boolean;
-  {$ENDIF}
   Function GetTemporaryFileName( Const Prefix: TxNativeString ): TxNativeString;
   Function AddSlash( Const Path: TxNativeString ): TxNativeString;
   Function RemoveSlash( Const Path: TxNativeString ): TxNativeString;
@@ -331,23 +328,6 @@ Begin
   for I:= 1 to Length(s) do
     if s[I] = Ch then Inc(Result);
 End;
-
-{$IFDEF XQDEMO}
-Const
-  A2 = 'TAlignPalette';
-  A3 = 'TPropertyInspector';
-  A4 = 'TAppBuilder';
-
-Function IsDelphiRunning: boolean;
-Var
-  H2, {H3, }H4: Hwnd;
-Begin
-  H2 := FindWindow( A2, Nil );
-  //H3 := FindWindow( A3, Nil );
-  H4 := FindWindow( A4, Nil );
-  Result := ( H2 <> 0 ) {And ( H3 <> 0 )} And ( H4 <> 0 );
-End;
-{$ENDIF}
 
 Function AddSlash( Const Path: TxNativeString ): TxNativeString;
 Begin

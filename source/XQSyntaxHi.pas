@@ -328,13 +328,6 @@ Var
 Begin
   Reslt := '';
   RtfHeader := '';
-{$IFDEF XQDEMO}
-  If Not IsDelphiRunning Then
-  Begin
-    ShowAbout;
-    Raise Exception.Create( SDelphiIsNotRunning );
-  End;
-{$ENDIF}
   If Not Assigned( FEditor ) Or ( csDestroying In ComponentState ) Then
     Exit;
   InitializeFormatSettings( SFS );
