@@ -45,7 +45,8 @@
 {$DEFINE XQ_USE_INLINE_METHODS}              {Use The "InLine" Compiler Directive in Some Methods}
 {$DEFINE XQ_USE_SIZEOF_CONSTANTS}            {Use The XQ_SizeOf_XXX constants}
 {$DEFINE XQ_USE_NEW_SQLLIKE_FUNCTION}        {New SQLLike function, uses Masks.TMask class, used in LIKE 'XX' boolean expressions}
-{.$DEFINE XQ_USE_NEW_TRANSFORM_NAMING        {Give correct 'normalized' field name to transform aggregate fields, like SumOF_XXX}
+{.$DEFINE XQ_USE_NEW_TRANSFORM_NAMING}        {Give correct 'normalized' field name to transform aggregate fields, like SumOF_XXX}
+{.$DEFINE XQ_USE_NEW_BLOB_STORAGE}            {TO-DO: Add TxQuery its own BLOB Storage}
 
 { ==== Determination of compiler and others (do NOT change) ==== }
 {$IFDEF VER100}      // Delphi 3

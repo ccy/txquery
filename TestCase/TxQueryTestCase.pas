@@ -2415,10 +2415,12 @@ end;
 
 procedure TTest_DirectAccess.Test_Memo;
 begin
+{$IFDEF XQ_USE_NEW_BLOB_STORAGE}
   FQuery.Edit;
   FQuery.FindField('Memo').AsString := 'NewValue';
   FQuery.Post;
   CheckEquals('NewValue', FQuery.FindField('Memo').AsString);
+{$ENDIF}
 end;
 
 procedure TTest_DirectAccess.Test_Time;
@@ -2445,10 +2447,12 @@ end;
 
 procedure TTest_DirectAccess.Test_WideMemo;
 begin
+{$IFDEF XQ_USE_NEW_BLOB_STORAGE}
   FQuery.Edit;
   FQuery.FindField('WMemo').AsWideString := 'NewValue';
   FQuery.Post;
   CheckEquals('NewValue', FQuery.FindField('WMemo').AsWideString);
+{$ENDIF}
 end;
 
 procedure TTest_DirectAccess.Test_WideString;
