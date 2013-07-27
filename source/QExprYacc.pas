@@ -341,6 +341,12 @@ Type
     Constructor Create( ParameterList: TParameterList; xqField: TxqField );
   End;
 
+  TStrToDateExpr = Class( TFunctionExpr )
+  Protected
+    Function GetAsFloat: Double; Override;
+    function GetExprType: TExprtype; override;
+  End;
+
   TNowExpr = Class( TFunctionExpr )
   Protected
     Function GetAsFloat: Double; Override;
@@ -714,6 +720,27 @@ function TNowExpr.GetExprType: TExprtype;
 begin
   Result:= ttFloat;
 end;
+
+//TStrToDate
+
+Function TStrToDateExpr.GetAsFloat: Double;
+Begin
+  Try
+    Result := StrToDate( Param[0].AsString{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF} );
+  Except
+    On E: Exception Do
+    Begin
+     Result := 0;
+     raise ExQueryError.Create( E.Message );
+    End;
+  End;
+End;
+
+
+function TStrToDateExpr.GetExprType: TExprtype;
+Begin
+  Result := ttFloat;
+End;
 
 //TSQLTrimExpr
 
@@ -1966,6 +1993,8 @@ begin
                   IDF:= AddExpression(TDecodeDateTimeExpr.Create(FIdentifier, FTempParams, dkMSec))
           else if CompareText(FIdentifier,'FORMATDATETIME')=0 then
                   IDF:= AddExpression(TFormatDateTimeExpr.Create(FIdentifier, FTempParams))
+          else if CompareText(FIdentifier,'STRTODATE')=0 then
+                  IDF:= AddExpression(TStrToDateExpr.Create(FIdentifier, FTempParams))
           else if CompareText(FIdentifier,'FORMATFLOAT')=0 then
                   IDF:= AddExpression(TFormatFloatExpr.Create(FIdentifier, FTempParams))
           else if CompareText(FIdentifier,'FORMAT')=0 then
