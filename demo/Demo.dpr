@@ -1,13 +1,10 @@
 program Demo;
 {$DEFINE MEMORY_CHECK}
 uses
-  FastMM4 in '..\..\..\extra\FastMM4\FastMM4.pas',
+  MidasLib,
   Forms,
-  DemoAb in '..\source\DemoAb.pas' {frmAbout},
-  Ex1U in '..\source\Ex1U.pas' {frmTest},
-  FastMM4Messages in '..\..\..\extra\FastMM4\FastMM4Messages.pas',
-  XQSyntaxHi in '..\..\..\source\XQSyntaxHi.pas',
-  XQColorSet in '..\..\..\source\XQColorSet.pas' {frmColorSettings};
+  AboutFrm in 'AboutFrm.pas' {frmAbout},
+  MainFrm in 'MainFrm.pas' {frmMain};
 
 {$R *.RES}
 
@@ -17,6 +14,7 @@ begin
   ReportMemoryLeaksOnShutdown := true;
 {$ENDIF}
   Application.Initialize;
-  Application.CreateForm(TfrmTest, frmTest);
+  Application.Title := 'TXQuery v3.0 Demo';
+  Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.
