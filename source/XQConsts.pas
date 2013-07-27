@@ -293,6 +293,7 @@ Resourcestring
   SEXPR_INVALIDPARAMETERTO = 'Parámetro no válido para %s'; //'Invalid parameter to %s';
   SEXPR_WRONGPARAMETERCOUNT = '%s: El número de parámetros es incorrecto'; // '%s: Incorrect number of parameters';
   SEXPR_PARAMETERSTYPEDIFFERENT = '%s: Todos los parámetros deben de ser del mismo tipo';
+  SEXPR_MATCHINVALIDMASK = '%s: Máscara Inválida "%s", "%s"';
 {$ENDIF}
 
 Implementation

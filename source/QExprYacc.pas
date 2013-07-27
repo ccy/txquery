@@ -1976,12 +1976,14 @@ begin
                   IDF:= AddExpression(TMinMaxOfExpr.Create(FIdentifier, FTempParams, True))
           else if CompareText(FIdentifier,'MAXOF')=0 then
                   IDF:= AddExpression(TMinMaxOfExpr.Create(FIdentifier, FTempParams, False))
-          else if CompareText(FIdentifier,'SQLLIKE')=0 then
+          else if  (CompareText(FIdentifier,'SQLLIKE')=0) OR (CompareText(FIdentifier,'LIKE')=0) OR (CompareText(FIdentifier,'ISLIKE')=0) then
                   IDF:= AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(fIdentifier, FTempParams, False))
-          else if CompareText(FIdentifier,'SQLNOTLIKE')=0 then
+          else if (CompareText(FIdentifier,'SQLNOTLIKE')=0) OR (CompareText(FIdentifier,'ISNOTLIKE')=0) then
                   IDF:= AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(fIdentifier, FTempParams, True))
-          else if CompareText(FIdentifier,'MATCH')=0 then
+          else if (CompareText(FIdentifier,'MATCH')=0) OR (CompareText(FIdentifier,'ISMATCH')=0) then
                   IDF:= AddExpression(TSQLMatchLikeExpr.Create(fIdentifier, FTempParams, False))
+          else if (CompareText(FIdentifier,'IN')=0) OR (CompareText(FIdentifier,'IN_SET')=0) OR (CompareText(FIdentifier,'INSET')=0) then
+                  IDF:= AddExpression(TSQLInPredicateExpr.Create(fIdentifier, fTempParams, FALSE))
           else if (CompareText(FIdentifier,'ASCII')=0) or (CompareText(FIdentifier,'ORD')=0) then
                   IDF:= AddExpression(TASCIIExpr.Create(FIdentifier, FTempParams));
          end;
@@ -2031,10 +2033,10 @@ begin
          AddExpression( TBetweenExpr.Create(ForceParamList(3), TRUE) );
        end;
   14 : begin
-         AddExpression( TSQLInPredicateExpr.Create(ForceParamList(FParamCount + 1), FALSE) );
+         AddExpression( TSQLInPredicateExpr.Create('',ForceParamList(FParamCount + 1), FALSE) );
        end;
   15 : begin
-         AddExpression( TSQLInPredicateExpr.Create(ForceParamList(FParamCount + 1), TRUE) );
+         AddExpression( TSQLInPredicateExpr.Create('',ForceParamList(FParamCount + 1), TRUE) );
        end;
   16 : begin
          AddExpression({$IFNDEF XQ_USE_NEW_SQLLIKE_FUNCTION}TSQLLikeExpr{$ELSE}TSQLMatchLikeExpr{$ENDIF}.Create(ForceParamList(3), FALSE));

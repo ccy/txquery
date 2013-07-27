@@ -561,7 +561,7 @@ type
     Function GetAsBoolean: Boolean; Override;
     function GetExprType: TExprtype; override;
   Public
-    Constructor Create( ParameterList: TParameterList; IsNotIn: Boolean );
+    Constructor Create( aName: String; ParameterList: TParameterList; IsNotIn: Boolean ); overload;
   End;
 
   TBetweenExpr = Class( TFunctionExpr )
@@ -2719,11 +2719,15 @@ End;
 
 { TSQLInPredicateExpr - class implementation}
 
-Constructor TSQLInPredicateExpr.Create( ParameterList: TParameterList; IsNotIn: Boolean );
-Begin
-  Inherited Create( ParameterList );
-  FIsNotIn := IsNotIn;
-End;
+constructor TSQLInPredicateExpr.Create(aName: String;
+  ParameterList: TParameterList; IsNotIn: Boolean);
+begin
+ fExprName := aName;
+ if fExprName='' then
+    fExprName := 'IN';
+ Inherited Create( fExprName, ParameterList );
+ fIsNotIn := IsNotIn;
+end;
 
 Function TSQLInPredicateExpr.GetAsBoolean: Boolean;
 Var
