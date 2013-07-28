@@ -113,6 +113,16 @@ type{$M+}
     procedure Test_LIKE_Single_Contains_Right;
   end;
 
+  TTest_Filter = class(TTest_TxQuery)
+  published
+   procedure Test_Filter_ISLIKE_Multiple_Contains; {ISLIKE and SQLLIKE, are the same as LIKE but
+                                                    there is no need to enclose them in brakets }
+   procedure Test_Filter_LIKE_Mix_InBrakets; {LIKE, When used in Filter must be used as function
+                                              and to be enclosed in Brakets []}
+   procedure Test_Filter_MATCH_EscapeChar_Mix;
+   procedure Test_Filter_MATCH_Ranges_Mix;
+  end;
+
   TTest_GroupBy = class(TTest_TxQuery)
   published
     procedure Test_GroupBy_SUMQty;
@@ -226,6 +236,7 @@ type{$M+}
     procedure Test_ExtractDate;
     procedure Test_FormatDateTime1;
     procedure Test_FormatDateTime2;
+    procedure Test_StrToDate;
     function CanCreateCalcFields: boolean; override;
   end;
 
@@ -2282,6 +2293,21 @@ begin
   CheckEquals(FQuery.FieldByName('DocTimeStamp').AsFloat, FQuery.FieldByName('CALC_DocTimeStamp').AsFloat);
 end;
 
+procedure TTest_DateTime.Test_StrToDate;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add(         'SELECT *');
+    Add(           'FROM Main');
+    Add(Format(   'WHERE DocDate >= StrToDate( ''%s'' )', [FormatDateTime(FQuery.DateFormat, IncDay(FDate, 6), FQuery.SystemFormatSettings)]));
+  end;
+  FQuery.Open;
+  CheckEquals(5, FQuery.RecordCount);
+end;
+
 procedure TTest_Hardcode_String.Test_Hardcode_String_Select;
 begin
   FQuery.DataSets.Clear;
@@ -2518,6 +2544,105 @@ begin
   Execute(S);
 end;
 
+{ TTest_Filter }
+
+procedure TTest_Filter.Test_Filter_ISLIKE_Multiple_Contains;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+  end;
+  FQuery.Open;
+  FQuery.Filter := 'ISLIKE(DocNo, ''%002%'')';
+  FQuery.Filtered := true;
+  CheckEquals(1,         FQuery.RecordCount,        'IsLike: FQuery Record Count incorrect.');
+  CheckEquals('IV-0002', FQuery.Fields[0].AsString, 'IsLike: DocNo incorrect.');
+
+  FQuery.Filter := 'SQLLIKE(DocNo, ''%003%'')';
+  FQuery.Filtered := true;
+  CheckEquals(1,         FQuery.RecordCount,        'SqlLike: FQuery Record Count incorrect.');
+  CheckEquals('IV-0003', FQuery.Fields[0].AsString, 'SqlLike: DocNo incorrect.');
+  FQuery.Close;
+end;
+
+procedure TTest_Filter.Test_Filter_LIKE_Mix_InBrakets;
+begin
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Underwater Club';
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+  end;
+  FQuery.Open;
+  FQuery.Filter := '[LIKE](DocNo, ''%Cl_b'')'; {LIKE, When used in Filter must be used as function
+                                                and to be enclosed in Brakets []}
+  FQuery.Filtered := true;
+  CheckEquals(1,         FQuery.RecordCount,        'LIKE: FQuery Record Count incorrect.');
+  CheckEquals('Underwater Club', FQuery.Fields[0].AsString, 'LIKE: DocNo incorrect.');
+  FQuery.Close;
+end;
+
+procedure TTest_Filter.Test_Filter_MATCH_EscapeChar_Mix;
+begin
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Under_water\Club';
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Under_water\Cpub';
+  FMainDataSet.Append;
+  FMainDataSet.FindField('DocNo').AsString := 'Under_water\Crub';
+  FMainDataSet.Post;
+
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+  end;
+  FQuery.Open;
+  FQuery.Filter := 'Match(DocNo, ''%der\_wa_er\\C[lr]ub'',''\'')';
+  FQuery.Filtered := true;
+  FQuery.First;
+
+  CheckEquals(2,         FQuery.RecordCount,        'Match: FQuery Record Count incorrect.');
+  CheckEquals('Under_water\Club', FQuery.Fields[0].AsString, 'Match: DocNo incorrect.');
+  FQuery.Next;
+  CheckEquals('Under_water\Crub', FQuery.Fields[0].AsString, 'Match: DocNo incorrect.');
+  FQuery.Close;
+end;
+
+procedure TTest_Filter.Test_Filter_MATCH_Ranges_Mix;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT DocNo');
+    Add(  'FROM Main');
+    end;
+  FQuery.Open;
+
+  FQuery.Filter := 'Match(DocNo, ''%00[6-9]%'')'; {from DocNo IV-0006 to IV-0009}
+  FQuery.Filtered := true;
+  FQuery.First;
+  CheckEquals(4,         FQuery.RecordCount,        'Match: FQuery Record Count incorrect.');
+  CheckEquals('IV-0006', FQuery.Fields[0].AsString, 'Match: DocNo incorrect.');
+  FQuery.Last;
+  CheckEquals('IV-0009', FQuery.Fields[0].AsString, 'Match: DocNo incorrect.');
+  FQuery.Close;
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -2529,6 +2654,7 @@ initialization
     AddSuite(TTest_IN.Suite);
     AddSuite(TTest_OrderBy.Suite);
     AddSuite(TTest_LIKE.Suite);
+    AddSuite(TTest_Filter.Suite);
     AddSuite(TTest_GroupBy.Suite);
     AddSuite(TTest_SubQueries.Suite);
     AddSuite(TTest_Join.Suite);
