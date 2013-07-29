@@ -23,6 +23,7 @@
 			<Base>true</Base>
 		</PropertyGroup>
 		<PropertyGroup Condition="'$(Base)'!=''">
+			<BRCC_OutputDir>..\..\lib\D2010</BRCC_OutputDir>
 			<DCC_BplOutput>..\..\bin\D2010</DCC_BplOutput>
 			<DCC_DcuOutput>..\..\lib\D2010</DCC_DcuOutput>
 			<DCC_DcpOutput>..\..\lib\D2010</DCC_DcpOutput>
@@ -119,8 +120,8 @@
 			<RcCompile Include="..\..\source\QExprYacc.rc">
 				<Form>QExprYacc.res</Form>
 			</RcCompile>
-			<RcCompile Include="..\..\source\xqyacc.rc">
-				<Form>xqyacc.res</Form>
+			<RcCompile Include="..\..\source\XQYacc.rc">
+				<Form>XQYacc.res</Form>
 			</RcCompile>
 			<BuildConfiguration Include="Base">
 				<Key>Base</Key>

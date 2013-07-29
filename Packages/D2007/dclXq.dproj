@@ -59,10 +59,6 @@
     </DelphiCompile>
     <DCCReference Include="$(SystemRoot)\system32\designide.dcp" />
     <DCCReference Include="$(SystemRoot)\system32\Xq.dcp" />
-    <DCCReference Include="..\..\source\COLORSET.PAS">
-      <Form>frmColorSettings</Form>
-    </DCCReference>
-    <DCCReference Include="..\..\source\SyntaxHi.pas" />
     <DCCReference Include="..\..\source\XQColorSet.pas">
       <Form>frmColorSettings</Form>
     </DCCReference>

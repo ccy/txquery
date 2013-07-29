@@ -50,6 +50,20 @@
       
       
       
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
       <Excluded_Packages Name="$(BDS)\bin\dcloffice2k100.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
       <Excluded_Packages Name="$(BDS)\bin\dclofficexp100.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
     </Excluded_Packages><Source><Source Name="MainSource">Xq.dpk</Source></Source></Delphi.Personality></BorlandProject></BorlandProject>
@@ -59,7 +73,7 @@
     <DelphiCompile Include="Xq.dpk">
       <MainSource>MainSource</MainSource>
     </DelphiCompile>
-    <DCCReference Include="..\..\source\CnvStrUtils.pas" />
+    <DCCReference Include="$(SystemRoot)\system32\dbrtl.dcp" />
     <DCCReference Include="..\..\source\QBaseExpr.pas" />
     <DCCReference Include="..\..\source\QCnvStrUtils.pas" />
     <DCCReference Include="..\..\source\QExprLex.pas" />
@@ -67,7 +81,6 @@
     <DCCReference Include="..\..\source\QFormatSettings.pas" />
     <DCCReference Include="..\..\source\QLexLib.pas" />
     <DCCReference Include="..\..\source\QYaccLib.pas" />
-    <DCCReference Include="..\..\source\Sparsarr.pas" />
     <DCCReference Include="..\..\source\XQBase.pas" />
     <DCCReference Include="..\..\source\XQConsts.pas" />
     <DCCReference Include="..\..\source\XQJoins.pas" />
@@ -77,12 +90,15 @@
     <DCCReference Include="..\..\source\XQTypes.pas" />
     <DCCReference Include="..\..\source\XQuery.pas" />
     <DCCReference Include="..\..\source\XQYacc.pas" />
-    <DCCReference Include="dbrtl.dcp" />
     <RcCompile Include="..\..\source\QExprYacc.rc">
       <Form>QExprYacc.res</Form>
     </RcCompile>
-    <RcCompile Include="..\..\source\xqyacc.rc">
-      <Form>xqyacc.res</Form>
+    <RcCompile Include="..\..\source\XQYacc.rc">
+      <Form>XQYacc.res</Form>
     </RcCompile>
   </ItemGroup>
+  <PropertyGroup>
+    <PostBuildEvent>move ..\..\source\XQYacc.res ..\..\lib\D2007
+move ..\..\source\QExprYacc.res ..\..\lib\D2007</PostBuildEvent>
+  </PropertyGroup>
 </Project>
