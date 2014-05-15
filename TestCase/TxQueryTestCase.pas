@@ -506,17 +506,19 @@ end;
 procedure TTest_Between.TTest_Between_SQL;
 var lDataSet: TClientDataSet;
     i: integer;
+    F: TFormatSettings;
 begin
   lDataSet := TClientDataSet.Create(nil);
   try
     FQuery.DataSets.Clear;
     FQuery.AddDataSet(FMainDataSet, 'Main');
 
+    F.DateSeparator := FQuery.DateSeparator;
     with FQuery.SQL do begin
       Clear;
       Add(      'SELECT *');
       Add(        'FROM Main');
-      Add(Format('WHERE DocDate BETWEEN #%s# AND #%s#', [FormatDateTime('dd/mm/yyyy', IncDay(FDate, 3)) , FormatDateTime('dd/mm/yyyy', IncDay(FDate, 6))]));
+      Add(Format('WHERE DocDate BETWEEN #%s# AND #%s#', [FormatDateTime('dd/mm/yyyy', IncDay(FDate, 3), F) , FormatDateTime('dd/mm/yyyy', IncDay(FDate, 6), F)]));
       Add(       'ORDER BY DocKey');
     end;
     lDataSet.Data := GetDataPacket(FQuery);
