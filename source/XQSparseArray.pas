@@ -275,7 +275,7 @@ Begin
         Inc( byteP, ( Index And indexMask ) * {$IFNDEF Delphi2009Up}
                                                {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Pointer){$ELSE}XQ_SizeOf_Pointer{$ENDIF} ); {patched by fduenas, before was SizeOf( Pointer )}
                                               {$Else}
-                                               {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} ); {patched by fduenas, before was SizeOf( Pointer )}
+                                               {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} * (SizeOf(Pointer) div (SizeOf(Char) * 2))); {patched by fduenas, before was SizeOf( Pointer )}
                                               {$EndIf}
       End
     End;
@@ -317,7 +317,7 @@ Begin
   Inc( byteP, ( Index And indexMask ) * {$IFNDEF Delphi2009Up}
                                           {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Pointer){$ELSE}XQ_SizeOf_Pointer{$ENDIF} ); {patched by fduenas, before was SizeOf( Pointer )}
                                         {$Else}
-                                          {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} ); {patched by fduenas, before was SizeOf( Pointer )}
+                                          {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} * (SizeOf(Pointer) div (SizeOf(Char) * 2))); {patched by fduenas, before was SizeOf( Pointer )}
                                         {$EndIf}
   If Index > FHighBound Then
     FHighBound := Index;
@@ -423,7 +423,7 @@ Begin
         Inc( itemP, {$IFNDEF Delphi2009Up}
                      {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Pointer){$ELSE}XQ_SizeOf_Pointer{$ENDIF}
                     {$Else}
-                     {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF}  {patched by fduenas, before was SizeOf( Pointer )}
+                     {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Char){$ELSE}XQ_SizeOf_Char{$ENDIF} * (SizeOf(Pointer) div (SizeOf(Char) * 2)) {patched by fduenas, before was SizeOf( Pointer )}
                     {$EndIf} );
         Inc( j );
         Inc( index )
