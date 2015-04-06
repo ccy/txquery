@@ -196,12 +196,14 @@ type{$M+}
   published
     procedure Test_Min;
     procedure Test_Min_WithCondition;
+    procedure Test_String;
   end;
 
   TTest_Max = class(TTest_TxQuery)
   published
     procedure Test_Max;
     procedure Test_Max_WithCondition;
+    procedure Test_String;
   end;
 
   TTest_Extract = class(TTest_TxQuery)
@@ -1914,6 +1916,21 @@ begin
 end;
 
 
+procedure TTest_Max.Test_String;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT MAX(Code)');
+    Add(  'FROM Main');
+  end;
+  FQuery.Open;
+  CheckEquals('300-9', FQuery.Fields[0].AsString);
+  FQuery.Close;
+end;
+
 procedure TTest_Min.Test_Min;
 begin
   FQuery.DataSets.Clear;
@@ -1942,6 +1959,21 @@ begin
   end;
   FQuery.Open;
   CheckEquals(128, FQuery.Fields[0].AsInteger, 'Min Result incorrect');
+  FQuery.Close;
+end;
+
+procedure TTest_Min.Test_String;
+begin
+  FQuery.DataSets.Clear;
+  FQuery.AddDataSet(FMainDataSet, 'Main');
+
+  with FQuery.SQL do begin
+    Clear;
+    Add('SELECT MIN(Code)');
+    Add(  'FROM Main');
+  end;
+  FQuery.Open;
+  CheckEquals('300-1', FQuery.Fields[0].AsString);
   FQuery.Close;
 end;
 

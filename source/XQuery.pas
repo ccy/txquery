@@ -3960,7 +3960,7 @@ Begin
               End
               Else
               Begin
-                If VarType(SparseList.Values[n]) = varString Then
+                If (VarType(SparseList.Values[n]) = varString) or (VarType(SparseList.Values[n]) = varUString) Then
                   Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), '"'+SparseList.Values[n]+'"')
                 Else
                 Begin
