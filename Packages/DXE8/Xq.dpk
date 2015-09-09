@@ -1,0 +1,54 @@
+package Xq;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE Debug}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'TxQuery Runtime Component'}
+{$LIBSUFFIX '_D22'}
+{$RUNONLY}
+{$IMPLICITBUILD OFF}
+
+requires
+  dbrtl;
+
+contains
+  QCnvStrUtils in '..\..\source\QCnvStrUtils.pas',
+  XQSparseArray in '..\..\source\XQSparseArray.pas',
+  QFormatSettings in '..\..\source\QFormatSettings.pas',
+  QLexLib in '..\..\source\QLexLib.pas',
+  QYaccLib in '..\..\source\QYaccLib.pas',
+  XQMiscel in '..\..\source\XQMiscel.pas',
+  QBaseExpr in '..\..\source\QBaseExpr.pas',
+  QExprYacc in '..\..\source\QExprYacc.pas',
+  QExprLex in '..\..\source\QExprLex.pas',
+  XQConsts in '..\..\source\XQConsts.pas',
+  XQJoins in '..\..\source\XQJoins.pas',
+  XQBase in '..\..\source\XQBase.pas',
+  XQYacc in '..\..\source\XQYacc.pas',
+  XQuery in '..\..\source\XQuery.pas',
+  XQLex in '..\..\source\XQLex.pas',
+  XQTypes in '..\..\source\XQTypes.pas';
+
+end.
