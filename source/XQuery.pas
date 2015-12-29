@@ -8788,7 +8788,7 @@ Begin
         Move(I, Buffer^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Integer){$ELSE}XQ_SizeOf_Integer{$ENDIF});
        {$Else}
         c := I;
-        TBitConverter.From{$if RTLVersion>=29}<Currency>{$else}Currency{$endif}(c, Buffer); {added patch for XE3, by ccy}
+        TBitConverter.{$if RTLVersion>=29}From<Currency>{$else}FromCurrency{$endif}(c, Buffer); {added patch for XE3, by ccy}
        {$EndIf}
       End
       Else  If (Field.DataType = ftBCD) And (vxqField.DataType = ttLargeInt) Then {added by fduenas: added LargeInt (Int64) support}
@@ -8798,7 +8798,7 @@ Begin
         Move(LI, Buffer^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Int64){$ELSE}XQ_SizeOf_Int64{$ENDIF});
        {$Else}
         C := LI;
-        TBitConverter.From{$if RTLVersion>=29}<Currency>{$else}Currency{$endif}(c, Buffer); {added patch for XE3, by ccy}
+        TBitConverter.{$if RTLVersion>=29}From<Currency>{$else}FromCurrency{$endif}(c, Buffer); {added patch for XE3, by ccy}
        {$EndIf}
       End
       Else If (Field.DataType = ftBCD) Then
@@ -8808,7 +8808,7 @@ Begin
        {$IFNDEF DelphiXe3Up}
         Move(c, Buffer^, {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Double){$ELSE}XQ_SizeOf_Double{$ENDIF});
        {$Else}
-        TBitConverter.From{$if RTLVersion>=29}<Currency>{$else}Currency{$endif}(c, Buffer); {added patch for XE3, by ccy}
+        TBitConverter.{$if RTLVersion>=29}From<Currency>{$else}FromCurrency{$endif}(c, Buffer); {added patch for XE3, by ccy}
        {$EndIf}
       End
       Else
@@ -8821,19 +8821,19 @@ Begin
              {$IFNDEF DelphiXe3Up}
               Integer(Buffer^) := DateTimeToTimeStamp(d).Date
              {$Else}
-              TBitConverter.From{$if RTLVersion>=29}<Integer>{$else}Integer{$endif}(DateTimeToTimeStamp(d).Date, Buffer) {added patch for XE3, by ccy}
+              TBitConverter.{$if RTLVersion>=29}From<Integer>{$else}FromInteger{$endif}(DateTimeToTimeStamp(d).Date, Buffer) {added patch for XE3, by ccy}
              {$EndIf}
            else If Field.DataType = ftTime then
              {$IFNDEF DelphiXe3Up}
               Integer(Buffer^) := DateTimeToTimeStamp(d).Time
              {$Else}
-              TBitConverter.From{$if RTLVersion>=29}<Integer>{$else}Integer{$endif}(DateTimeToTimeStamp(d).Time, Buffer) {added patch for XE3, by ccy}
+              TBitConverter.{$if RTLVersion>=29}From<Integer>{$else}FromInteger{$endif}(DateTimeToTimeStamp(d).Time, Buffer) {added patch for XE3, by ccy}
              {$EndIf}
            else
              {$IFNDEF DelphiXe3Up}
               Double(Buffer^) := d;
              {$Else}
-              TBitConverter.From{$if RTLVersion>=29}<Double>{$else}Double{$endif}(d, Buffer); {added patch for XE3, by ccy}
+              TBitConverter.{$if RTLVersion>=29}From<Double>{$else}FromDouble{$endif}(d, Buffer); {added patch for XE3, by ccy}
              {$EndIf}
           Except
             on e: exception do
@@ -8856,7 +8856,7 @@ Begin
          begin
           try
            If {$IFNDEF DelphiXe3Up}Integer(Buffer^)
-              {$Else}TBitConverter.Into{$if RTLVersion>=29}<Integer>{$else}Integer{$endif}(Buffer)
+              {$Else}TBitConverter.{$if RTLVersion>=29}Into<Integer>{$else}ToInteger{$endif}(Buffer)
               {$EndIf} = 0 Then { 693594 = Delphi1-Zero-Date } {added patch for XE3, by ccy}
            Begin
             Result := False;
@@ -8876,7 +8876,7 @@ Begin
          begin
           try
            If {$IFNDEF DelphiXe3Up}Double(Buffer^)
-              {$Else}TBitConverter.Into{$if RTLVersion>=29}<Double>{$else}Double{$endif}(Buffer)
+              {$Else}TBitConverter.{$if RTLVersion>=29}Into<Double>{$else}ToDouble{$endif}(Buffer)
               {$EndIf} = 0 Then { 693594 = Delphi1-Zero-Date } {added patch for XE3, by ccy}
            Begin
             Result := False;
