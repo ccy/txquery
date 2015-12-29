@@ -32,13 +32,13 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
+        <DCC_Namespace>System;System.Win;Winapi;Xml;Data;Data.Win;Datasnap;Web;Soap;Vcl;Vcl.Imaging;VclTee;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
         <SanitizedProjectName>dclXq</SanitizedProjectName>
         <DCC_Optimize>false</DCC_Optimize>
-        <DCC_DcpOutput>..\..\lib\DXE6\$(Platform)\$(Config)</DCC_DcpOutput>
-        <DCC_Namespace>System;Winapi;Data;Vcl;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_BplOutput>..\..\bin\DXE6\$(Platform)\$(Config)</DCC_BplOutput>
-        <DCC_UnitSearchPath>..\..\lib\DXE6\$(Platform)\$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_DcuOutput>..\..\lib\DXE6\$(Platform)\$(Config)</DCC_DcuOutput>
+        <DCC_DcpOutput>..\..\lib\DXE7\$(Platform)\$(Config)</DCC_DcpOutput>
+        <DCC_BplOutput>..\..\bin\DXE7\$(Platform)\$(Config)</DCC_BplOutput>
+        <DCC_UnitSearchPath>..\..\lib\DXE7\$(Platform)\$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_DcuOutput>..\..\lib\DXE7\$(Platform)\$(Config)</DCC_DcuOutput>
         <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DllSuffix>_D21</DllSuffix>
