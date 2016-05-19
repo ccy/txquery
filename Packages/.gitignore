@@ -4,5 +4,6 @@
 *.dsk
 *.tvsconfig
 *.dres
+*.stat
 bin/
 lib/
