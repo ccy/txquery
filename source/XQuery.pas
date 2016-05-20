@@ -39,7 +39,7 @@ Unit XQuery;
 Interface
 
 Uses
-  SysUtils, Windows, Classes, Db,
+  SysUtils, Windows, Classes, Db, FmtBcd,
   xqbase, Qlexlib, Qyacclib, Qbaseexpr, QExprYacc, XQJoins
 {$IFDEF LEVEL3}
     , DBTables
@@ -3639,7 +3639,10 @@ Begin
            {$IFDEF LEVEL4}
             ttWideString: Field.AsWideString := Resolver.Expression.AsWideString;
            {$ENDIF}
-            ttFloat: Field.AsFloat := Resolver.Expression.AsFloat;
+            ttFloat: if Field is TFmtBcdField then
+                       Field.AsBCD := BCDRoundTo(BCDtoDouble(Resolver.Expression.AsFloat), -(Field as TFmtBcdField).Size)
+                     else
+                       Field.AsFloat := Resolver.Expression.AsFloat;
             ttInteger: Field.AsInteger := Resolver.Expression.AsInteger;
             {$IFDEF Delphi2010Up}
              ttLargeInt: Field.AsLargeInt := Resolver.Expression.AsLargeInt; {added by fduenas: added LargeInt (Int64) support}
