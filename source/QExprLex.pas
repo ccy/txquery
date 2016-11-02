@@ -474,7 +474,7 @@ yym : array [1..yynmatches] of SmallInt = (
 );
 
 yyt : array [1..yyntrans] of YYTrec = (
-{ 0: }
+{ 1: }
   ( cc: [ #1..#8,#11..#31,'!','%','&',';','?','@','\',']',
             '`','{'..#127 ];{$IFDEF UNICODE}uc:[];{$ENDIF} s: 25),
   ( cc: [ #9 ]; s: 24),
@@ -486,6 +486,7 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ '''' ]; s: 8),
   ( cc: [ '(' ]; s: 12),
   ( cc: [ ')' ]; s: 13),
+{ 11: }
   ( cc: [ '*' ]; s: 18),
   ( cc: [ '+' ]; s: 19),
   ( cc: [ ',' ]; s: 11),
@@ -496,11 +497,11 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ ':' ]; s: 17),
   ( cc: [ '<' ]; s: 15),
   ( cc: [ '=' ]; s: 16),
+{ 21: }
   ( cc: [ '>' ]; s: 14),
   ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 2),
   ( cc: [ '[' ]; s: 3),
   ( cc: [ '^' ]; s: 20),
-{ 1: }
   ( cc: [ #1..#8,#11..#31,'!','%','&',';','?','@','\',']',
             '`','{'..#127 ]; s: 25),
   ( cc: [ #9 ]; s: 24),
@@ -508,6 +509,7 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ ' ' ]; s: 22),
   ( cc: [ '"' ]; s: 9),
   ( cc: [ '#' ]; s: 10),
+{ 31: }
   ( cc: [ '$' ]; s: 7),
   ( cc: [ '''' ]; s: 8),
   ( cc: [ '(' ]; s: 12),
@@ -518,6 +520,7 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ '-' ]; s: 4),
   ( cc: [ '.' ]; s: 6),
   ( cc: [ '/' ]; s: 21),
+{ 41: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 5),
   ( cc: [ ':' ]; s: 17),
   ( cc: [ '<' ]; s: 15),
@@ -526,93 +529,51 @@ yyt : array [1..yyntrans] of YYTrec = (
   ( cc: [ 'A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 2),
   ( cc: [ '[' ]; s: 3),
   ( cc: [ '^' ]; s: 20),
-{ 2: }
   ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsAlpha;{$ENDIF} s: 26),
-{ 3: }
   ( cc: [ #1..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 27),
+{ 51: }
   ( cc: [ ']' ]; s: 28),
-{ 4: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 29),
-{ 5: }
   ( cc: [ '.' ]; s: 31),
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 30),
-{ 6: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 32),
-{ 7: }
   ( cc: [ '0'..'9','A'..'F','a'..'f' ]; s: 33),
-{ 8: }
-  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 34),
+  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter + [TUnicodeCategory.ucOpenPunctuation, TUnicodeCategory.ucClosePunctuation];{$ENDIF} s: 34),
   ( cc: [ '''' ]; s: 35),
-{ 9: }
   ( cc: [ #1..'!','#'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 36),
   ( cc: [ '"' ]; s: 37),
-{ 10: }
+{ 61: }
   ( cc: [ #1..'"','$'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 38),
   ( cc: [ '#' ]; s: 39),
-{ 11: }
-{ 12: }
-{ 13: }
-{ 14: }
   ( cc: [ '=' ]; s: 40),
-{ 15: }
   ( cc: [ '=' ]; s: 42),
   ( cc: [ '>' ]; s: 41),
-{ 16: }
-{ 17: }
-{ 18: }
-{ 19: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 29),
-{ 20: }
-{ 21: }
   ( cc: [ '*' ]; s: 43),
-{ 22: }
-{ 23: }
-{ 24: }
-{ 25: }
-{ 26: }
   ( cc: [ '0'..'9','A'..'Z','_','a'..'z',#128..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsAlpha;{$ENDIF} s: 26),
-{ 27: }
   ( cc: [ #1..'Z','\','^'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 27),
   ( cc: [ ']' ]; s: 28),
-{ 28: }
-{ 29: }
+{ 71: }
   ( cc: [ '.' ]; s: 44),
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 29),
-{ 30: }
   ( cc: [ '.' ]; s: 31),
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 30),
-{ 31: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 31),
-{ 32: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 32),
   ( cc: [ 'E','e' ]; s: 45),
-{ 33: }
   ( cc: [ '0'..'9','A'..'F','a'..'f' ]; s: 33),
-{ 34: }
-  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 34),
+  ( cc: [ #1..'&','('..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter + [TUnicodeCategory.ucOpenPunctuation, TUnicodeCategory.ucClosePunctuation];{$ENDIF} s: 34),
   ( cc: [ '''' ]; s: 35),
-{ 35: }
-{ 36: }
+{ 81: }
   ( cc: [ #1..'!','#'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 36),
   ( cc: [ '"' ]; s: 37),
-{ 37: }
-{ 38: }
   ( cc: [ #1..'"','$'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 38),
   ( cc: [ '#' ]; s: 39),
-{ 39: }
-{ 40: }
-{ 41: }
-{ 42: }
-{ 43: }
   ( cc: [ #1..')','+'..#255 ];{$IFDEF UNICODE}uc: CONST_XQ_ucIsLetter;{$ENDIF} s: 43),
   ( cc: [ '*' ]; s: 46),
-{ 44: }
   ( cc: [ '0'..'9' ];{$IFDEF UNICODE}{uc: CONST_XQ_ucIsDigit;}{$ENDIF} s: 31),
-{ 45: }
   ( cc: [ '+','-' ]; s: 44),
-{ 46: }
   ( cc: [ '/' ]; s: 47)
-{ 47: }
 );
 
 yykl : array [0..yynstates-1] of SmallInt = (

@@ -974,12 +974,12 @@ begin
   FQuery.AddDataSet(FMainDataSet, 'Main');
 
   FQuery.SQL.Text := 'UPDATE Main SET Agent=:Agent WHERE DocNo=:DocNo';
-  FQuery.ParamByName('Agent').AsString := Chr($4EE3)+Chr($7406)+'3';
-  FQuery.ParamByName('DocNo').AsString := Chr($8BA2)+Chr($5355) + '-0001';
+  FQuery.ParamByName('Agent').AsString := Chr($FF08) + Chr($4EE3) + Chr($7406) + '3' + Chr($FF09);
+  FQuery.ParamByName('DocNo').AsString := Chr($8BA2) + Chr($5355) + '-0001';
   FQuery.ExecSQL;
 
-  CheckTrue(FMainDataSet.Locate('DocNo', Chr($8BA2)+Chr($5355) + '-0001', []));
-  CheckEquals(Chr($4EE3)+Chr($7406)+'3', FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
+  CheckTrue(FMainDataSet.Locate('DocNo', Chr($8BA2) + Chr($5355) + '-0001', []));
+  CheckEquals(Chr($FF08) + Chr($4EE3) + Chr($7406) + '3' + Chr($FF09), FMainDataSet.FindField('Agent').AsString, 'Field "Agent" incorrect');
 end;
 
 procedure TTest_Unicode_SubQueries.Test_SubQueries_IN_Case1;
