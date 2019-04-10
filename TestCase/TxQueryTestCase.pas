@@ -271,6 +271,11 @@ type{$M+}
     procedure Test_WideString;
   end;
 
+  TTestCase_Float = class(TTest_TxQuery)
+  published
+    procedure Test_Max;
+  end;
+
 implementation
 
 uses StrUtils, DateUtils, Variants, FmtBcd,
@@ -2677,6 +2682,29 @@ begin
   FQuery.Close;
 end;
 
+procedure TTestCase_Float.Test_Max;
+var D, D1: TClientDataSet;
+    X: TxQuery;
+begin
+  D := TClientDataSet.Create(nil);
+  D1 := TClientDataSet.Create(nil);
+  X := TxQuery.Create(nil);
+  try
+    D.FieldDefs.Add('BasePrice', ftFmtBcd, 8);
+    D.FieldDefs.Find('BasePrice').Precision := 19;
+    D.CreateDataSet;
+    D.AppendRecord([0.00005000]);
+    X.AddDataSet(D, 'Main');
+    X.SQL.Text := 'SELECT Max(BasePrice) FROM Main';
+    X.Open;
+    CheckEquals('0.00005', FloatToStrF(X.Fields[0].AsFloat, ffNumber, 18, 5));
+  finally
+    X.Free;
+    D.Free;
+    D1.Free;
+  end;
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -2710,6 +2738,7 @@ initialization
     AddSuite(TTest_Select.Suite);
 
     AddSuite(TTest_DirectAccess.Suite);
+    Addsuite(TTestCase_Float.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);

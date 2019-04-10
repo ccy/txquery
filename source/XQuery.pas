@@ -3679,6 +3679,7 @@ Var
   DValue: Double;
   ResultSetHasRecords: Boolean;
   {$if RTLVersion >= 18.5}B: TBookmark;{$ifend} { pathced by ccy }
+  iPos: Integer;
 Begin
   // GROUP BY clause
   If Not(  (ResultSet.RecordCount > 0) And  {patched by cy}
@@ -3972,6 +3973,9 @@ Begin
                 Begin
                   DValue:= SparseList.Values[n];
                   Replacestring(vS, Format('{Aggregate %d}', [K]{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}), FloatToStr(DValue{$IFDEF Delphi7Up}, fSystemFormatSettings{$ENDIF}));
+                  iPos := Pos('E-', vS);
+                  if iPos > 0 then
+                    vS := FloatToStrF(DValue, ffNumber, 19, StrToInt(Copy(vS, iPos + 2, High(Integer))));
                 End;
               End;
               Replacestring(vS, fSystemFormatSettings.DecimalSeparator, fRuntimeFormatSettings.DecimalSeparator);
