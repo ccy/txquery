@@ -58,6 +58,11 @@ type{$M+}
     procedure CreateTestData(UseCalcFields: Boolean=false); virtual;
   end;
 
+  TTest_DataSet = class(TTest_TxQuery)
+  published
+    procedure Test_BookmarkValid;
+  end;
+
   TTest_Between = class(TTest_TxQuery)
   private
     FShortDateFormat: string;
@@ -490,6 +495,25 @@ begin
    fld.Value := Fields[i].Value;
   end;
  end;
+end;
+
+procedure TTest_DataSet.Test_BookmarkValid;
+begin
+  var M := TClientDataSet.Create(nil);
+  var Q := TxQuery.Create(nil);
+  try
+    M.FieldDefs.Add('Field', ftInteger);
+    M.CreateDataSet;
+
+    Q.AddDataSet(M, 'Main');
+    Q.SQL.Text := 'SELECT * FROM Main';
+    Q.Open;
+    var B := Q.GetBookmark;
+    CheckFalse(Q.BookmarkValid(B));
+  finally
+    M.Free;
+    Q.Free;
+  end;
 end;
 
 procedure TTest_Between.SetUp;
@@ -2709,6 +2733,7 @@ initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
   with TxQueryTestSuite do begin
+    AddSuite(TTest_DataSet.Suite);
     AddSuite(TTest_Between.Suite);
     AddSuite(TTest_FreeTxQuery.Suite);
     AddSuite(TTest_Transform.Suite);

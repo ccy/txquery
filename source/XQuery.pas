@@ -8433,7 +8433,7 @@ End;
 
 Function TCustomxQuery.InternalBookmarkValid(Bookmark: Pointer): Boolean;
 Begin
-  Result := (PInteger(Bookmark)^ >= 0) And
+  Result := Assigned(Bookmark) and (PInteger(Bookmark)^ >= 0) And
     (PInteger(Bookmark)^ <= FRecordCount - 1);
 End;
 
