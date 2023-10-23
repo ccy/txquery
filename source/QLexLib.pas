@@ -43,6 +43,8 @@ Uses Classes, SysUtils, QFormatSettings, XQTypes;
 Const
   nl = #10; (* newline character *)
   max_chars = maxint div {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(TxNativeChar){$ELSE}XQ_SizeOf_NativeChar{$ENDIF}; { patched by ccy }
+  max_matches = 1024;
+  max_rules = 256;
   intial_bufsize = 16384;
 
 Type
@@ -58,6 +60,31 @@ Type
 
   TCustomLexer = Class
   private
+    (*
+     Some state information is maintained to keep track with calls to yymore,
+     yyless, reject, start and yymatch/yymark, and to initialize state
+     information used by the lexical analyzer.
+     - Fyystext: contains the initial contents of the yytext variable; this
+       will be the empty string, unless yymore is called which sets Fyystext
+       to the current yytext
+     - Fyysstate: start state of lexical analyzer (set to 0 during
+       initialization, and modified in calls to the start routine)
+     - Fyylstate: line state information (1 if at beginning of line, 0
+       otherwise)
+     - Fyystack: stack containing matched rules; Fyymatches contains the number of
+       matches
+     - Fyypos: for each rule the last marked position (yymark); zeroed when rule
+       has already been considered
+     - Fyysleng: copy of the original yyleng used to restore state information
+       when reject is used
+    *)
+    Fyystext: TxNativeString;
+    Fyysstate: Integer;
+    Fyylstate: Integer;
+    Fyymatches: Integer;
+    Fyystack: array[1..max_matches] of Integer;
+    Fyypos: array[1..max_rules] of Integer;
+    Fyysleng: Byte;
     function GetBuf(Index: Integer): TxNativeChar;
     procedure SetBuf(Index: Integer; Value: TxNativeChar);
   Public
@@ -426,39 +453,6 @@ Begin
     write( yyoutput, c )
 End;
 
-(* Variables:
-
-   Some state information is maintained to keep track with calls to yymore,
-   yyless, reject, start and yymatch/yymark, and to initialize state
-   information used by the lexical analyzer.
-   - yystext: contains the initial contents of the yytext variable; this
-     will be the empty string, unless yymore is called which sets yystext
-     to the current yytext
-   - yysstate: start state of lexical analyzer (set to 0 during
-     initialization, and modified in calls to the start routine)
-   - yylstate: line state information (1 if at beginning of line, 0
-     otherwise)
-   - yystack: stack containing matched rules; yymatches contains the number of
-     matches
-   - yypos: for each rule the last marked position (yymark); zeroed when rule
-     has already been considered
-   - yysleng: copy of the original yyleng used to restore state information
-     when reject is used *)
-
-Const
-
-  max_matches = 1024;
-  max_rules = 256;
-
-Var
-
-  yystext: TxNativeString;
-  yysstate, yylstate: Integer;
-  yymatches: Integer;
-  yystack: Array[1..max_matches] Of Integer;
-  yypos: Array[1..max_rules] Of Integer;
-  yysleng: Byte;
-
 (* Utilities: *)
 
 Procedure TCustomLexer.echo;
@@ -471,17 +465,17 @@ End;
 
 Procedure TCustomLexer.yymore;
 Begin
-  //yystext := yytext;
+  //Fyystext := yytext;
   if yyTextBuf <> nil then
   begin
     if yyTextLen > 0 then
     begin
-      SetLength (yystext, yyTextLen);
-      Move (yyTextBuf^, yystext [1], yyTextLen);
+      SetLength (Fyystext, yyTextLen);
+      Move (yyTextBuf^, Fyystext [1], yyTextLen);
     end else
-      yystext:='';
+      Fyystext:='';
   end
-  else yystext := '';
+  else Fyystext := '';
 End;
 
 Procedure TCustomLexer.yyless( n: Integer );
@@ -504,13 +498,13 @@ Var
   i: Integer;
 Begin
   yyreject := true;
-  for i := yyTextLen + 1 to yysleng do
+  for i := yyTextLen + 1 to Fyysleng do
   begin
     Inc (yyTextLen);
     yyTextBuf^ [yyTextLen] := get_char;
     //yytext := yytext + get_char;
   end;
-  dec( yymatches );
+  dec( Fyymatches );
 End;
 
 Procedure TCustomLexer.returni( n: Integer );
@@ -527,7 +521,7 @@ End;
 
 Procedure TCustomLexer.start( state: Integer );
 Begin
-  yysstate := state;
+  Fyysstate := state;
 End;
 
 (* yywrap: *)
@@ -544,18 +538,18 @@ Procedure TCustomLexer.yynew;
 Begin
   If yylastchar <> #0 Then
     If yylastchar = nl Then
-      yylstate := 1
+      Fyylstate := 1
     Else
-      yylstate := 0;
-  yystate := yysstate + yylstate;
-  //yytext := yystext;
-  CheckyyTextBuf (Length (yystext));
-  yyTextLen := Length (yystext);
+      Fyylstate := 0;
+  yystate := Fyysstate + Fyylstate;
+  //yytext := Fyystext;
+  CheckyyTextBuf (Length (Fyystext));
+  yyTextLen := Length (Fyystext);
   if yyTextLen > 0 then
-    Move (yystext [1], yytextbuf^, yyTextLen);
+    Move (Fyystext [1], yytextbuf^, yyTextLen);
 
-  yystext := '';
-  yymatches := 0;
+  Fyystext := '';
+  Fyymatches := 0;
   yydone := false;
 End;
 
@@ -573,29 +567,29 @@ Procedure TCustomLexer.yymark( n: Integer );
 Begin
   If n > max_rules Then
     fatal( 'too many rules' );
-  //yypos[n] := Length( yytext );
-  yypos [n] := yyTextLen;
+  //Fyypos[n] := Length( yytext );
+  Fyypos [n] := yyTextLen;
 End;
 
 Procedure TCustomLexer.yymatch( n: Integer );
 Begin
-  inc( yymatches );
-  If yymatches > max_matches Then
+  inc( Fyymatches );
+  If Fyymatches > max_matches Then
     fatal( 'match stack overflow' );
-  yystack[yymatches] := n;
+  Fyystack[Fyymatches] := n;
 End;
 
 Function TCustomLexer.yyfind( Var n: Integer ): Boolean;
 Begin
   yyreject := false;
-  While ( yymatches > 0 ) And ( yypos[yystack[yymatches]] = 0 ) Do
-    dec( yymatches );
-  If yymatches > 0 Then
+  While ( Fyymatches > 0 ) And ( Fyypos[Fyystack[Fyymatches]] = 0 ) Do
+    dec( Fyymatches );
+  If Fyymatches > 0 Then
   Begin
-    yysleng := yyTextLen;
-    n := yystack[yymatches];
-    yyless( yypos[n] );
-    yypos[n] := 0;
+    Fyysleng := yyTextLen;
+    n := Fyystack[Fyymatches];
+    yyless( Fyypos[n] );
+    Fyypos[n] := 0;
     if yyTextLen >0 then
       yylastchar := yytextbuf^ [yytextlen]
     Else
@@ -621,7 +615,7 @@ Begin
   End
   Else
   Begin
-    yylstate := 1;
+    Fyylstate := 1;
     yydefault := false;
   End;
   yylastchar := yyactchar;
@@ -630,11 +624,11 @@ End;
 Procedure TCustomLexer.yyclear;
 Begin
   bufptr := 0;
-  yysstate := 0;
-  yylstate := 1;
+  Fyysstate := 0;
+  Fyylstate := 1;
   yylastchar := #0;
   yyTextLen := 0;
-  yystext := '';
+  Fyystext := '';
 End;
 
 constructor TCustomLexer.Create;

@@ -39,7 +39,10 @@ unit TxQueryTestCase;
 
 interface
 
-uses Classes, SysUtils, TestFramework, DB, DBClient, xQuery, QFormatSettings;
+uses
+  System.Classes, System.SyncObjs, System.SysUtils, Data.DB, Datasnap.DBClient,
+  TestFramework,
+  QFormatSettings, XQuery;
 
 type{$M+}
   TTest_TxQuery = class(TTestCase)
@@ -281,13 +284,20 @@ type{$M+}
     procedure Test_Max;
   end;
 
+  TTest_TxQuery_Threading = class(TTestCase)
+  published
+    procedure Test_Case1;
+  end;
+
 implementation
 
-uses StrUtils, DateUtils, Variants, FmtBcd,
+uses
+  System.DateUtils, System.StrUtils, System.Threading, System.Variants,
+  Data.FMTBcd,
 {$IFDEF LEVEL4}
-    SqlTimSt,
+  Data.SqlTimSt,
 {$ENDIF}
- Provider;
+  Datasnap.Provider;
 
 type THackDataSet = Class(TDataSet); {Hack class needed to add calculated fields at runtime}
 
@@ -2729,6 +2739,46 @@ begin
   end;
 end;
 
+procedure TTest_TxQuery_Threading.Test_Case1;
+begin
+  var P := function(Index: Integer): TFunc<Integer>
+  begin
+    Result := function: Integer begin
+      var D := TClientDataSet.Create(nil);
+      var Q := TxQuery.Create(nil);
+      try
+        D.FieldDefs.Add('DocKey', ftInteger);
+        D.FieldDefs.Add('DocAmt', ftInteger);
+        D.CreateDataSet;
+        D.AppendRecord([1, Index * 50]);
+        D.AppendRecord([2, Index * 50]);
+
+        Q.AddDataSet(D, 'Main');
+        Q.SQL.Text := 'SELECT SUM(DocAmt) FROM Main';
+        try
+          Q.Open;
+          Result := Q.Fields[0].AsInteger;
+        except
+          Result := -1;
+        end;
+      finally
+        D.DisposeOf;
+        Q.DisposeOf;
+      end;
+    end
+  end;
+
+  var A: TArray<IFuture<Integer>>;
+  SetLength(A, 20);
+  for var i := Low(A) to High(A) do
+    A[i] := TTask.Future<Integer>(P(i)).Start;
+
+  for var i := Low(A) to High(A) do begin
+    Status(i.ToString);
+    CheckEquals(i * 100, A[i].Value);
+  end;
+end;
+
 initialization
   TxQueryTestSuite := TTestSuite.Create('TxQuery Test Framework');
 
@@ -2764,6 +2814,8 @@ initialization
 
     AddSuite(TTest_DirectAccess.Suite);
     Addsuite(TTestCase_Float.Suite);
+
+    AddSuite(TTest_TxQuery_Threading.Suite);
   end;
 
   TestFramework.RegisterTest(TxQueryTestSuite);
