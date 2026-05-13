@@ -2305,9 +2305,9 @@ procedure LoadResArrays;
   procedure ResLoad(const resname: string; ResourceBuffer: Pointer);
   var
     ResourceSize: Integer;
-    ResourcePtr: PChar;
+    ResourcePtr: Pointer;
     BinResource: THandle;
-    ResInstance: Longint;
+    ResInstance: THandle;
     H: THandle;
     Buf: array[0..255] of Char;
   begin
