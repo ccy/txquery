@@ -56,7 +56,7 @@ Type
           TheIndex        Index of item in array
           TheItem         Value of item (i.e pointer element) in section
           Returns: 0 if success, else error code. }
-  TSPAApply = Function( TheIndex: Integer; TheItem: Pointer ): Integer;
+  TSPAApply = reference to Function( TheIndex: Integer; TheItem: Pointer ): Integer;
 
   TSecDir = Array[0..4095] Of Pointer; { Enough for up to 12 bits of sec }
   PSecDir = ^TSecDir;
@@ -86,7 +86,7 @@ Type
       a value other than 0. }
     { NOTE: must be static method so that we can take its address in
       TSparseList.ForAll }
-    Function ForAll( ApplyFunction: Pointer {TSPAApply} ): Integer;
+    function ForAll(ApplyFunction: TSPAApply): Integer;
 
     { Ratchet down HighBound after a deletion }
     Procedure ResetHighBound;
@@ -116,7 +116,7 @@ Type
     Procedure Delete( Index: Integer );
     Procedure Exchange( Index1, Index2: Integer );
     Function First: Pointer;
-    Function ForAll( ApplyFunction: Pointer {TSPAApply} ): Integer;
+    function ForAll(ApplyFunction: TSPAApply): Integer;
     Function IndexOf( Item: Pointer ): Integer;
     Procedure Insert( Index: Integer; Item: Pointer );
     Function Last: Pointer;
@@ -335,51 +335,11 @@ Begin
   End
 End;
 
-function Get_bp_memory: TxNativeUInt; { patched by ccy }
-asm
-  {$ifdef Win32}mov eax,[ebp]{$endif}
-  {$ifdef Win64}mov rax,[rbp+$50]{$endif}
-end;
-
-function Call_Apply_Function(Index: Integer; Item: pointer; callerBP:
-    TxNativeUInt; ApplyFunction: Pointer): TxNativeInt; { patched by ccy }
-asm
-  {$ifdef Win32}
-  mov  eax,index
-  mov  edx,item
-  push callerBP
-  call ApplyFunction
-  pop  ecx
-  mov @Result,eax
-  {$endif}
-  {$ifdef Win64}
-  push rcx
-  push rdx
-  push r8
-  push r9
-
-  push r8
-  mov  r8,item
-  mov  edx,index
-  pop rcx
-  call ApplyFunction
-//  pop  rcx
-  mov @Result,rax
-
-  pop r9
-  pop r8
-  pop rdx
-  pop rcx
-  {$endif}
-end;
-
-Function TSparsePointerArray.ForAll( ApplyFunction: Pointer {TSPAApply} ):
-  Integer;
+function TSparsePointerArray.ForAll(ApplyFunction: TSPAApply): Integer;
 Var
   itemP: PChar; { Pointer to item in section } { patched by ccy }
   item: Pointer;
   i: Cardinal;
-  callerBP: TxNativeUInt; { patched by ccy }
   j: Integer;
   index: Integer; { patched by ccy }
 Begin
@@ -397,7 +357,6 @@ Begin
     mov   eax,[ebp]                     { Set up stack frame for local }
     mov   callerBP,eax
   End; *)
-  callerBP := Get_bp_memory;
   While ( i < slotsInDir ) And ( Result = 0 ) Do
   Begin
     itemP := secDir^[i];
@@ -419,7 +378,7 @@ Begin
             pop   ecx
             mov   @Result,eax
           End;*)
-          Result := Call_Apply_Function(index, item, callerBP, ApplyFunction);
+          Result := ApplyFunction(index, item);
         Inc( itemP, {$IFNDEF Delphi2009Up}
                      {$IFNDEF XQ_USE_SIZEOF_CONSTANTS}SizeOf(Pointer){$ELSE}XQ_SizeOf_Pointer{$ENDIF}
                     {$Else}
@@ -436,22 +395,21 @@ End;
 Procedure TSparsePointerArray.ResetHighBound;
 Var
   NewHighBound: Integer;
-
-  Function Detector( TheIndex: Integer; TheItem: Pointer ): Integer; Far;
-  Begin
-    If TheIndex > FHighBound Then
-      Result := 1
-    Else
-    Begin
-      Result := 0;
-      If TheItem <> Nil Then
-        NewHighBound := TheIndex
-    End
-  End;
-
 Begin
   NewHighBound := -1;
-  ForAll( @Detector );
+  ForAll(
+    Function ( TheIndex: Integer; TheItem: Pointer ): Integer
+    Begin
+      If TheIndex > FHighBound Then
+        Result := 1
+      Else
+      Begin
+        Result := 0;
+        If TheItem <> Nil Then
+          NewHighBound := TheIndex
+      End
+    End
+  );
   FHighBound := NewHighBound
 End;
 
@@ -516,11 +474,9 @@ End;
 { Jump to TSparsePointerArray.ForAll so that it looks like it was called
   from our caller, so that the BP trick works. }
 
-Function TSparseList.ForAll( ApplyFunction: Pointer {TSPAApply} ): Integer; Assembler;
-Asm
-{$ifdef Win32}MOV     EAX,[EAX].TSparseList.FList{$endif}  { patched by ccy }
-{$ifdef Win64}MOV     rcx,[rcx].TSparseList.FList{$endif}  { patched by ccy }
-        JMP     TSparsePointerArray.ForAll
+function TSparseList.ForAll(ApplyFunction: TSPAApply): Integer;
+Begin
+  Result := FList.ForAll(ApplyFunction);
 End;
 
 Function TSparseList.Get( Index: Integer ): Pointer;
@@ -533,24 +489,23 @@ End;
 Function TSparseList.IndexOf( Item: Pointer ): Integer;
 Var
   MaxIndex, Index: Integer;
-
-  Function IsTheItem( TheIndex: Integer; TheItem: Pointer ): Integer; Far;
-  Begin
-    If TheIndex > MaxIndex Then
-      Result := -1 { Bail out }
-    Else If TheItem <> Item Then
-      Result := 0
-    Else
-    Begin
-      Result := 1; { Found it, stop traversal }
-      Index := TheIndex
-    End
-  End;
-
 Begin
   Index := -1;
   MaxIndex := FList.HighBound;
-  FList.ForAll( @IsTheItem );
+  FList.ForAll(
+    Function ( TheIndex: Integer; TheItem: Pointer ): Integer
+    Begin
+      If TheIndex > MaxIndex Then
+        Result := -1 { Bail out }
+      Else If TheItem <> Item Then
+        Result := 0
+      Else
+      Begin
+        Result := 1; { Found it, stop traversal }
+        Index := TheIndex
+      End
+    End
+  );
   Result := Index
 End;
 
@@ -739,15 +694,14 @@ Begin
 End;
 
 Procedure TAggSparseList.Clear;
-
-  Function ClearItem( TheIndex: Integer; TheItem: Pointer ): Integer; Far;
-  Begin
-    DisposeAggItem( PAggItem( TheItem ) ); { Item guaranteed non-nil }
-    Result := 0
-  End;
-
 Begin
-  FList.ForAll( @ClearItem );
+  FList.ForAll(
+    Function ( TheIndex: Integer; TheItem: Pointer ): Integer
+    Begin
+      DisposeAggItem( PAggItem( TheItem ) ); { Item guaranteed non-nil }
+      Result := 0
+    End
+  );
   FList.Clear;
 End;
 
